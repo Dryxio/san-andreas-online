@@ -1174,11 +1174,19 @@ local function createUnit(candidate, owner, observers, mode)
             requestedSeats[1] = 1
         elseif (mode == "production" or mode == "density") and not population.demo then
             -- Retail performs one independent 1/8 trial for every available
-            -- passenger seat. This deterministic hash preserves that density
-            -- without coupling server correctness to Lua's global RNG.
+            -- passenger seat. A deterministic Park-Miller sequence seeded by the
+            -- unit id keeps that density without coupling server correctness to
+            -- Lua's global RNG. The previous linear hash used the low bits, where
+            -- the three trials always landed on consecutive residues mod 8, so
+            -- a car could never get more than one passenger.
             local passengerCount = 0
-            for trial = 1, maximumPassengers do
-                if ((nextUnitId + 1) * 1103515245 + trial * 12345) % 8 == 0 then passengerCount = passengerCount + 1 end
+            -- Spread consecutive unit ids across the sequence and discard the
+            -- first outputs, which stay small for small seeds.
+            local state = (((nextUnitId + 1) * 48271) % 2147483646) + 1
+            for _ = 1, 4 do state = (state * 16807) % 2147483647 end
+            for _ = 1, maximumPassengers do
+                state = (state * 16807) % 2147483647
+                if math.floor(state / 2147483647 * 8) == 0 then passengerCount = passengerCount + 1 end
             end
             for seat = 1, passengerCount do requestedSeats[#requestedSeats + 1] = seat end
         end
@@ -1314,7 +1322,14 @@ requestCandidate = function(owner, mode, attempt, generation, chainRequestedAt)
     else
         x, y, z = getElementPosition(owner)
     end
-    local model = (mode == "production" or mode == "density" or mode == "spatial") and false or selectVehicleModel(owner, nextSession, mode)
+    -- Production-like modes must leave the model unset so the owner client asks
+    -- GTA's popcycle car groups (getAmbientVehicleModelCandidate), as retail does.
+    -- Only fixtures pin a model. The previous `cond and false or select(...)`
+    -- always called selectVehicleModel, because `false` is falsy in Lua.
+    local model = false
+    if not (mode == "production" or mode == "density" or mode == "spatial") then
+        model = selectVehicleModel(owner, nextSession, mode)
+    end
     pendingCandidates[nextSession] = {
         session = nextSession, owner = owner, players = ps, mode = mode, model = model or nil,
         attempt = attempt, requestedAt = getTickCount(), chainRequestedAt = chainRequestedAt or getTickCount(), generation = generation,
