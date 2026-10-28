@@ -10,6 +10,7 @@
  *****************************************************************************/
 
 #include "StdInc.h"
+#include "CProject2DFXPreloadSA.h"
 #include "CWorldSectorLimits.h"
 #include "CBuildingsPoolSA.h"
 
@@ -185,6 +186,7 @@ void CBuildingsPoolSA::RemoveBuilding(CBuilding* pBuilding)
 
 void CBuildingsPoolSA::RemoveAllWithBackup()
 {
+    Project2DFXPreload::Clear();
     if (m_pOriginalBuildingsBackup)
         return;
 
@@ -237,6 +239,7 @@ void CBuildingsPoolSA::RemoveAllWithBackup()
 
 void CBuildingsPoolSA::RestoreBackup()
 {
+    Project2DFXPreload::Clear();
     if (!m_pOriginalBuildingsBackup)
         return;
 
@@ -319,6 +322,7 @@ void CBuildingsPoolSA::PurgeStaleSectorEntries(void* oldPool, int poolSize)
 
 bool CBuildingsPoolSA::Resize(int size)
 {
+    Project2DFXPreload::Clear();
     auto*     pool = (*m_ppBuildingPoolInterface);
     const int currentSize = pool->m_nSize;
 

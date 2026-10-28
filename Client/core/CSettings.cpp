@@ -1660,13 +1660,68 @@ void CSettings::CreateGUI()
                       m_pExtendedDrawDistanceLabel);
 
     neonPosition.fY += 42.0f;
-    m_pExtendedDrawDistanceDescriptionLabel = reinterpret_cast<CGUILabel*>(pManager->CreateLabel(
-        pTabNeon, _("Extends far clip and stock-world model LODs. Fog can still hide distant geometry. High values greatly increase load.")));
+    m_pExtendedDrawDistanceDescriptionLabel = reinterpret_cast<CGUILabel*>(
+        pManager->CreateLabel(pTabNeon, _("Project2DFX: 100% uses the advanced base values; reference defaults on a new installation. Weather, the ceiling and "
+                                          "server overrides limit the view. Automatic lights follow the camera.")));
     m_pExtendedDrawDistanceDescriptionLabel->SetPosition(neonPosition);
     m_pExtendedDrawDistanceDescriptionLabel->SetSize(CVector2D(std::max(0.0f, neonContentSize.fX - 32.0f), 48.0f));
     m_pExtendedDrawDistanceDescriptionLabel->SetHorizontalAlign(CGUI_ALIGN_LEFT_WORDWRAP);
 
     neonPosition.fY += 56.0f;
+    m_pDrawDistanceMode = reinterpret_cast<CGUIComboBox*>(pManager->CreateComboBox(pTabNeon, ""));
+    m_pDrawDistanceMode->SetPosition(neonPosition);
+    m_pDrawDistanceMode->SetSize(CVector2D(280.0f, 120.0f));
+    m_pDrawDistanceMode->AddItem(_("Project2DFX (advanced policy)"));
+    m_pDrawDistanceMode->AddItem(_("Native LOD only"));
+    m_pDrawDistanceMode->AddItem(_("Legacy Neon"));
+    m_pDrawDistanceMode->SetReadOnly(true);
+    m_pDrawDistanceMode->SetSelectionHandler(GUI_CALLBACK(&CSettings::OnExtendedDrawDistanceEnabledClick, this));
+    neonPosition.fY += 32.0f;
+    auto* restoreProject2DFX = reinterpret_cast<CGUIButton*>(pManager->CreateButton(pTabNeon, _("Restore Project2DFX (world + lights)")));
+    restoreProject2DFX->SetPosition(neonPosition);
+    restoreProject2DFX->SetSize(CVector2D(325.0f, 24.0f));
+    restoreProject2DFX->SetClickHandler(GUI_CALLBACK(&CSettings::OnRestoreProject2DFXClick, this));
+    neonPosition.fY += 32.0f;
+    const char* projectLabels[] = {_("Weather far-clip multiplier:"),
+                                   _("LOD models:"),
+                                   _("Vegetation models:"),
+                                   _("Generic objects:"),
+                                   _("Other normal objects:"),
+                                   _("Timed objects:"),
+                                   _("Extension ceiling (m, 0 = off):"),
+                                   _("Static sun size (0 = weather):")};
+    for (unsigned int i = 0; i < 8; ++i)
+    {
+        auto* label = reinterpret_cast<CGUILabel*>(pManager->CreateLabel(pTabNeon, projectLabels[i]));
+        label->SetPosition(neonPosition);
+        label->AutoSize();
+        m_pProject2DFXValues[i] = reinterpret_cast<CGUIEdit*>(pManager->CreateEdit(pTabNeon, ""));
+        m_pProject2DFXValues[i]->SetPosition(CVector2D(neonPosition.fX + 235.0f, neonPosition.fY));
+        m_pProject2DFXValues[i]->SetSize(CVector2D(90.0f, 22.0f));
+        neonPosition.fY += 28.0f;
+    }
+    m_pProject2DFXPreload = reinterpret_cast<CGUICheckBox*>(pManager->CreateCheckBox(pTabNeon, _("Preload native LODs (uses more memory)"), true));
+    m_pProject2DFXPreload->SetPosition(neonPosition);
+    m_pProject2DFXPreload->AutoSize(nullptr, 20.0f);
+    neonPosition.fY += 28.0f;
+    auto* policyHelp = reinterpret_cast<CGUILabel*>(
+        pManager->CreateLabel(pTabNeon, _("Model values: up to 10 = multiplier, above 10 = metres. At 0, vegetation falls through to generic, then other "
+                                          "normal objects. The ceiling preserves native weather visibility.")));
+    policyHelp->SetPosition(neonPosition);
+    policyHelp->SetSize(CVector2D(std::max(0.0f, neonContentSize.fX - 32.0f), 64.0f));
+    policyHelp->SetHorizontalAlign(CGUI_ALIGN_LEFT_WORDWRAP);
+    neonPosition.fY += 72.0f;
+    m_pCheckBoxVegetationLod = reinterpret_cast<CGUICheckBox*>(pManager->CreateCheckBox(pTabNeon, _("Vegetation LODs (independent)"), false));
+    m_pCheckBoxVegetationLod->SetPosition(neonPosition);
+    m_pCheckBoxVegetationLod->AutoSize(nullptr, 20.0f);
+    neonPosition.fY += 28.0f;
+    auto* vegetationDistanceLabel = reinterpret_cast<CGUILabel*>(pManager->CreateLabel(pTabNeon, _("Vegetation range (m, 0 = pack, min 400):")));
+    vegetationDistanceLabel->SetPosition(neonPosition);
+    vegetationDistanceLabel->AutoSize();
+    m_pVegetationLodDistance = reinterpret_cast<CGUIEdit*>(pManager->CreateEdit(pTabNeon, ""));
+    m_pVegetationLodDistance->SetPosition(CVector2D(neonPosition.fX + 300.0f, neonPosition.fY));
+    m_pVegetationLodDistance->SetSize(CVector2D(90.0f, 22.0f));
+    neonPosition.fY += 40.0f;
     m_pDistantLightsRenderingLabel = reinterpret_cast<CGUILabel*>(pManager->CreateLabel(pTabNeon, _("Project2DFX lighting")));
     m_pDistantLightsRenderingLabel->SetPosition(neonPosition);
     m_pDistantLightsRenderingLabel->AutoSize(nullptr, 20.0f);
@@ -2732,14 +2787,29 @@ void CSettings::UpdateNeonTab()
     const float distantLightsCoronaRadiusMultiplier = std::clamp(CVARS_GET_VALUE<float>("distant_lights_corona_radius_multiplier"),
                                                                  kDistantLightsCoronaRadiusMultiplierMin, kDistantLightsCoronaRadiusMultiplierMax);
 
+    m_bUpdatingWorldSlider = true;
+    m_iWorldDistanceDraft = extendedDrawDistance;
+    m_iProject2DFXPercentDraft = std::clamp(CVARS_GET_VALUE<int>("extended_draw_distance_p2_percent"), 25, 200);
     m_pCheckBoxExtendedDrawDistance->SetSelected(extendedDrawDistanceEnabled);
-    m_pExtendedDrawDistance->SetScrollPosition(NormalizeSliderValue(extendedDrawDistance, kExtendedDrawDistanceMin, kExtendedDrawDistanceMax));
-    if (extendedDrawDistanceEnabled)
-        m_pExtendedDrawDistanceValueLabel->SetText(SString("%i m", extendedDrawDistance));
-    else
-        m_pExtendedDrawDistanceValueLabel->SetText(_("Vanilla"));
-    m_pExtendedDrawDistance->SetEnabled(extendedDrawDistanceEnabled);
-    m_pExtendedDrawDistanceValueLabel->SetEnabled(extendedDrawDistanceEnabled);
+    const int worldMode = std::clamp(CVARS_GET_VALUE<int>("extended_draw_distance_mode"), 0, 2);
+    m_pDrawDistanceMode->SetSelectedItemByIndex(worldMode);
+    m_pDrawDistanceMode->SetEnabled(extendedDrawDistanceEnabled);
+    m_pProject2DFXValues[0]->SetText(SString("%.6g", CVARS_GET_VALUE<float>("extended_draw_distance_p2_multiplier")));
+    m_pProject2DFXValues[1]->SetText(SString("%.6g", CVARS_GET_VALUE<float>("extended_draw_distance_p2_lod")));
+    m_pProject2DFXValues[2]->SetText(SString("%.6g", CVARS_GET_VALUE<float>("extended_draw_distance_p2_vegetation")));
+    m_pProject2DFXValues[3]->SetText(SString("%.6g", CVARS_GET_VALUE<float>("extended_draw_distance_p2_generic")));
+    m_pProject2DFXValues[4]->SetText(SString("%.6g", CVARS_GET_VALUE<float>("extended_draw_distance_p2_normal")));
+    m_pProject2DFXValues[5]->SetText(SString("%.6g", CVARS_GET_VALUE<float>("extended_draw_distance_p2_timed")));
+    m_pProject2DFXValues[6]->SetText(SString("%.6g", CVARS_GET_VALUE<float>("extended_draw_distance_p2_ceiling")));
+    m_pProject2DFXValues[7]->SetText(SString("%.6g", CVARS_GET_VALUE<float>("extended_draw_distance_p2_sun_size")));
+    for (auto* field : m_pProject2DFXValues)
+        field->SetEnabled(extendedDrawDistanceEnabled && worldMode == 0);
+    m_pProject2DFXPreload->SetSelected(CVARS_GET_VALUE<bool>("extended_draw_distance_p2_preload"));
+    m_pProject2DFXPreload->SetEnabled(extendedDrawDistanceEnabled && worldMode == 0);
+    m_pCheckBoxVegetationLod->SetSelected(CVARS_GET_VALUE<bool>("vegetation_lod"));
+    m_pVegetationLodDistance->SetText(SString("%.6g", CVARS_GET_VALUE<float>("vegetation_lod_distance")));
+    m_bUpdatingWorldSlider = false;
+    OnExtendedDrawDistanceEnabledClick(nullptr);
 
     const auto lightSettings = ReadDistantLightPreferences();
     m_pDistantLightAutomatic->SetSelected(lightSettings.automaticDistance);
@@ -5151,9 +5221,58 @@ void CSettings::SaveData()
     gameSettings->SetBrightness(m_pBrightness->GetScrollPosition() * 384);
 
     const bool extendedDrawDistanceEnabled = m_pCheckBoxExtendedDrawDistance->GetSelected();
-    const int  extendedDrawDistance = GetExtendedDrawDistanceFromSlider(m_pExtendedDrawDistance);
+    const int  extendedDrawDistance = m_iWorldDistanceDraft;
+    CVARS_SET("extended_draw_distance_p2_percent", m_iProject2DFXPercentDraft);
     CVARS_SET("extended_draw_distance_enabled", extendedDrawDistanceEnabled);
     CVARS_SET("extended_draw_distance", extendedDrawDistance);
+    const int worldMode = std::clamp(m_pDrawDistanceMode->GetSelectedItemIndex(), 0, 2);
+    CVARS_SET("extended_draw_distance_mode", worldMode);
+    CVARS_SET("extended_draw_distance_legacy", worldMode == 2);
+    {
+        const float value = static_cast<float>(atof(m_pProject2DFXValues[0]->GetText().c_str()));
+        if (std::isfinite(value))
+            CVARS_SET("extended_draw_distance_p2_multiplier", std::clamp(value, 0.1f, 10.0f));
+    }
+    {
+        const float value = static_cast<float>(atof(m_pProject2DFXValues[1]->GetText().c_str()));
+        if (std::isfinite(value))
+            CVARS_SET("extended_draw_distance_p2_lod", std::clamp(value, 0.0f, 5000.0f));
+    }
+    {
+        const float value = static_cast<float>(atof(m_pProject2DFXValues[2]->GetText().c_str()));
+        if (std::isfinite(value))
+            CVARS_SET("extended_draw_distance_p2_vegetation", std::clamp(value, 0.0f, 5000.0f));
+    }
+    {
+        const float value = static_cast<float>(atof(m_pProject2DFXValues[3]->GetText().c_str()));
+        if (std::isfinite(value))
+            CVARS_SET("extended_draw_distance_p2_generic", std::clamp(value, 0.0f, 5000.0f));
+    }
+    {
+        const float value = static_cast<float>(atof(m_pProject2DFXValues[4]->GetText().c_str()));
+        if (std::isfinite(value))
+            CVARS_SET("extended_draw_distance_p2_normal", std::clamp(value, 0.0f, 5000.0f));
+    }
+    {
+        const float value = static_cast<float>(atof(m_pProject2DFXValues[5]->GetText().c_str()));
+        if (std::isfinite(value))
+            CVARS_SET("extended_draw_distance_p2_timed", std::clamp(value, 0.0f, 5000.0f));
+    }
+    {
+        const float value = static_cast<float>(atof(m_pProject2DFXValues[6]->GetText().c_str()));
+        if (std::isfinite(value))
+            CVARS_SET("extended_draw_distance_p2_ceiling", std::clamp(value, 0.0f, 5000.0f));
+    }
+    {
+        const float value = static_cast<float>(atof(m_pProject2DFXValues[7]->GetText().c_str()));
+        if (std::isfinite(value))
+            CVARS_SET("extended_draw_distance_p2_sun_size", std::clamp(value, 0.0f, 100.0f));
+    }
+    CVARS_SET("extended_draw_distance_p2_preload", m_pProject2DFXPreload->GetSelected());
+    CVARS_SET("vegetation_lod", m_pCheckBoxVegetationLod->GetSelected());
+    const float vegetationDistance = static_cast<float>(atof(m_pVegetationLodDistance->GetText().c_str()));
+    if (std::isfinite(vegetationDistance))
+        CVARS_SET("vegetation_lod_distance", std::clamp(vegetationDistance, 0.0f, 2000.0f));
     CCore::GetSingleton().ApplyExtendedWorldDrawDistancePreferences();
 
     const bool  distantLightsEnabled = m_pCheckBoxDistantLights->GetSelected();
@@ -6126,20 +6245,74 @@ bool CSettings::OnDrawDistanceChanged(CGUIElement* pElement)
 
 bool CSettings::OnExtendedDrawDistanceEnabledClick(CGUIElement* pElement)
 {
+    if (m_bUpdatingWorldSlider)
+        return true;
     const bool enabled = m_pCheckBoxExtendedDrawDistance->GetSelected();
+    m_pDrawDistanceMode->SetEnabled(enabled);
+    const bool project2dfx = m_pDrawDistanceMode->GetSelectedItemIndex() == 0;
+    for (auto* field : m_pProject2DFXValues)
+        if (field)
+            field->SetEnabled(enabled && project2dfx);
+    m_pProject2DFXPreload->SetEnabled(enabled && project2dfx);
     m_pExtendedDrawDistance->SetEnabled(enabled);
     m_pExtendedDrawDistanceValueLabel->SetEnabled(enabled);
-    if (enabled)
-        m_pExtendedDrawDistanceValueLabel->SetText(SString("%i m", GetExtendedDrawDistanceFromSlider(m_pExtendedDrawDistance)));
-    else
-        m_pExtendedDrawDistanceValueLabel->SetText(_("Vanilla"));
+    // Programmatic mode changes must not reinterpret metres as a percentage,
+    // nor quantize a saved value just because the settings window was opened.
+    m_bUpdatingWorldSlider = true;
+    m_pExtendedDrawDistance->SetProperty("StepSize", SString("%1.6f", project2dfx ? 5.0f / 175.0f : 100.0f / 4700.0f));
+    m_pExtendedDrawDistance->SetScrollPosition(project2dfx ? NormalizeSliderValue(m_iProject2DFXPercentDraft, 25, 200)
+                                                           : NormalizeSliderValue(m_iWorldDistanceDraft, kExtendedDrawDistanceMin, kExtendedDrawDistanceMax));
+    m_bUpdatingWorldSlider = false;
+    m_pExtendedDrawDistanceValueLabel->SetText(project2dfx ? SString("%i%%", m_iProject2DFXPercentDraft) : SString("%i m", m_iWorldDistanceDraft));
     return true;
 }
 
 bool CSettings::OnExtendedDrawDistanceChanged(CGUIElement* pElement)
 {
-    const int distance = GetExtendedDrawDistanceFromSlider(m_pExtendedDrawDistance);
-    m_pExtendedDrawDistanceValueLabel->SetText(SString("%i m", distance));
+    if (m_bUpdatingWorldSlider)
+        return true;
+    if (m_pDrawDistanceMode->GetSelectedItemIndex() == 0)
+    {
+        const float percent = DenormalizeSliderValue(m_pExtendedDrawDistance->GetScrollPosition(), 25, 200);
+        m_iProject2DFXPercentDraft = std::clamp(static_cast<int>(std::round(percent / 5.0f)) * 5, 25, 200);
+        m_pExtendedDrawDistanceValueLabel->SetText(SString("%i%%", m_iProject2DFXPercentDraft));
+    }
+    else
+    {
+        m_iWorldDistanceDraft = GetExtendedDrawDistanceFromSlider(m_pExtendedDrawDistance);
+        m_pExtendedDrawDistanceValueLabel->SetText(SString("%i m", m_iWorldDistanceDraft));
+    }
+    return true;
+}
+
+bool CSettings::OnRestoreProject2DFXClick(CGUIElement* pElement)
+{
+    // Edit controls only: Cancel must discard this just like any other change.
+    // Preserve the two master switches; restoration must not turn rendering on.
+    m_iProject2DFXPercentDraft = 100;
+    m_pDrawDistanceMode->SetSelectedItemByIndex(0);
+    const float defaults[] = {2, 1300, 800, 300, 0, 0, 0, 20};
+    for (int i = 0; i < 8; ++i)
+        m_pProject2DFXValues[i]->SetText(SString("%.6g", defaults[i]));
+    m_pProject2DFXPreload->SetSelected(true);
+    m_pCheckBoxVegetationLod->SetSelected(false);
+    m_pVegetationLodDistance->SetText("0");
+    const SDistantLightSettings lights;
+    m_pDistantLightAutomatic->SetSelected(lights.automaticDistance);
+    m_pDistantLightGrowth->SetSelected(lights.growWithDistance);
+    const float curveValues[] = {lights.nearAlpha, lights.reachFullAlpha, lights.boostStart, lights.farAlphaBoost};
+    const float curveMin[] = {0, 1, 0, 1}, curveMax[] = {1, 2000, 5000, 8};
+    for (int i = 0; i < 4; ++i)
+        m_pDistantLightCurves[i]->SetScrollPosition(NormalizeSliderValue(curveValues[i], curveMin[i], curveMax[i]));
+    m_pCheckBoxDistantLightSearchlights->SetSelected(true);
+    m_pDistantLightsDrawDistance->SetScrollPosition(NormalizeSliderValue(2000, kDistantLightsDrawDistanceMin, kDistantLightsDrawDistanceMax));
+    m_pDistantLightsCoronaSize->SetScrollPosition(
+        NormalizeSliderValue(0.25f, kDistantLightsCoronaRadiusMultiplierMin, kDistantLightsCoronaRadiusMultiplierMax));
+    OnExtendedDrawDistanceEnabledClick(nullptr);
+    OnDistantLightsEnabledClick(nullptr);
+    OnDistantLightsDrawDistanceChanged(nullptr);
+    OnDistantLightsCoronaSizeChanged(nullptr);
+    OnDistantLightAdvancedChanged(nullptr);
     return true;
 }
 

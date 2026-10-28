@@ -10,6 +10,7 @@
  *****************************************************************************/
 
 #include "StdInc.h"
+#include "CProject2DFXPreloadSA.h"
 #include <core/CCoreInterface.h>
 #include "CColModelSA.h"
 #include "CColStoreSA.h"
@@ -28,8 +29,26 @@ extern CGameSA*        pGame;
 
 namespace
 {
-    constexpr DWORD kFirstExtendedWorldModel = 615;
-    constexpr DWORD kLastExtendedWorldModel = 18631;
+    constexpr DWORD                   kFirstExtendedWorldModel = 615;
+    constexpr DWORD                   kLastExtendedWorldModel = 18631;
+    WorldRenderPolicy::Mode           g_extendedMode = WorldRenderPolicy::Mode::Project2DFX;
+    Project2DFXDrawDistance::Settings g_project2DFXSettings;
+    float                             g_project2DFXNormalDistance = 300.0f;
+
+    float ResolveExtendedModelDistance(DWORD id, CBaseModelInfoSAInterface* info, float authored, float legacyDistance)
+    {
+        if (g_extendedMode == WorldRenderPolicy::Mode::Project2DFX)
+        {
+            const bool  timed = reinterpret_cast<eModelInfoType (*)()>(info->VFTBL->GetModelType)() == eModelInfoType::TIME;
+            const float result = Project2DFXDrawDistance::Resolve(id, authored, timed, g_project2DFXSettings);
+            // SALodLights grows the normal-object cap from non-timed IDE models
+            // whose authored distance is <=300, not from the LOD category.
+            if (!timed && authored <= 300.0f && !Project2DFXDrawDistance::IsExcluded(id))
+                g_project2DFXNormalDistance = std::max(g_project2DFXNormalDistance, result);
+            return result;
+        }
+        return std::max(authored, legacyDistance);
+    }
 }
 
 CBaseModelInfoSAInterface** CModelInfoSAInterface::ms_modelInfoPtrs = nullptr;
@@ -958,6 +977,7 @@ float CModelInfoSA::GetOriginalLODDistance()
 
 void CModelInfoSA::SetLODDistance(float fDistance, bool bOverrideMaxDistance)
 {
+    Project2DFXPreload::ModelChanging(m_dwModelID);
 #if 0
     // fLodDistanceUnscaled values:
     //
@@ -1005,8 +1025,37 @@ void CModelInfoSA::SetLODDistance(float fDistance, bool bOverrideMaxDistance)
     }
 }
 
+void CModelInfoSA::RefreshExtendedModelDistance()
+{
+    if (!CModelInfoSAInterface::ms_modelInfoPtrs || MapContains(ms_ModelDefaultLodDistanceMap, m_dwModelID))
+        return;
+    auto* info = CModelInfoSAInterface::ms_modelInfoPtrs[m_dwModelID];
+    if (!info)
+        return;
+    const auto previous = ms_ExtendedLodBaseDistanceMap.find(m_dwModelID);
+    if (previous != ms_ExtendedLodBaseDistanceMap.end())
+    {
+        info->fLodDistanceUnscaled = previous->second;
+        ms_ExtendedLodBaseDistanceMap.erase(previous);
+    }
+    // Replacing a DFF after enabling Project2DFX must have the same result as
+    // replacing it before enabling. Script distances continue to own their raw
+    // value, and restoring the stock DFF reinstates the selected player policy.
+    if (!ms_ExtendedLodPreferenceEnabled || m_dwModelID < kFirstExtendedWorldModel || m_dwModelID > kLastExtendedWorldModel ||
+        (g_extendedMode == WorldRenderPolicy::Mode::Project2DFX && m_pCustomClump) || info->fLodDistanceUnscaled <= 0.0f)
+        return;
+    const float authored = info->fLodDistanceUnscaled;
+    const float distance = ResolveExtendedModelDistance(m_dwModelID, info, authored, ms_ExtendedLodPreferenceDistance);
+    if (authored != distance)
+    {
+        MapSet(ms_ExtendedLodBaseDistanceMap, m_dwModelID, authored);
+        info->fLodDistanceUnscaled = distance;
+    }
+}
+
 bool CModelInfoSA::ResetLODDistance()
 {
+    Project2DFXPreload::ModelChanging(m_dwModelID);
     if (!CModelInfoSAInterface::ms_modelInfoPtrs)
         return false;
 
@@ -1021,10 +1070,14 @@ bool CModelInfoSA::ResetLODDistance()
     m_pInterface->fLodDistanceUnscaled = baseDistance;
 
     if (ms_ExtendedLodPreferenceEnabled && m_dwModelID >= kFirstExtendedWorldModel && m_dwModelID <= kLastExtendedWorldModel && baseDistance > 0.0f &&
-        baseDistance < ms_ExtendedLodPreferenceDistance)
+        (g_extendedMode == WorldRenderPolicy::Mode::Legacy || !m_pCustomClump))
     {
-        MapSet(ms_ExtendedLodBaseDistanceMap, m_dwModelID, baseDistance);
-        m_pInterface->fLodDistanceUnscaled = ms_ExtendedLodPreferenceDistance;
+        const float distance = ResolveExtendedModelDistance(m_dwModelID, m_pInterface, baseDistance, ms_ExtendedLodPreferenceDistance);
+        if (distance != baseDistance)
+        {
+            MapSet(ms_ExtendedLodBaseDistanceMap, m_dwModelID, baseDistance);
+            m_pInterface->fLodDistanceUnscaled = distance;
+        }
     }
     return true;
 }
@@ -1047,10 +1100,12 @@ void CModelInfoSA::StaticResetLodDistances()
     ReapplyExtendedLodPreference();
 }
 
-void CModelInfoSA::SetExtendedLodPreference(bool bEnabled, float fDistance)
+void CModelInfoSA::SetExtendedLodPreference(bool bEnabled, float fDistance, WorldRenderPolicy::Mode mode, const Project2DFXDrawDistance::Settings& settings)
 {
     RestoreExtendedLodPreference();
-    ms_ExtendedLodPreferenceEnabled = bEnabled;
+    g_extendedMode = mode;
+    g_project2DFXSettings = Project2DFXDrawDistance::Sanitize(settings);
+    ms_ExtendedLodPreferenceEnabled = bEnabled && mode != WorldRenderPolicy::Mode::LODOnly;
     ms_ExtendedLodPreferenceDistance = fDistance;
     ApplyExtendedLodPreference();
 }
@@ -1061,8 +1116,14 @@ void CModelInfoSA::ReapplyExtendedLodPreference()
     ApplyExtendedLodPreference();
 }
 
+float CModelInfoSA::GetProject2DFXNormalDrawDistance()
+{
+    return g_project2DFXNormalDistance;
+}
+
 void CModelInfoSA::ApplyExtendedLodPreference()
 {
+    g_project2DFXNormalDistance = 300.0f;
     if (!ms_ExtendedLodPreferenceEnabled || !CModelInfoSAInterface::ms_modelInfoPtrs)
         return;
 
@@ -1076,11 +1137,16 @@ void CModelInfoSA::ApplyExtendedLodPreference()
             continue;
 
         const float currentDistance = modelInfo->fLodDistanceUnscaled;
-        if (currentDistance <= 0.0f || currentDistance >= ms_ExtendedLodPreferenceDistance)
+        if (currentDistance <= 0.0f)
             continue;
-
+        auto* model = static_cast<CModelInfoSA*>(pGame->GetModelInfo(modelId, true));
+        if (!model || (g_extendedMode == WorldRenderPolicy::Mode::Project2DFX && model->m_pCustomClump))
+            continue;
+        const float distance = ResolveExtendedModelDistance(modelId, modelInfo, currentDistance, ms_ExtendedLodPreferenceDistance);
+        if (distance == currentDistance)
+            continue;
         MapSet(ms_ExtendedLodBaseDistanceMap, modelId, currentDistance);
-        modelInfo->fLodDistanceUnscaled = ms_ExtendedLodPreferenceDistance;
+        modelInfo->fLodDistanceUnscaled = distance;
     }
 }
 
@@ -1652,6 +1718,7 @@ void CModelInfoSA::ResetAllVehiclesWheelSizes()
 
 bool CModelInfoSA::SetCustomModel(RpClump* pClump)
 {
+    Project2DFXPreload::ModelChanging(m_dwModelID);
     if (!pClump)
         return false;
 
@@ -1659,6 +1726,7 @@ bool CModelInfoSA::SetCustomModel(RpClump* pClump)
     {
         // Wait for the game to eventually stream-in the model and then try to replace it (via MakeCustomModel).
         m_pCustomClump = pClump;
+        RefreshExtendedModelDistance();
         return true;
     }
 
@@ -1685,11 +1753,13 @@ bool CModelInfoSA::SetCustomModel(RpClump* pClump)
     }
 
     m_pCustomClump = success ? pClump : nullptr;
+    RefreshExtendedModelDistance();
     return success;
 }
 
 void CModelInfoSA::RestoreOriginalModel()
 {
+    Project2DFXPreload::ModelChanging(m_dwModelID);
     // Are we loaded?
     if (IsLoaded())
     {
@@ -1698,6 +1768,7 @@ void CModelInfoSA::RestoreOriginalModel()
 
     // Reset the stored custom vehicle clump
     m_pCustomClump = NULL;
+    RefreshExtendedModelDistance();
 }
 
 void CModelInfoSA::SetColModel(CColModel* pColModel)
@@ -2055,6 +2126,7 @@ void CModelInfoSA::MakeVehicleAutomobile(ushort usBaseID)
 
 void CModelInfoSA::DeallocateModel(void)
 {
+    Project2DFXPreload::ModelChanging(m_dwModelID);
     Remove();
 
     // Clean up stored defaults so stale entries don't leak to a model that reuses this ID.

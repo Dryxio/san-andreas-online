@@ -2009,6 +2009,14 @@ void CCore::ApplyGameSettings()
     pGameSettings->SetSFXVolume(CVARS_GET_VALUE<float>("sfxvolume") * fVal * 64.0f);
 }
 
+void CCore::ApplyNeonRenderingPreferences()
+{
+    // Console-driven comparisons must apply the same preferences as Settings,
+    // without resetting unrelated game state or resource-owned overrides.
+    ApplyDistantLightPreferences(m_pGame);
+    ApplyExtendedWorldDrawDistancePreferences();
+}
+
 void CCore::ApplyExtendedWorldDrawDistancePreferences(bool bResetRuntimeState)
 {
     const bool enabled = CVARS_GET_VALUE<bool>("extended_draw_distance_enabled");

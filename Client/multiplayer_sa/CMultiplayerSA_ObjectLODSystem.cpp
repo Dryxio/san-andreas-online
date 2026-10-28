@@ -10,6 +10,9 @@
  *****************************************************************************/
 
 #include "StdInc.h"
+#include <WorldRenderPolicy.h>
+
+extern CCoreInterface* g_pCore;
 
 ////////////////////////////////////////////////
 //
@@ -20,9 +23,17 @@ namespace
 {
 #define LOW_LOD_DRAW_DISTANCE_SCALE 5
 
+    float g_worldDrawDistanceScale = 1.0f;
+    float g_project2DFXNormalScale = 1.0f;
+    bool  g_project2DFXMode = false;
+    float g_sectorScanScale = 1.0f;
+    float g_savedGlobalDrawDistance = 300.0f;
+    float g_nativeVisibilityDistance = 300.0f;
+    bool  g_vegetationLodEnabled = false;
+
     void SetGlobalDrawDistanceScale(float fValue)
     {
-        MemPut<float>(0x858FD8, 300.f * fValue);
+        g_nativeVisibilityDistance = 300.f * fValue;
     }
 
     float GetDrawDistanceSetting()
@@ -46,6 +57,9 @@ namespace
         CBaseModelInfoSAInterface* pModelInfo;
     } saved = {false, 0.f, NULL};
 
+    CBaseModelInfoSAInterface* savedNativeLodModel = nullptr;
+    float                      savedNativeLodDistance = 0.0f;
+
     DWORD preResult = 0;
     DWORD entityCheckValid = 0;
 }  // namespace
@@ -58,6 +72,8 @@ namespace
 // Returns -1 to proceed with the original function, or >= 0 to skip it (value used as result)
 int OnMY_CRenderer_SetupEntityVisibility_Pre(CEntitySAInterface* pEntity, float& fValue)
 {
+    savedNativeLodModel = nullptr;
+    g_savedGlobalDrawDistance = g_nativeVisibilityDistance;
     // Guard against entities whose model info has been deallocated
     auto* pModelInfo = static_cast<CBaseModelInfoSAInterface**>(pGameInterface->GetModelInfoArray())[pEntity->m_nModelIndex];
     if (!pModelInfo)
@@ -68,23 +84,53 @@ int OnMY_CRenderer_SetupEntityVisibility_Pre(CEntitySAInterface* pEntity, float&
 
     if (pEntity->IsLowLodEntity())
     {
-        SetGlobalDrawDistanceScale(LOW_LOD_DRAW_DISTANCE_SCALE * 2);
+        SetGlobalDrawDistanceScale(std::max(g_worldDrawDistanceScale, float(LOW_LOD_DRAW_DISTANCE_SCALE * 2)));
         saved.pModelInfo = pModelInfo;
         saved.fLodDistanceUnscaled = pModelInfo->fLodDistanceUnscaled;
         pModelInfo->fLodDistanceUnscaled *= LOW_LOD_DRAW_DISTANCE_SCALE / GetDrawDistanceSetting();
         saved.bValid = true;
     }
     else
+    {
+        // Only actual native LOD parents receive the extended range. Applying
+        // this globally bypasses GTA's HD distance budget for an entire city.
+        // Custom resource LOD pairs retain the existing MTA path above.
+        const bool nativeLod = g_worldDrawDistanceScale > 1.0f && pEntity->numLodChildren > 0 && !pEntity->IsHighLodEntity() && pEntity->m_nModelIndex >= 615 &&
+                               pEntity->m_nModelIndex <= 18631 && !pGameInterface->HasModelLODDistanceOverride(pEntity->m_nModelIndex);
+        const float vegetationDistance = g_vegetationLodEnabled ? pGameInterface->GetVegetationLODDistance(pEntity) : 0.0f;
+        const float scale = std::max(nativeLod ? g_worldDrawDistanceScale : 1.0f, vegetationDistance / 300.0f);
+        const bool  nativeStock = g_project2DFXNormalScale > 1.0f && (pEntity->nType == 1 || pEntity->nType == 5) && !pEntity->IsHighLodEntity() &&
+                                 pEntity->m_nModelIndex >= 615 && pEntity->m_nModelIndex <= 18631 &&
+                                 !pGameInterface->HasModelLODDistanceOverride(pEntity->m_nModelIndex);
+        // The category policy already set each model's distance. Raising this
+        // renderer ceiling must not overwrite small objects with that ceiling.
+        SetGlobalDrawDistanceScale(std::max(scale, nativeStock ? g_project2DFXNormalScale : 1.0f));
+        if (scale > 1.0f)
+        {
+            savedNativeLodModel = pModelInfo;
+            savedNativeLodDistance = pModelInfo->fLodDistanceUnscaled;
+            // Model info can be shared by multiple instances. Change it only
+            // during this visibility evaluation, then restore its authored value.
+            pModelInfo->fLodDistanceUnscaled = std::max(savedNativeLodDistance, 300.0f * scale);
+        }
         saved.bValid = false;
+    }
 
     return -1;  // Proceed with the original function
 }
 
 void OnMY_CRenderer_SetupEntityVisibility_Post(int result, CEntitySAInterface* pEntity, float& fDist)
 {
+    // Keep the shared GTA constant local to this visibility evaluation; sector
+    // scanning is expanded separately and must not multiply this range twice.
+    g_nativeVisibilityDistance = g_savedGlobalDrawDistance;
+    if (savedNativeLodModel)
+    {
+        savedNativeLodModel->fLodDistanceUnscaled = savedNativeLodDistance;
+        savedNativeLodModel = nullptr;
+    }
     if (saved.bValid)
     {
-        SetGlobalDrawDistanceScale(1);
         saved.pModelInfo->fLodDistanceUnscaled = saved.fLodDistanceUnscaled;
         saved.bValid = false;
 
@@ -159,13 +205,17 @@ second:
 ////////////////////////////////////////////////
 void OnMY_CWorldScan_ScanWorld_Pre(CVector2D* pVec, int iValue, void(__cdecl* func)(int, int))
 {
-    // Scale scan area
+    // Vegetation can extend its own cheap representations without raising the
+    // camera far clip or the HD visibility budget of any other model.
+    const float vegetationScale = g_vegetationLodEnabled ? WorldRenderPolicy::VegetationScanScale(*reinterpret_cast<float*>(0xB7C4F0)) : 1.0f;
+    g_project2DFXNormalScale = g_project2DFXMode ? std::max(300.0f, pGameInterface->GetProject2DFXNormalDrawDistance()) / 300.0f : 1.0f;
+    const float      scanScale = std::max({g_sectorScanScale, vegetationScale, g_project2DFXNormalScale});
     const CVector2D& vecOrigin = pVec[0];
 
     for (uint i = 1; i < 5; i++)
     {
         CVector2D vecDiff = pVec[i] - vecOrigin;
-        vecDiff *= LOW_LOD_DRAW_DISTANCE_SCALE * 2;
+        vecDiff *= scanScale;
         pVec[i] = vecDiff + vecOrigin;
     }
 }
@@ -377,10 +427,34 @@ second:
 ////////////////////////////////////////////////
 void CMultiplayerSA::SetLODSystemEnabled(bool bEnable)
 {
+    // Resource LODs and the player's extended world setting independently own
+    // these hooks. Destroying the last resource LOD must preserve native range.
+    m_bLowLodElementsPresent = bEnable;
+    int mode = 0;
+    g_pCore->GetCVars()->Get("extended_draw_distance_mode", mode);
+    const auto policy = static_cast<WorldRenderPolicy::Mode>(std::clamp(mode, 0, 2));
+    g_project2DFXMode = m_bExtendedFarClipEnabled && policy == WorldRenderPolicy::Mode::Project2DFX;
+    g_pCore->GetCVars()->Get("vegetation_lod", g_vegetationLodEnabled);
+    const auto budgets = WorldRenderPolicy::Resolve(m_bExtendedFarClipEnabled, policy, bEnable, g_vegetationLodEnabled, m_fExtendedFarClipDistance,
+                                                    pGameInterface->GetProject2DFXNormalDrawDistance());
+    g_worldDrawDistanceScale = budgets.nativeScale;
+    g_project2DFXNormalScale = budgets.normalScale;
+    g_sectorScanScale = budgets.sectorScale;
+    bEnable = budgets.hooks;
+
     // Switch
     if (m_bEnabledLODSystem == bEnable)
         return;
     m_bEnabledLODSystem = bEnable;
+
+    // Redirect only SetupEntityVisibility's three reads to writable storage.
+    // Patching the read-only GTA constant twice per distant entity caused four
+    // VirtualProtect calls per entity per frame. Hook transitions own the code
+    // patches; visibility evaluation now changes an ordinary float instead.
+    static constexpr DWORD distanceOperands[] = {0x5545E8, 0x554602, 0x55462C};
+    g_nativeVisibilityDistance = *reinterpret_cast<float*>(0x858FD8);
+    for (DWORD operand : distanceOperands)
+        MemPut<DWORD>(operand, bEnable ? reinterpret_cast<DWORD>(&g_nativeVisibilityDistance) : 0x858FD8);
 
     // Memory saved here
     static CBuffer savedMem;

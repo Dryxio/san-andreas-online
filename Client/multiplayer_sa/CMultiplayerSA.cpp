@@ -10,6 +10,7 @@
  *****************************************************************************/
 
 #include "StdInc.h"
+#include <Project2DFXDrawDistance.h>
 #include <game/CWorld.h>
 #include <game/CBuildingRemoval.h>
 #include <game/CAnimBlendAssocGroup.h>
@@ -2323,7 +2324,7 @@ void CMultiplayerSA::ApplyFarClipDistance(float fDistance)
 void CMultiplayerSA::RestoreFarClipDistance()
 {
     m_bFarClipRuntimeOverride = false;
-    if (m_bExtendedFarClipEnabled)
+    if (m_bExtendedFarClipEnabled && !UsesProject2DFXDrawDistance())
     {
         ApplyFarClipDistance(m_fExtendedFarClipDistance);
         return;
@@ -2346,16 +2347,102 @@ void CMultiplayerSA::RestoreFarClipPatch()
     }
 }
 
+// Project2DFX replaces only the sun corona size operands. Keep weather state
+// intact for Lua queries, and return ownership immediately to setSunSize.
+static bool  g_project2DFXSunOverride = false;
+static float g_project2DFXSunSize = 20.0f;
+static void  ApplyProject2DFXSunSize(bool enabled)
+{
+    float size = 20.0f;
+    g_pCore->GetCVars()->Get("extended_draw_distance_p2_sun_size", size);
+    g_project2DFXSunSize = std::isfinite(size) ? std::clamp(size, 0.0f, 100.0f) : 20.0f;
+    const bool  useStaticSize = enabled && !g_project2DFXSunOverride && g_project2DFXSunSize > 0.0f;
+    static bool applied = false;
+    if (applied == useStaticSize)
+        return;
+    const DWORD source = useStaticSize ? reinterpret_cast<DWORD>(&g_project2DFXSunSize) : 0xB7C4DC;
+    MemPut<DWORD>(0x6FC656, source);
+    MemPut<DWORD>(0x6FC6E2, source);
+    applied = useStaticSize;
+}
+
+// Same timecycle location used by SALodLights. The original weather calculation
+// runs every frame before this multiplication; there is no compounding and no
+// FPS feedback controller. Lua far-clip ownership bypasses the player policy.
+static void UpdateProject2DFXTimeCycle()
+{
+    pMultiplayer->ApplyProject2DFXTimeCycle();
+}
+#define HOOKPOS_Project2DFXTimeCycle  0x561468
+#define HOOKSIZE_Project2DFXTimeCycle 6
+DWORD                         RETURN_Project2DFXTimeCycle = 0x56146E;
+static void __declspec(naked) HOOK_Project2DFXTimeCycle()
+{
+    MTA_VERIFY_HOOK_LOCAL_SIZE;
+    // clang-format off
+    __asm
+    {
+        pushfd
+        pushad
+        mov ebx, esp
+        sub esp, 528
+        and esp, 0xfffffff0
+        fxsave [esp]
+        fninit
+        call UpdateProject2DFXTimeCycle
+        fxrstor [esp]
+        mov esp, ebx
+        popad
+        popfd
+        fild dword ptr ds:[0xBA6784]
+        jmp RETURN_Project2DFXTimeCycle
+    }
+    // clang-format on
+}
+
+bool CMultiplayerSA::UsesProject2DFXDrawDistance() const
+{
+    int mode = 0;
+    g_pCore->GetCVars()->Get("extended_draw_distance_mode", mode);
+    return mode == 0;
+}
+
+void CMultiplayerSA::ApplyProject2DFXTimeCycle()
+{
+    ApplyProject2DFXSunSize(m_bExtendedFarClipEnabled && UsesProject2DFXDrawDistance() && *reinterpret_cast<BYTE*>(0xB72914) == 0);
+    if (!m_bExtendedFarClipEnabled || m_bFarClipRuntimeOverride || !UsesProject2DFXDrawDistance() || *reinterpret_cast<BYTE*>(0xB72914) != 0)
+        return;
+    float multiplier = 2.0f;
+    g_pCore->GetCVars()->Get("extended_draw_distance_p2_multiplier", multiplier);
+    float ceiling = 0.0f;
+    g_pCore->GetCVars()->Get("extended_draw_distance_p2_ceiling", ceiling);
+    auto& farClip = *reinterpret_cast<float*>(0xB7C4F0);
+    int   percent = 100;
+    g_pCore->GetCVars()->Get("extended_draw_distance_p2_percent", percent);
+    farClip = Project2DFXDrawDistance::ResolveFarClip(farClip, multiplier, ceiling, percent / 100.0f);
+}
+
 void CMultiplayerSA::SetExtendedFarClipPreference(bool bEnabled, float fDistance)
 {
+    static bool timeCycleHookInstalled = false;
+    if (!timeCycleHookInstalled)
+    {
+        EZHookInstall(Project2DFXTimeCycle);
+        timeCycleHookInstalled = true;
+    }
     m_bExtendedFarClipEnabled = bEnabled;
     m_fExtendedFarClipDistance = fDistance;
+    ApplyProject2DFXSunSize(bEnabled && UsesProject2DFXDrawDistance() && *reinterpret_cast<BYTE*>(0xB72914) == 0);
+
+    // Native vegetation needs both the wider sector scan and the visibility
+    // limit lifted, even when the resource creates no MTA low-LOD elements.
+    SetLODSystemEnabled(m_bLowLodElementsPresent);
 
     // Server and Lua values remain authoritative until the normal world reset.
     if (m_bFarClipRuntimeOverride)
         return;
 
-    if (m_bExtendedFarClipEnabled)
+    if (m_bExtendedFarClipEnabled && !UsesProject2DFXDrawDistance())
         ApplyFarClipDistance(m_fExtendedFarClipDistance);
     else
         RestoreFarClipPatch();
@@ -2465,6 +2552,8 @@ float CMultiplayerSA::GetSunSize()
 
 void CMultiplayerSA::SetSunSize(float fSize)
 {
+    g_project2DFXSunOverride = true;
+    ApplyProject2DFXSunSize(false);
     MemPut<BYTE>(0x55FA9D, 0xDD);
     MemPut<BYTE>(0x55FA9E, 0xD8);
     MemPut<BYTE>(0x55FA9F, 0x90);
@@ -2474,6 +2563,7 @@ void CMultiplayerSA::SetSunSize(float fSize)
 
 void CMultiplayerSA::ResetSunSize()
 {
+    g_project2DFXSunOverride = false;
     MemPut<BYTE>(0x55FA9D, 0xD9);
     MemPut<BYTE>(0x55FA9E, 0x5E);
     MemPut<BYTE>(0x55FA9F, 0x3C);

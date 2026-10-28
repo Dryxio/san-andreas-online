@@ -201,6 +201,7 @@ public:
     void ApplyConsoleSettings();
     void ApplyGameSettings();
     void ApplyExtendedWorldDrawDistancePreferences(bool bResetRuntimeState = false);
+    void ApplyNeonRenderingPreferences();
     void UpdateRecentlyPlayed();
 
     // Net

@@ -11,6 +11,7 @@
 
 #include "StdInc.h"
 #include <game/MouseSensitivity.h>
+#include "CProject2DFXPreloadSA.h"
 #include <core/CCoreInterface.h>
 #include "CAudioEngineSA.h"
 #include "CCoronasSA.h"
@@ -805,7 +806,26 @@ void CSettingsSA::SetCoronaReflectionsControlledByScript(bool bViaScript)
 
 void CSettingsSA::SetExtendedWorldDrawDistancePreference(bool bEnabled, float fDistance)
 {
-    CModelInfoSA::SetExtendedLodPreference(bEnabled, fDistance);
+    int mode = 0;
+    g_pCore->GetCVars()->Get("extended_draw_distance_mode", mode);
+    Project2DFXDrawDistance::Settings settings;
+    int                               percent = 100;
+    g_pCore->GetCVars()->Get("extended_draw_distance_p2_percent", percent);
+    settings.scale = percent / 100.0f;
+    g_pCore->GetCVars()->Get("extended_draw_distance_p2_lod", settings.lod);
+    g_pCore->GetCVars()->Get("extended_draw_distance_p2_vegetation", settings.vegetation);
+    g_pCore->GetCVars()->Get("extended_draw_distance_p2_generic", settings.generic);
+    g_pCore->GetCVars()->Get("extended_draw_distance_p2_normal", settings.normal);
+    g_pCore->GetCVars()->Get("extended_draw_distance_p2_timed", settings.timed);
+    CModelInfoSA::SetExtendedLodPreference(bEnabled, fDistance, static_cast<WorldRenderPolicy::Mode>(std::clamp(mode, 0, 2)), settings);
+    bool vegetation = false;
+    g_pCore->GetCVars()->Get("vegetation_lod", vegetation);
+    float vegetationDistance = 0.0f;
+    g_pCore->GetCVars()->Get("vegetation_lod_distance", vegetationDistance);
+    pGame->ConfigureVegetationLOD(vegetation, vegetationDistance);
+    bool preload = true;
+    g_pCore->GetCVars()->Get("extended_draw_distance_p2_preload", preload);
+    Project2DFXPreload::Configure(bEnabled && mode == 0 && preload);
 }
 
 ////////////////////////////////////////////////

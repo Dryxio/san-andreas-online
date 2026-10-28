@@ -190,6 +190,8 @@ public:
     void  SetFarClipDistance(float fDistance);
     void  RestoreFarClipDistance();
     void  SetExtendedFarClipPreference(bool bEnabled, float fDistance) override;
+    void  ApplyProject2DFXTimeCycle();
+    bool  UsesProject2DFXDrawDistance() const;
     void  RegisterNativeBehaviorOnlyDamageEvent(CEventDamageSAInterface* pEvent, CPedSAInterface* pVictim) override;
     float GetNearClipDistance();
     void  SetNearClipDistance(float fDistance);
@@ -388,7 +390,8 @@ private:
     std::vector<char>   m_PlayerImgCache;
     EFastClothesLoading m_FastClothesLoading;
     CLimitsSA           m_limits;
-    bool                m_bEnabledLODSystem;
+    bool                m_bEnabledLODSystem{};
+    bool                m_bLowLodElementsPresent{};
     bool                m_bEnabledAltWaterOrder;
     bool                m_bEnabledClothesMemFix;
     float               m_fAircraftMaxHeight;

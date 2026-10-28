@@ -1009,6 +1009,19 @@ public:
         int  advancedUpdateAutoInstall{1};
 
         bool                  extendedWorldEnabled{};
+        int                   extendedWorldMode{};
+        int                   project2DFXPercent{100};
+        float                 project2DFXMultiplier{2.0f};
+        float                 project2DFXLod{1300.0f};
+        float                 project2DFXVegetation{800.0f};
+        float                 project2DFXGeneric{300.0f};
+        float                 project2DFXNormal{0.0f};
+        float                 project2DFXTimed{0.0f};
+        float                 project2DFXCeiling{0.0f};
+        float                 project2DFXSunSize{20.0f};
+        bool                  project2DFXPreload{true};
+        bool                  vegetationLod{};
+        float                 vegetationLodDistance{};
         int                   extendedWorldDistance{2000};
         bool                  distantLightsEnabled{};
         bool                  distantLightSearchlightsEnabled{true};
@@ -1107,6 +1120,32 @@ public:
         double numberValue{};
         if (id == "extendedWorld.enabled" && ParseBoolean(value, booleanValue))
             m_draft.extendedWorldEnabled = booleanValue;
+        else if (id == "extendedWorld.mode" && ParseNumber(value, numberValue))
+            m_draft.extendedWorldMode = QuantizeInteger(numberValue, 0, 2, 1);
+        else if (id == "extendedWorld.p2Percent" && ParseNumber(value, numberValue))
+            m_draft.project2DFXPercent = QuantizeInteger(numberValue, 25, 200, 5);
+        else if (id == "extendedWorld.p2Multiplier" && ParseNumber(value, numberValue))
+            m_draft.project2DFXMultiplier = std::clamp(static_cast<float>(numberValue), 0.1f, 10.0f);
+        else if (id == "extendedWorld.p2Lod" && ParseNumber(value, numberValue))
+            m_draft.project2DFXLod = std::clamp(static_cast<float>(numberValue), 0.0f, 5000.0f);
+        else if (id == "extendedWorld.p2Vegetation" && ParseNumber(value, numberValue))
+            m_draft.project2DFXVegetation = std::clamp(static_cast<float>(numberValue), 0.0f, 5000.0f);
+        else if (id == "extendedWorld.p2Generic" && ParseNumber(value, numberValue))
+            m_draft.project2DFXGeneric = std::clamp(static_cast<float>(numberValue), 0.0f, 5000.0f);
+        else if (id == "extendedWorld.p2Normal" && ParseNumber(value, numberValue))
+            m_draft.project2DFXNormal = std::clamp(static_cast<float>(numberValue), 0.0f, 5000.0f);
+        else if (id == "extendedWorld.p2Timed" && ParseNumber(value, numberValue))
+            m_draft.project2DFXTimed = std::clamp(static_cast<float>(numberValue), 0.0f, 5000.0f);
+        else if (id == "extendedWorld.p2Ceiling" && ParseNumber(value, numberValue))
+            m_draft.project2DFXCeiling = std::clamp(static_cast<float>(numberValue), 0.0f, 5000.0f);
+        else if (id == "extendedWorld.p2SunSize" && ParseNumber(value, numberValue))
+            m_draft.project2DFXSunSize = std::clamp(static_cast<float>(numberValue), 0.0f, 100.0f);
+        else if (id == "extendedWorld.p2Preload" && ParseBoolean(value, booleanValue))
+            m_draft.project2DFXPreload = booleanValue;
+        else if (id == "vegetation.distance" && ParseNumber(value, numberValue))
+            m_draft.vegetationLodDistance = std::clamp(static_cast<float>(numberValue), 0.0f, 2000.0f);
+        else if (id == "vegetation.lod" && ParseBoolean(value, booleanValue))
+            m_draft.vegetationLod = booleanValue;
         else if (id == "extendedWorld.distance" && ParseNumber(value, numberValue))
             m_draft.extendedWorldDistance = QuantizeInteger(numberValue, 300, 5000, 100);
         else if (id == "distantLights.enabled" && ParseBoolean(value, booleanValue))
@@ -1263,6 +1302,30 @@ public:
             // Rebuilding is deliberately immediate: unlike preference edits,
             // it is a one-shot repair action with no meaningful draft state.
             CCore::GetSingleton().GetGame()->GetCoronas()->RebuildDistantLights();
+            return true;
+        }
+
+        if (action == "restoreProject2DFX")
+        {
+            // Restore the profile without enabling rendering or touching other Neon preferences.
+            const SState defaults;
+            m_draft.extendedWorldMode = defaults.extendedWorldMode;
+            m_draft.project2DFXPercent = defaults.project2DFXPercent;
+            m_draft.project2DFXMultiplier = defaults.project2DFXMultiplier;
+            m_draft.project2DFXLod = defaults.project2DFXLod;
+            m_draft.project2DFXVegetation = defaults.project2DFXVegetation;
+            m_draft.project2DFXGeneric = defaults.project2DFXGeneric;
+            m_draft.project2DFXNormal = defaults.project2DFXNormal;
+            m_draft.project2DFXTimed = defaults.project2DFXTimed;
+            m_draft.project2DFXCeiling = defaults.project2DFXCeiling;
+            m_draft.project2DFXSunSize = defaults.project2DFXSunSize;
+            m_draft.project2DFXPreload = defaults.project2DFXPreload;
+            m_draft.vegetationLod = defaults.vegetationLod;
+            m_draft.vegetationLodDistance = defaults.vegetationLodDistance;
+            m_draft.distantLightSettings = defaults.distantLightSettings;
+            m_draft.distantLightSearchlightsEnabled = defaults.distantLightSearchlightsEnabled;
+            m_draft.distantLightsDistance = defaults.distantLightsDistance;
+            m_draft.distantLightsCoronaSize = defaults.distantLightsCoronaSize;
             return true;
         }
 
@@ -1454,6 +1517,19 @@ public:
                 m_draft.radarWidescreenSafe = defaults.radarWidescreenSafe;
             }
             m_draft.extendedWorldEnabled = defaults.extendedWorldEnabled;
+            m_draft.extendedWorldMode = defaults.extendedWorldMode;
+            m_draft.project2DFXPercent = defaults.project2DFXPercent;
+            m_draft.project2DFXMultiplier = defaults.project2DFXMultiplier;
+            m_draft.project2DFXLod = defaults.project2DFXLod;
+            m_draft.project2DFXVegetation = defaults.project2DFXVegetation;
+            m_draft.project2DFXGeneric = defaults.project2DFXGeneric;
+            m_draft.project2DFXNormal = defaults.project2DFXNormal;
+            m_draft.project2DFXTimed = defaults.project2DFXTimed;
+            m_draft.project2DFXCeiling = defaults.project2DFXCeiling;
+            m_draft.project2DFXSunSize = defaults.project2DFXSunSize;
+            m_draft.project2DFXPreload = defaults.project2DFXPreload;
+            m_draft.vegetationLod = defaults.vegetationLod;
+            m_draft.vegetationLodDistance = defaults.vegetationLodDistance;
             m_draft.extendedWorldDistance = defaults.extendedWorldDistance;
             m_draft.distantLightsEnabled = defaults.distantLightsEnabled;
             m_draft.distantLightSettings = defaults.distantLightSettings;
@@ -1519,6 +1595,20 @@ public:
 
         CVARS_SET("extended_draw_distance_enabled", m_draft.extendedWorldEnabled);
         CVARS_SET("extended_draw_distance", m_draft.extendedWorldDistance);
+        CVARS_SET("extended_draw_distance_mode", m_draft.extendedWorldMode);
+        CVARS_SET("extended_draw_distance_legacy", m_draft.extendedWorldMode == 2);
+        CVARS_SET("extended_draw_distance_p2_percent", m_draft.project2DFXPercent);
+        CVARS_SET("extended_draw_distance_p2_multiplier", m_draft.project2DFXMultiplier);
+        CVARS_SET("extended_draw_distance_p2_lod", m_draft.project2DFXLod);
+        CVARS_SET("extended_draw_distance_p2_vegetation", m_draft.project2DFXVegetation);
+        CVARS_SET("extended_draw_distance_p2_generic", m_draft.project2DFXGeneric);
+        CVARS_SET("extended_draw_distance_p2_normal", m_draft.project2DFXNormal);
+        CVARS_SET("extended_draw_distance_p2_timed", m_draft.project2DFXTimed);
+        CVARS_SET("extended_draw_distance_p2_ceiling", m_draft.project2DFXCeiling);
+        CVARS_SET("extended_draw_distance_p2_sun_size", m_draft.project2DFXSunSize);
+        CVARS_SET("extended_draw_distance_p2_preload", m_draft.project2DFXPreload);
+        CVARS_SET("vegetation_lod", m_draft.vegetationLod);
+        CVARS_SET("vegetation_lod_distance", m_draft.vegetationLodDistance);
         CCore::GetSingleton().ApplyExtendedWorldDrawDistancePreferences();
 
         SaveDistantLightPreferences(m_draft.distantLightSettings);
@@ -1756,7 +1846,14 @@ public:
     bool IsDirty() const
     {
         const bool generalDirty =
-            m_draft.extendedWorldEnabled != m_original.extendedWorldEnabled || m_draft.extendedWorldDistance != m_original.extendedWorldDistance ||
+            m_draft.project2DFXPercent != m_original.project2DFXPercent || m_draft.project2DFXMultiplier != m_original.project2DFXMultiplier ||
+            m_draft.project2DFXLod != m_original.project2DFXLod || m_draft.project2DFXVegetation != m_original.project2DFXVegetation ||
+            m_draft.project2DFXGeneric != m_original.project2DFXGeneric || m_draft.project2DFXNormal != m_original.project2DFXNormal ||
+            m_draft.project2DFXTimed != m_original.project2DFXTimed || m_draft.project2DFXCeiling != m_original.project2DFXCeiling ||
+            m_draft.extendedWorldMode != m_original.extendedWorldMode || m_draft.project2DFXSunSize != m_original.project2DFXSunSize ||
+            m_draft.vegetationLod != m_original.vegetationLod || m_draft.vegetationLodDistance != m_original.vegetationLodDistance ||
+            m_draft.project2DFXPreload != m_original.project2DFXPreload || m_draft.extendedWorldEnabled != m_original.extendedWorldEnabled ||
+            m_draft.extendedWorldDistance != m_original.extendedWorldDistance ||
             m_draft.distantLightSettings.automaticDistance != m_original.distantLightSettings.automaticDistance ||
             m_draft.distantLightSettings.growWithDistance != m_original.distantLightSettings.growWithDistance ||
             m_draft.distantLightSettings.nearAlpha != m_original.distantLightSettings.nearAlpha ||
@@ -3010,6 +3107,20 @@ private:
 
         CVARS_GET("extended_draw_distance_enabled", state.extendedWorldEnabled);
         CVARS_GET("extended_draw_distance", state.extendedWorldDistance);
+        CVARS_GET("extended_draw_distance_mode", state.extendedWorldMode);
+        CVARS_GET("extended_draw_distance_p2_percent", state.project2DFXPercent);
+        state.project2DFXPercent = std::clamp(state.project2DFXPercent, 25, 200);
+        CVARS_GET("extended_draw_distance_p2_multiplier", state.project2DFXMultiplier);
+        CVARS_GET("extended_draw_distance_p2_lod", state.project2DFXLod);
+        CVARS_GET("extended_draw_distance_p2_vegetation", state.project2DFXVegetation);
+        CVARS_GET("extended_draw_distance_p2_generic", state.project2DFXGeneric);
+        CVARS_GET("extended_draw_distance_p2_normal", state.project2DFXNormal);
+        CVARS_GET("extended_draw_distance_p2_timed", state.project2DFXTimed);
+        CVARS_GET("extended_draw_distance_p2_ceiling", state.project2DFXCeiling);
+        CVARS_GET("extended_draw_distance_p2_sun_size", state.project2DFXSunSize);
+        CVARS_GET("extended_draw_distance_p2_preload", state.project2DFXPreload);
+        CVARS_GET("vegetation_lod", state.vegetationLod);
+        CVARS_GET("vegetation_lod_distance", state.vegetationLodDistance);
         state.distantLightSettings = ReadDistantLightPreferences();
         CVARS_GET("distant_lights_enabled", state.distantLightsEnabled);
         CVARS_GET("distant_lights_searchlights_enabled", state.distantLightSearchlightsEnabled);
@@ -4577,6 +4688,19 @@ void CServerBrowserWeb::QueueSettingsState(bool initial)
     AddInteger(values, "advanced.updateAutoInstall", state.advancedUpdateAutoInstall);
     AddBoolean(values, "extendedWorld.enabled", state.extendedWorldEnabled);
     AddInteger(values, "extendedWorld.distance", state.extendedWorldDistance);
+    AddInteger(values, "extendedWorld.mode", state.extendedWorldMode);
+    AddInteger(values, "extendedWorld.p2Percent", state.project2DFXPercent);
+    AddDouble(values, "extendedWorld.p2Multiplier", state.project2DFXMultiplier);
+    AddDouble(values, "extendedWorld.p2Lod", state.project2DFXLod);
+    AddDouble(values, "extendedWorld.p2Vegetation", state.project2DFXVegetation);
+    AddDouble(values, "extendedWorld.p2Generic", state.project2DFXGeneric);
+    AddDouble(values, "extendedWorld.p2Normal", state.project2DFXNormal);
+    AddDouble(values, "extendedWorld.p2Timed", state.project2DFXTimed);
+    AddDouble(values, "extendedWorld.p2Ceiling", state.project2DFXCeiling);
+    AddDouble(values, "extendedWorld.p2SunSize", state.project2DFXSunSize);
+    AddBoolean(values, "extendedWorld.p2Preload", state.project2DFXPreload);
+    AddBoolean(values, "vegetation.lod", state.vegetationLod);
+    AddDouble(values, "vegetation.distance", state.vegetationLodDistance);
     AddBoolean(values, "distantLights.enabled", state.distantLightsEnabled);
     AddBoolean(values, "distantLights.autoDistance", state.distantLightSettings.automaticDistance);
     AddBoolean(values, "distantLights.growWithDistance", state.distantLightSettings.growWithDistance);

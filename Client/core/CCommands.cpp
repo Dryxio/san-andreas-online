@@ -170,6 +170,15 @@ bool CCommands::Execute(const char* szCommand, const char* szParametersIn, bool 
                 val = val.substr(nOpIndex + 1);
                 TrimWhiteSpace(val);
                 CVARS_SET(key, val);
+                // Migrate the old console toggle without leaving two competing
+                // sources of truth once the explicit policy selector is used.
+                if (key == "extended_draw_distance_legacy")
+                    CVARS_SET("extended_draw_distance_mode", CVARS_GET_VALUE<bool>("extended_draw_distance_legacy") ? 2 : 1);
+                else if (key == "extended_draw_distance_mode")
+                    CVARS_SET("extended_draw_distance_legacy", CVARS_GET_VALUE<int>("extended_draw_distance_mode") == 2);
+
+                if (key.rfind("extended_draw_distance", 0) == 0 || key.rfind("distant_lights_", 0) == 0 || key.rfind("vegetation_lod", 0) == 0)
+                    CCore::GetSingleton().ApplyNeonRenderingPreferences();
 
                 // HACK: recalculate frame rate limit on cvar change
                 if (key == "fps_limit")

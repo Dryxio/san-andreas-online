@@ -167,6 +167,12 @@ public:
     CWeaponStatManager*       GetWeaponStatManager() { return m_pWeaponStatsManager; }
     CPointLights*             GetPointLights() { return m_pPointLights; }
     CColStore*                GetCollisionStore() override { return m_collisionStore; }
+    bool                      HasModelLODDistanceOverride(unsigned int model) override;
+    float                     GetProject2DFXNormalDrawDistance() override;
+    void                      ConfigureVegetationLOD(bool enabled, float distance);
+    float                     GetVegetationLODDistance(void* entity) override;
+    void*                     BeginVegetationLODRender(void* entity) override;
+    void                      EndVegetationLODRender(void* entity, void* restoreToken) override;
     CRenderWareSA*            GetRenderWareSA() { return m_pRenderWare; }
     CFxManagerSA*             GetFxManagerSA() { return m_pFxManager; }
     CIplStore*                GetIplStore() { return m_pIplStore; };

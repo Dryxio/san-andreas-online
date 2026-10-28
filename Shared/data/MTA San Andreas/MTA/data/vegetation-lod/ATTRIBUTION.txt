@@ -1,0 +1,14 @@
+LOD Vegetation v1.2
+Models and textures: Junior_Djjr / MixMods.com.br (2021).
+Original installation instructions: Original-Readme.txt.
+Redistribution permission for inclusion in Neon was confirmed by the project
+owner during integration. This notice does not relicense the assets under GPL.
+
+Neon uses verified stock-model correspondences, without installing the mod's
+replacement IPL files or allocating its hard-coded model IDs. Missing or
+unmatched definitions are listed in manifest.json and retain GTA rendering.
+
+Neon adaptation: day/night vertex RGB is projected from the corresponding
+stock GTA model onto the simplified mesh. Original geometry, UVs, textures
+and vertex alpha are preserved. manifest.json records original pack hashes,
+calibrated hashes and the donor model hash for reproducible regeneration.

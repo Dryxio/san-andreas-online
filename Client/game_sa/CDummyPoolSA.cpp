@@ -12,6 +12,7 @@
 #pragma once
 
 #include "StdInc.h"
+#include "CProject2DFXPreloadSA.h"
 #include "CDummyPoolSA.h"
 #include "CGameSA.h"
 #include "CFileIDRuntimeSA.h"
@@ -26,6 +27,7 @@ CDummyPoolSA::CDummyPoolSA()
 
 void CDummyPoolSA::RemoveAllWithBackup()
 {
+    Project2DFXPreload::Clear();
     if (m_pOriginalElementsBackup)
         return;
 
@@ -58,6 +60,7 @@ void CDummyPoolSA::RemoveAllWithBackup()
 
 void CDummyPoolSA::RestoreBackup()
 {
+    Project2DFXPreload::Clear();
     if (!m_pOriginalElementsBackup)
         return;
 

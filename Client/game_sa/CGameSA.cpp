@@ -10,6 +10,8 @@
  *****************************************************************************/
 
 #include "StdInc.h"
+#include "CProject2DFXPreloadSA.h"
+#include "CVegetationLODSA.h"
 #include "../core/CModelCacheManager.h"
 #define ALLOC_STATS_MODULE_NAME "game_sa"
 #include "SharedUtil.hpp"
@@ -1209,6 +1211,8 @@ CGameSA::CGameSA()
 
 CGameSA::~CGameSA()
 {
+    Project2DFXPreload::Clear();
+    VegetationLOD::Clear(m_pRenderWare);
     delete m_pNativeUI;
     m_pNativeUI = nullptr;
     // These presentation tasks deliberately live outside the ped task tree,
@@ -1392,6 +1396,8 @@ void CGameSA::SetGameSpeed(float fSpeed)
 
 void CGameSA::Reset()
 {
+    Project2DFXPreload::Clear();
+    VegetationLOD::Clear(m_pRenderWare);
     ResetAmbientPedPopulationModels();
     CNativeWorldPackManagerSA::LogLifecycleTelemetry("CGameSA::Reset-begin");
 
@@ -4244,6 +4250,9 @@ void CGameSA::SetupBrokenModels()
 void CGameSA::FlushPendingRestreamIPL()
 {
     CModelInfoSA::StaticFlushPendingRestreamIPL();
+    Project2DFXPreload::Pulse();
+    if (GetSystemState() == SystemState::GS_PLAYING_GAME)
+        VegetationLOD::Pulse(m_pRenderWare);
     m_pRenderWare->ResetStats();
 }
 
@@ -4703,6 +4712,88 @@ bool CGameSA::DeleteFileCutscene()
     g_managedFileCutsceneBlockingModel = UINT_MAX;
     g_managedFileCutsceneBlockingRefs = 0;
     return deleted;
+}
+
+void CGameSA::ConfigureVegetationLOD(bool enabled, float distance)
+{
+    if (VegetationLOD::enabled && !enabled)
+        VegetationLOD::Clear(m_pRenderWare);
+    VegetationLOD::enabled = enabled;
+    VegetationLOD::distanceLimit = std::isfinite(distance) ? std::clamp(distance, 0.0f, 2000.0f) : 0.0f;
+}
+
+float CGameSA::GetVegetationLODDistance(void* pointer)
+{
+    auto*      entity = static_cast<CEntitySAInterface*>(pointer);
+    const auto index = VegetationLOD::Find(entity);
+    if (index == std::size(VegetationLOD::definitions))
+        return 0.0f;
+    auto* model = static_cast<CModelInfoSA*>(GetModelInfo(entity->m_nModelIndex));
+    if (!model || model->HasVegetationLODOverride() || GetPools()->GetClientEntity(reinterpret_cast<DWORD*>(entity)))
+        return 0.0f;
+    // Do not extend HD visibility when the corresponding cheap asset is absent.
+    return VegetationLOD::Request(index) ? VegetationLOD::Range(VegetationLOD::definitions[index]) : 0.0f;
+}
+
+void* CGameSA::BeginVegetationLODRender(void* pointer)
+{
+    auto*      entity = static_cast<CEntitySAInterface*>(pointer);
+    const auto index = VegetationLOD::Find(entity);
+    if (index == std::size(VegetationLOD::definitions))
+        return nullptr;
+    auto& asset = VegetationLOD::assets[index];
+    // The alpha pass can call CEntity::Render recursively for the same draw.
+    if (asset.busy || !entity->m_pRwObject || reinterpret_cast<RwObject*>(entity->m_pRwObject)->type != 1)
+        return nullptr;
+    if (GetVegetationLODDistance(entity) <= 0.0f)
+        return nullptr;
+    auto* sourceFrame = RpGetFrame(entity->m_pRwObject);
+    if (!sourceFrame)
+        return nullptr;
+    auto*   sourceMatrix = reinterpret_cast<RwMatrix*(__cdecl*)(RwFrame*)>(0x7F0990)(sourceFrame);
+    CMatrix camera;
+    m_pCamera->GetMatrix(&camera);
+    const float dx = sourceMatrix->pos.x - camera.vPos.fX;
+    const float dy = sourceMatrix->pos.y - camera.vPos.fY;
+    const float dz = sourceMatrix->pos.z - camera.vPos.fZ;
+    const auto& definition = VegetationLOD::definitions[index];
+    if (dx * dx + dy * dy + dz * dz < definition.transition * definition.transition)
+        return nullptr;
+    VegetationLOD::UpdateLighting(asset);
+    asset.frame->modelling = *sourceMatrix;
+    RwFrameUpdateObjects(asset.frame);
+    asset.original = entity->m_pRwObject;
+    asset.modelInfo = CModelInfoSAInterface::ms_modelInfoPtrs[entity->m_nModelIndex];
+    asset.originalDistance = asset.modelInfo->fLodDistanceUnscaled;
+    // The alpha renderer evaluates the model distance again, after visibility.
+    // Keep its fade consistent with the distant representation for this draw.
+    asset.modelInfo->fLodDistanceUnscaled = std::max(asset.originalDistance, VegetationLOD::Range(definition));
+    asset.busy = true;
+    entity->m_pRwObject = reinterpret_cast<RpClump*>(asset.atomic);
+    return &asset;
+}
+
+void CGameSA::EndVegetationLODRender(void* pointer, void* restoreToken)
+{
+    if (!restoreToken)
+        return;
+    auto& asset = *static_cast<VegetationLOD::Asset*>(restoreToken);
+    static_cast<CEntitySAInterface*>(pointer)->m_pRwObject = asset.original;
+    asset.modelInfo->fLodDistanceUnscaled = asset.originalDistance;
+    asset.original = nullptr;
+    asset.modelInfo = nullptr;
+    asset.busy = false;
+}
+
+bool CGameSA::HasModelLODDistanceOverride(unsigned int id)
+{
+    auto* model = static_cast<CModelInfoSA*>(GetModelInfo(id, true));
+    return model && model->HasScriptLODDistance();
+}
+
+float CGameSA::GetProject2DFXNormalDrawDistance()
+{
+    return CModelInfoSA::GetProject2DFXNormalDrawDistance();
 }
 
 CPedPathPatches* CGameSA::GetPedPathPatches()

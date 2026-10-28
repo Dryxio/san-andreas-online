@@ -1,0 +1,1273 @@
+{
+  "source": "LOD Vegetation v1.2 by Junior_Djjr / MixMods",
+  "models": [
+    {
+      "id": 615,
+      "source": "veg_tree3",
+      "asset": "lodveg_tree3.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "8e7c971442256c945b63be87684908e92b207386d5d747aa0b52874cc7058d79",
+      "evidence": "IPL link",
+      "original_asset_sha256": "3360f667ea216ca1fb94b0c9405c073289ab4720b42c238486601d1e9f5ff461",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "d1de60a4fa923e786486b40a043c7f05ab7e6d7a5f3da0e1be56401276090d0c"
+      }
+    },
+    {
+      "id": 616,
+      "source": "veg_treea1",
+      "asset": "lodveg_treea1.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "ae82ba4677e51773e9e62005b73ab8febe2b4459bd6425539f82f2be96e6aa98",
+      "evidence": "IPL link",
+      "original_asset_sha256": "c5f2be378655db1367aaede8f9b4f6f7f52ff8d878a5b15f566a0fd6bc84f4b9",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "7db5d234a39518a9da6211dfbb65b38a8e1ae84267d9ed03de511ed114a1fff5"
+      }
+    },
+    {
+      "id": 617,
+      "source": "veg_treeb1",
+      "asset": "lodveg_treeb1.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "3ee27c6de1e5d40f83d4ca40e099805c95ae8bce27742539e7c5168891cc8d0b",
+      "evidence": "IPL link",
+      "original_asset_sha256": "34d4b8bcc0e56447f9b6f64ecbe32fd12da1d13c3f5038497ac81566b6c79f52",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "52c6c1b66424497a27a56a8cd1633c74f0a76187e6c273ace5f0e82a70ba34f5"
+      }
+    },
+    {
+      "id": 618,
+      "source": "veg_treea3",
+      "asset": "lodveg_treea3.dff",
+      "transition": 140.0,
+      "range": 1000.0,
+      "sha256": "2eb609f2ea615c9fb2c0cbd0bdb8c144d59bd423c0e90cc57c8584206fc53e39",
+      "evidence": "IPL link",
+      "original_asset_sha256": "7ed77ff8501b8ecb66bf0eb753463d74f938eeec4e65fa2470418b761489f8d6",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "e6d2445f4652c270b68950eb607c5cc254fac4528f60ccad6012e26b9ccc9b42"
+      }
+    },
+    {
+      "id": 619,
+      "source": "veg_palwee03",
+      "asset": "lodveg_palwee03.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "c0bc32d261de1dcb8e8595e656a0b7039feb6db1f44d113752ba009f5fb3ee39",
+      "evidence": "exact model name",
+      "original_asset_sha256": "ad8bd4c9ea3cc1f607f566dfa11f4e218738aa608772bc60f08e6abf2ec94156",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "6721713281581b25c8758bef8d31ce158b2a084efe507d2ec3e9afa83f239b13"
+      }
+    },
+    {
+      "id": 620,
+      "source": "veg_palm04",
+      "asset": "lodveg_palm04.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "402d6dc4f6b7e51a8e3d177a060e0b1e1739ed74d91fde53d6e1a19ab4d95e17",
+      "evidence": "IPL link",
+      "original_asset_sha256": "20ac034274334c5d6450852f7a11798b6217f03230c62a9e86e516485cba5ba4",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "31c1eb899c373c9b25b195388d6bab5b9963b3628f876b166963f6b2afb916d8"
+      }
+    },
+    {
+      "id": 621,
+      "source": "veg_palm02",
+      "asset": "lodveg_palm02.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "bcb47883adde48b0291e41a2d96ebb5b9c47e65ca057303402048058344cb260",
+      "evidence": "IPL link",
+      "original_asset_sha256": "9b0a476d492039b031199c12b2290a01bb644d3abe9eb41f7b806996eae146ed",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "cadf9bcd0af55b50f2552f0fd4ab86fd3996be681d13cfe12692554f144a7547"
+      }
+    },
+    {
+      "id": 622,
+      "source": "veg_palm03",
+      "asset": "lodveg_palm03.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "7537f8f64861d4b74cca9aa2bcc30c11724395b987f18bb002d17b1c897cc3d1",
+      "evidence": "IPL link",
+      "original_asset_sha256": "c627009a6579e50dd8d4e9d326c589e5a1db833d18b7d609966d04cc834d0277",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "1f81d90f2565ccdb272366001efd7e712dcbbf3974b5116bfc718b86d2e2a28f"
+      }
+    },
+    {
+      "id": 623,
+      "source": "veg_palwee01",
+      "asset": "lodveg_palwee01.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "0ba69b74538665ef7fc6692940cf73ff84455f9309e48140f4377b3571780e95",
+      "evidence": "IPL link",
+      "original_asset_sha256": "eb18ff5da1ec95306e19d8d485fb035dd5bc1e5e2960da2610007f2dff210d00",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "6374deb734dd965ee5bdfe827518cc67c4c5e8bf48bda183bd27b774420ce759"
+      }
+    },
+    {
+      "id": 624,
+      "source": "veg_palwee02",
+      "asset": "lodveg_palwee02.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "20755e299a577c31c8afc2b654a45e0d28264d46e931f1831ba595a28ace3766",
+      "evidence": "IPL link",
+      "original_asset_sha256": "9a34c83959c2860a8362419d26c35ff12ddfb802b240ca14a8da6c77b5de13b7",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "7db03f81f1a3801a622338ecf36faa978904578cb57129c612eaa19332567941"
+      }
+    },
+    {
+      "id": 645,
+      "source": "veg_palmbig14",
+      "asset": "lodveg_palmbig14.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "8312f2d531c3a55186594765a8ea0d2cc6e3ce8d15d6db14022a1ca276b26977",
+      "evidence": "IPL link",
+      "original_asset_sha256": "a0f78fc70f576f5f6261d1e9b1acaac445f89514a1754f07b2ff360422028117",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "55adb6e6c44dde086054b358bac74cd20e43e2ca0aa74ce64741619a8d119b2b"
+      }
+    },
+    {
+      "id": 648,
+      "source": "veg_palm01",
+      "asset": "lodveg_palm01.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "27f2394bef467cf04e9c4ef339f20fe7ca0f298f5401957d1e90c300fe38307a",
+      "evidence": "IPL link",
+      "original_asset_sha256": "b33d983dc7a83d2b70a4934db0cf9be86ceb362883beaf13a040f56d3574fa6f",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "af318ec54460156e26bfa1e23917faa825dc8ea8b62eb9a2ffcb4ec88124a5ba"
+      }
+    },
+    {
+      "id": 652,
+      "source": "sjmpalmbig",
+      "asset": "lodsjmpalmbig.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "b79bbeb58901ce09e76842b79cd7e2fd95e9f4e82a6bf15e855c68111a1bf931",
+      "evidence": "IPL link",
+      "original_asset_sha256": "450b15c7a695baf0d50b22d7a8020756a9a4cc40761ad25fb5e1d9318688971f",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "4ee03027d4841493b7bacf33ccfeb917745df8e5d86931f6f2de6ae354cacfb6"
+      }
+    },
+    {
+      "id": 654,
+      "source": "pinetree08",
+      "asset": "lodpinetree08.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "26b14f5e1372844c3c76dee7c70db90ed489062dcf79c1ef390b0846d3108738",
+      "evidence": "IPL link",
+      "original_asset_sha256": "18c6bd7c42fa08382efae012f52136020e5bc74a8eabbc56e4541d40474834f3",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "7fd91ac3d5b014f4edd263be927d9b8b3e38da800d2c1abbbd73aec523c7e751"
+      }
+    },
+    {
+      "id": 656,
+      "source": "pinetree05",
+      "asset": "lodpinetree05.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "892fe1b85e28899897b0f9426d42d1e57faf00bd3b9f6ce07c03ec1dd2ea8b1f",
+      "evidence": "IPL link",
+      "original_asset_sha256": "c9f858f8ee8c859e7de53d9737bd3c23f097889d97878bc8934798ab8dfd01be",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "d14767571897f60ddd402a85b7207ebdc68b46ea69639f104b5fea86cb4a17e2"
+      }
+    },
+    {
+      "id": 658,
+      "source": "pinetree04",
+      "asset": "lodpinetree04.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "453547fd5c8ed666c3bb03875bea4a33983025ac669fdfe52069193ff9ccce1e",
+      "evidence": "IPL link",
+      "original_asset_sha256": "1fc3674bf6f461bbba554d4de08376a981ffd50db5aa84a8f45bde367dc3a4ba",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "0e8502b978a72602c8b84ed0009cc10336171ba9bb0fbdcc2b2f76b6a6356143"
+      }
+    },
+    {
+      "id": 661,
+      "source": "pinetree07",
+      "asset": "lodpinetree07.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "5d4659e2b03cc3dae2db8a7f69959b872aa7000dd5b2a1c84d33cd79b844f197",
+      "evidence": "IPL link",
+      "original_asset_sha256": "ba4f3cd604f7e5569f6ac979bd3f0d512ed3e43f7fafaa0d5f4921d7f509389c",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "160ab131e1fc678e8a04350d63683e9685e6227b1fb392fc718641cb0f711634"
+      }
+    },
+    {
+      "id": 664,
+      "source": "firtree2",
+      "asset": "lodfirtree2.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "df15b5a9803f6b46974428347cddc608b2eed3a654b11bbcf7f971e08afa123f",
+      "evidence": "exact model name",
+      "original_asset_sha256": "0047acb400e52eb7e3093f09aeafc8956038303de593d900e511b9cac5d8cd06",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "d500bcd9d64ce445179f46b5591c4cc7056c13d1913f38d01568b986a78f85fd"
+      }
+    },
+    {
+      "id": 669,
+      "source": "sm_veg_tree4",
+      "asset": "lodsm_veg_tree4.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "145b59886882b8ed4ac4fe5dae640ffff733926b17d0a142ac96d807c2ebaf41",
+      "evidence": "IPL link",
+      "original_asset_sha256": "47394d12c905debc1772c9d40df11fd740aa1e564ec062ac405f25dda3f90cbf",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "69a0683a081476c2131a1a7d300ef622b5ff4d26781701748868fdbb77fc4780"
+      }
+    },
+    {
+      "id": 670,
+      "source": "sm_firtallded",
+      "asset": "lodsm_firtallded.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "1e46d1e11c82ba5ec0e3d9bc19bf2596b6327e80322c0b36906d733918790f35",
+      "evidence": "IPL link",
+      "original_asset_sha256": "463a96e12ce35a4d84770d3b6c7d3fa9fd8252fab72466b2e1be35a869b91223",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "f1d75c65580f8e6d6c45e14b9726e938c7848070131e5648e57e0cdcacd2670a"
+      }
+    },
+    {
+      "id": 672,
+      "source": "sm_veg_tree5",
+      "asset": "lodsm_veg_tree5.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "3d7190d08ec207e033353dcf392b92124e7c98b4d9143e03f03c3a985bac602a",
+      "evidence": "IPL link",
+      "original_asset_sha256": "27b85d0cdf3cedd7828c6069b519c60f08853157371f95a46bcd2db2af013fcd",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "2e36f22c475d5690a995665c692ad40147cb615f7f604edf03c5417ed3646c46"
+      }
+    },
+    {
+      "id": 683,
+      "source": "sm_fir_group",
+      "asset": "lodsm_fir_group.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "d867bcb070263cf7c00667247279ad92a61096ea82e9e6c7f27a11c57eb82d1b",
+      "evidence": "exact model name",
+      "original_asset_sha256": "446bc4291b312ac73a507dca2068c1d1d3e4d740f1911b8e3f5a829b398cea42",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "d663e95c09244ec075af8fbeb1ba2619d8b65c5b60bdbecc6e9a01e326f52c0e"
+      }
+    },
+    {
+      "id": 685,
+      "source": "sm_fir_scabby",
+      "asset": "lodsm_fir_scabby.dff",
+      "transition": 150.0,
+      "range": 1600.0,
+      "sha256": "180179edf87e4789b0b50f1fdb36640092b9e8819d51d528064cd7ccb260dd7a",
+      "evidence": "exact model name",
+      "original_asset_sha256": "7ab72890c96d21d738619fc6f765dc84f28c669747b45fc5f7cbf832079bc2ad",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "4ce5b2d26e500627137de7103691ad930e1a60a2232ff1fc847766aa07971961"
+      }
+    },
+    {
+      "id": 686,
+      "source": "sm_fir_dead",
+      "asset": "lodsm_fir_dead.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "0b474d6eb1ba62106cf3479b84e492e110178ff7c01557b5015833511bbc6b10",
+      "evidence": "exact model name",
+      "original_asset_sha256": "249f669bbd6948913f6211697a615dcf00a19ee7d4da0a5366a4cbe29019389b",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "fc1c0a5b6938ff1a387d8108a032608bc118903b33674fa6f1f6571ba0217a6e"
+      }
+    },
+    {
+      "id": 687,
+      "source": "sm_fir_",
+      "asset": "lodsm_fir_.dff",
+      "transition": 150.0,
+      "range": 1600.0,
+      "sha256": "2aa56d7dccdc6027cf60f7bec890f3e59d72c925104d5618f27616ca353daa1e",
+      "evidence": "IPL link",
+      "original_asset_sha256": "9bfa73ded65234d7ba46278b6950f1e80786ff5229df08cdb1ebc5257b6fc8b8",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "0d02876b448e35f4a97f02f4842aa3da9af87fc283eb423653ef677952cbc209"
+      }
+    },
+    {
+      "id": 688,
+      "source": "sm_fir_scabg",
+      "asset": "lodsm_fir_scabg.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "c8f097dafce8bbb6e016dd5baf8887278f8401d2d1e231a535ab891ca87789e7",
+      "evidence": "IPL link",
+      "original_asset_sha256": "3c8f42479630e308f55ea2dba55c359062a673eab97213e3cd9fa6bc5afd0ecd",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "71482dde208002c635bc0cdee649ef90c8390441d52078ff37f9edb4a6b178f1"
+      }
+    },
+    {
+      "id": 689,
+      "source": "sm_fir_copse1",
+      "asset": "lodsm_fir_copse1.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "38c7a59e260c96e5409bdd0588e1e3144b6ce390484bd62652b5d58661da272f",
+      "evidence": "IPL link",
+      "original_asset_sha256": "3b9765b5b01eab59773330126dfc64849f76bea90f033c79b99c78660805f0e8",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "2e9a3c09bbc86600f581b553b9903f88eaed042c71b20b61b74d0d5868d48c56"
+      }
+    },
+    {
+      "id": 690,
+      "source": "sm_fir_copse2",
+      "asset": "lodsm_fir_copse2.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "1c40efe8d3693075be6a05e69cbaa0cef0cb919537353a08bf84f8113c48df22",
+      "evidence": "IPL link",
+      "original_asset_sha256": "a59c87d5efced0b33c4fbc5d3e6184f884834a866b51f56ab5cdd31d880fbeb9",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "4c282ba9aa686db469b24ca2c0a3d62b9cccc51d8cc0a827c7a0b9ceb37c25c2"
+      }
+    },
+    {
+      "id": 691,
+      "source": "sm_veg_tree4_big",
+      "asset": "lodveg_tree4_big.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "8f62aaef873398a4323c9a990a16e2c34a6ad463ebd4bb6e1fc0a0b8b08ffe36",
+      "evidence": "IPL link",
+      "original_asset_sha256": "8ff07c12af6b6ea5c800774f7c998e9dc5eaa949aa7a292ebfa05baacaecd8e9",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "cbd7f17fafbaace011f827dd62ca6aa5a3043dfa4e4ad695ab06d4da49bb6707"
+      }
+    },
+    {
+      "id": 693,
+      "source": "sm_redwood_",
+      "asset": "lodsm_redwood_.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "54c7b7db4e15b715d06b68a2f0cbf6f24d3f6be59af70ad8794017213ebfa8eb",
+      "evidence": "IPL link",
+      "original_asset_sha256": "63df04b62f77241e1920d76548cf5f3feb96439dddaa4a628e83f1a598c70819",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "16e0ed21fd20a29bcb25b93da9f99c97966951590eae7176f7b375d244163c7d"
+      }
+    },
+    {
+      "id": 695,
+      "source": "sm_fir_scabtg",
+      "asset": "lodsm_fir_scabtg.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "e96492fb2543d3a6db32999beb1fb8c3478bdb3e1652497a932f82444b48fa1c",
+      "evidence": "exact model name",
+      "original_asset_sha256": "8f7f71b4157fc816e3b61ed3d61c33aa5c2b6c8bd5659750a9f84a566e2a2746",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "3635e253e2ed76278baad3ad10e263c054dbd304cab09b6b9dfccd3ed575d123"
+      }
+    },
+    {
+      "id": 696,
+      "source": "sm_fir_scabt",
+      "asset": "lodsm_fir_scabt.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "441c17cb88acf7306195ef362e32657a89c6f173cfa8a59fa38530b6e8c293fb",
+      "evidence": "IPL link",
+      "original_asset_sha256": "29d1b4566a4e10ee56470c97a11891addbcbbe2c09e43cbd0504ee84d124d8bd",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "2910252fb637594aac74eb13cf2530b3b3bdb70c0d72bebd0e2d8600d588d48d"
+      }
+    },
+    {
+      "id": 697,
+      "source": "sm_fir_tall",
+      "asset": "lodsm_fir_tall.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "2573550a9eb66493bb9f418129807f7fe1310d37f5d9c85a6db62cdcb4ef3217",
+      "evidence": "IPL link",
+      "original_asset_sha256": "e680a58c4831fb9a80f46667e74dfd7681177933c778234e50f1bc9ed9bd30a0",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "ff0e71fdca75e03203595e3b79cfc1bb4331f04a9c677b91d15aa19831298eba"
+      }
+    },
+    {
+      "id": 698,
+      "source": "sm_firtbshg",
+      "asset": "lodsm_firtbshg.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "6926d537d5648a0a950ce7148d70d970eb956c9cf50e17c25a37b78c4b6ad993",
+      "evidence": "IPL link",
+      "original_asset_sha256": "88414fdd697cbbe3b57e26652a7a9763c2d4f2d6dd8a4497731338f8b260849f",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "3e56f59ff3e43ae5d49b4f05bb0776421c774e60726cf2454d698a65eca12c2d"
+      }
+    },
+    {
+      "id": 700,
+      "source": "sm_veg_tree6",
+      "asset": "lodsm_veg_tree6.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "9bc2ae96f560adfd7cf8959fee2f08bb37855e03b08405975bcf13c8fa021606",
+      "evidence": "IPL link",
+      "original_asset_sha256": "b39c8339adf6577706e67420626ed904071b5fd5f896883bb7660d3b52a9c18d",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "deb0f5fdb7f4c3105fc9f18ffee1a316ae75f0606f3061b65403c54a1c3096e1"
+      }
+    },
+    {
+      "id": 703,
+      "source": "sm_veg_tree7_big",
+      "asset": "lodveg_tree7_big.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "0655be029aecedb89b3743089cd29628066ffe24147739d4af3ccbbf44b1ee64",
+      "evidence": "IPL link",
+      "original_asset_sha256": "334b9ec2ff6967572b031e02cdfcfaef8d7a603e443452860ab760b64e0fc198",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "97438df8bbef2d9ef22e65fb83277f42df2290d6e5869581686a1bf988372c5d"
+      }
+    },
+    {
+      "id": 704,
+      "source": "bg_fir_dead",
+      "asset": "lodbg_fir_dead.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "2894001360b810bcaa471f473de1ab8dd744d3af92fe9711829c6db9f6919f7e",
+      "evidence": "exact model name",
+      "original_asset_sha256": "814d43c7154f9b736e37899d124427e997f72426958adfcbbaf87ac7dcaa934a",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "8447c9b1083eff257e08cbd401215fe04d2a90f6c2f35e1f95da1ccec14f5fe4"
+      }
+    },
+    {
+      "id": 705,
+      "source": "sm_veg_tree7vbig",
+      "asset": "lodveg_tree7vbig.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "24ba079e570261d3b87e7a5426ae207c9692f89a4e5c11eda1a3f38ce5792e72",
+      "evidence": "IPL link",
+      "original_asset_sha256": "5c8a1c197e757441332ebf7462d4cf4c51dcddaddcd7e794dd642c48a157dc20",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "92416a7b6f1678ec76244151ed6277650f461eb6234f9f99ba9050b34f9dc983"
+      }
+    },
+    {
+      "id": 706,
+      "source": "sm_vegvbbig",
+      "asset": "lodsm_vegvbbig.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "cb6ce60afc195bf8144e19b832f8087f6d5fe9f739d5eaeeb9cb9536af6c378f",
+      "evidence": "IPL link",
+      "original_asset_sha256": "546b5749b876e25d9f18a584b0d312199fd30f8d636fe7b90742d03a769ef02f",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "2dc6c0ebb8e48ae0f0249dacb369c957c064ef4bd6a1bf4c01786e63b3e8b4da"
+      }
+    },
+    {
+      "id": 707,
+      "source": "sm_bushvbig",
+      "asset": "lodsm_bushvbig.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "d5bc2aca603728ea72722a9e959a0f29a166d3051a5fc77bfe38d7928e94154a",
+      "evidence": "IPL link",
+      "original_asset_sha256": "380478dec5d04a6f49b54ac066b524f90183eed218f486053399db87a9d57904",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "4c64b0806735bd868acf4f8e6b58d936a1d5ba80e2ba745672ba149e4233fe87"
+      }
+    },
+    {
+      "id": 708,
+      "source": "sm_veg_tree4_vbig",
+      "asset": "lodveg_tree4_vbig.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "d73c78dfa49fa62f9769ab675845a9f8f02355167d2c7220b71ace63108b745a",
+      "evidence": "IPL link",
+      "original_asset_sha256": "8ab6757906b0491266396245a59c2c374d3e5fb647c8af21d897f22096f67084",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "2f9d989c8a68a43025b836e0c3b3e6bafe9f9bd6c408759709b4b465e2075fa4"
+      }
+    },
+    {
+      "id": 709,
+      "source": "sm_vegvbbigbrn",
+      "asset": "lodvegvbbigbrn.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "f39b56a42fc7235b03ff49b05161e96a05c41a1f85d59834554c5f31b4d0437c",
+      "evidence": "IPL link",
+      "original_asset_sha256": "41ad5ac80509530a55ffe2cbb855ddc4557b292141145718139a2cbd36795adc",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "eb462f11339c6143c8e6f674c359051822123adc8ab308b5b41060773c9467ff"
+      }
+    },
+    {
+      "id": 710,
+      "source": "vgs_palm01",
+      "asset": "lodvgs_palm01.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "d8e7908d6f7cd6652b34518308c3d0be8185ebbb47eba7634c9342de36e5697f",
+      "evidence": "IPL link",
+      "original_asset_sha256": "8c6db5fcf288bfaa89bde3b40d79e3806b560a23e87e0aa96ccf28f6700248e2",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "bb39ff40680378bfd90e31ce4dca539e3109d66614822b67ab83407c2ce2e567"
+      }
+    },
+    {
+      "id": 712,
+      "source": "vgs_palm03",
+      "asset": "lodvgs_palm03.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "6c5d64d45ecc63fae9b87719ab02677f1735bf34e7ed3d0eba4848747ccec177",
+      "evidence": "IPL link",
+      "original_asset_sha256": "9c659245f9582d2c5d975263f6e9ef49f20538b556098f3ce4797e47583a53f3",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "e7417da50e586af0e79d36d8069d330a74effc7c4ba54bdaf5dc550034306550"
+      }
+    },
+    {
+      "id": 713,
+      "source": "veg_bevtree1",
+      "asset": "lodveg_bevtree1.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "8b454dfc2b6541682ebcfb6506f0e425f8c73850aa884116d9281b0416dd1e66",
+      "evidence": "IPL link",
+      "original_asset_sha256": "a175f56c8f4f132d475b210b14b0841f68887114fdb6cf358c3811540657a974",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "1c3edf27e24e1e4af4ea4d9461473cfdbdd7c8cf3a55b7877d150c4af61de78e"
+      }
+    },
+    {
+      "id": 714,
+      "source": "veg_bevtree2",
+      "asset": "lodveg_bevtree2.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "10ee4922697ad474488ad3257979ade83952ddbb663f58f89d74c1bc4fe4883a",
+      "evidence": "IPL link",
+      "original_asset_sha256": "b9a6e23885bcf7143101f3f612fda2623663429d6c71b7f6485971dbeaa4b3f6",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "33cb8e9c9bd1fc9bc408715ebe1aaf65c6ade4e6a67d5af8f7b9b754ca741aa9"
+      }
+    },
+    {
+      "id": 715,
+      "source": "veg_bevtree3",
+      "asset": "lodveg_bevtree3.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "755a50d59723b5bc42a25f47f52e18c30e624e326f8b43512ab078ed42067069",
+      "evidence": "IPL link",
+      "original_asset_sha256": "78f088fe87bf4f33d502d7ef20de9034ceb37b3b1bacee5934c6ba10ba08fde4",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "5a1c328530608805f082e1ac653650db9882da3c582881306dbfe02a9e9bad97"
+      }
+    },
+    {
+      "id": 719,
+      "source": "veg_largefurs07",
+      "asset": "lodveg_largefurs07.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "f3f183855a1a0d0f1068eb912571a9f2ce0ff6aba5b2f3d14a38088a9eed55fe",
+      "evidence": "IPL link",
+      "original_asset_sha256": "599ed974ee88c9d75ff4a3da6a0d3f58531e339ac8b4da1d03bcbb87f9d6659c",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "24e96de8c6e6f4bd93ec031066d725ab60cea396ad66929a974d81c6d5c3e94d"
+      }
+    },
+    {
+      "id": 720,
+      "source": "veg_largefurs01",
+      "asset": "lodveg_largefurs01.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "8bd5785777b2faf8ab37e07c7fa157859a2e43fa6311ddaa2a5cc0f75c8bc6b1",
+      "evidence": "IPL link",
+      "original_asset_sha256": "458cc3a765959e04d3543c520ccedfb35c3238c752ae7ae164884f4c54ad2358",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "35444870918f9bdd5616b836948c4fbfcdb459ff755a278db5caccfb5e5de7c3"
+      }
+    },
+    {
+      "id": 721,
+      "source": "veg_largefurs02",
+      "asset": "lodveg_largefurs02.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "d30ae934fd65597a34b1710f7df77a0cc7b045041e3ef6a3b87cd6499777eed3",
+      "evidence": "IPL link",
+      "original_asset_sha256": "20eeaf2d5573bea12e900d6c448d2db8964f8e456eee06cb8fe9de7e4d3f68fd",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "7cfbc56e1a69749412979c32aeee827452d0a52ef4195cb73f5659ea2d920020"
+      }
+    },
+    {
+      "id": 722,
+      "source": "veg_largefurs03",
+      "asset": "lodveg_largefurs03.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "39ad33d2a8ef5c162c8ad4b9c3da0a0189262ffcf44a0f1b0229669960f4617b",
+      "evidence": "IPL link",
+      "original_asset_sha256": "524e41e39d3600c9db97cef314cd4278da8f549873cb58f8da212a48f196eeb8",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "aac6898fad0ae63fcc8301c16e29af62b1596ecea5ad138b5102940a11538509"
+      }
+    },
+    {
+      "id": 723,
+      "source": "veg_largefurs04",
+      "asset": "lodveg_largefurs04.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "461a354e4c26f1194803b1e953c0396e4ee58be96ce0fb34ab9616898d2a377b",
+      "evidence": "IPL link",
+      "original_asset_sha256": "ed0a5df4b164e4faf6912a3337cb0d0590289a41f45b16a3191e69b7bcf1b035",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "8f5ec40b37c4a274092fd23a7f15c53571298edb3bbc9add01408db7609c983d"
+      }
+    },
+    {
+      "id": 724,
+      "source": "veg_largefurs05",
+      "asset": "lodveg_largefurs05.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "68a87f743636d1584457165991e8d6f00fdd38d0e48e411ce1d8cb36015d2e1d",
+      "evidence": "IPL link",
+      "original_asset_sha256": "ba41061693aa137d0ec5a892a2b92df3f4a7fe694fd46624cf24c4004f808edd",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "a1037dabc7f697a9dbb609be4ca9ae421ac7ea00e53d2c33afe4e59b5e6b1d80"
+      }
+    },
+    {
+      "id": 725,
+      "source": "veg_largefurs06",
+      "asset": "lodveg_largefurs06.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "79de2b22ede33957a798577fedd20bd5f4b23f2f0e9aba663e5675bc70651a05",
+      "evidence": "IPL link",
+      "original_asset_sha256": "b132561343fac0a5f9df54bfeaf8b8532149965b14d7767d6fef4f73a75483c8",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "71750ed6c5e65831befacc1e88ec2420fdd067b15e2c75bccb35ac5fb07faf87"
+      }
+    },
+    {
+      "id": 726,
+      "source": "tree_hipoly19",
+      "asset": "lodtree_hipoly19.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "0eeb36c4a977a20716223d95624c51f93e97e9dd422d0ca34842f5f99f3beb95",
+      "evidence": "IPL link",
+      "original_asset_sha256": "54ca3c034b1afac67b1b31bf4d95735743bf2578de9dfa3d24b476cd7719bc31",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "46c2a8ac6094666a6f7efdac0e90ab5c8cc3181d623d6e464f9ebf8becc89e38"
+      }
+    },
+    {
+      "id": 727,
+      "source": "tree_hipoly04",
+      "asset": "lodtree_hipoly04.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "08973b2de43ce13e88f6dad1df37518ce3c07143d4811c37d6cc96b7714acf12",
+      "evidence": "IPL link",
+      "original_asset_sha256": "27718030bb138f6a06e29903770d1117e9f10f2b0d7c24b9f29dce7dca14ae27",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "98a4e104b0e8141aecb52b9a5b5f7550c5090aa278062d0286f3fb2f146a48c9"
+      }
+    },
+    {
+      "id": 729,
+      "source": "tree_hipoly07",
+      "asset": "lodtree_hipoly07.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "5665f32d5ea4237434a1480a9116bb92fbb06c589b3c6962ca49d1ac66bfca86",
+      "evidence": "IPL link",
+      "original_asset_sha256": "61b8774180c1d9338f6d183cd66e908d9a86caee5cfe5091922cc6040883c728",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "26e4463bf0c11993cb1dd5ccfa7b46c1f05dc04b12b46dbf12bd70da62003751"
+      }
+    },
+    {
+      "id": 730,
+      "source": "tree_hipoly08",
+      "asset": "lodtree_hipoly08.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "05bc1b070700e56a1b65b9fd5f14b4674806012ddda4f22523c26f0a114f2f77",
+      "evidence": "IPL link",
+      "original_asset_sha256": "be333a056279610f7863ae735d94a8e1f9b00f99c5773f2e71feba45d3c173be",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "116cfd8da794ff010e53f8f1ad26756c2454952e31820d3ff1ae58b266ae488c"
+      }
+    },
+    {
+      "id": 731,
+      "source": "tree_hipoly09",
+      "asset": "lodtree_hipoly09.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "58fc91d255bc8acb5ed1890515ddd7625b4b471f0293b7435186d0f177aea3c9",
+      "evidence": "IPL link",
+      "original_asset_sha256": "98c994e51e3775654e8d41a0f90e7eaf81f8d15e9d010b71d33da595940e9779",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "ba027db45011dbfe673018a304c67cb87bdbd696d12f805358d2d8882a9d96f9"
+      }
+    },
+    {
+      "id": 733,
+      "source": "tree_hipoly11",
+      "asset": "lodtree_hipoly11.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "2f577c9b2fab2f5837920d5b2bce356c0fc7740b22361b945c1b20489c688ec1",
+      "evidence": "IPL link",
+      "original_asset_sha256": "aa326d3432cc24a99f502055e5e95dd00d407b35955aa6b3520cfe18c139ab39",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "1b58239d78c46af40f3cf85f07043fd9089c9b6a99682e81904d76013b7612e9"
+      }
+    },
+    {
+      "id": 734,
+      "source": "tree_hipoly14",
+      "asset": "lodtree_hipoly14.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "32e63ac298b53efc9db18c31cc297bba2f17873beeb4fce56c8bca5d27b1ccae",
+      "evidence": "IPL link",
+      "original_asset_sha256": "5d4714415a69fb9c4e330406e1f65e118ad944a694d48422b476e2c5df7dc41f",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "e0502294d9fb98669cbb32cf9fb4e46ff2d19c0f4fb1fada41ffffad2fe40c8f"
+      }
+    },
+    {
+      "id": 735,
+      "source": "tree_hipoly09b",
+      "asset": "lodtree_hipoly09b.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "78ee65edbef7d9fc898c22dee993e7dc8760f23cfaa283f100442d24ce40e5ec",
+      "evidence": "IPL link",
+      "original_asset_sha256": "8b356fee41b3e277d718587bceb0e51cd6992f0bbb29d44803d2358826396812",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "0b3af7f9ff0b097e1db8df4c38d72eda2b267e5c7523863810cb81ddb8dcafc2"
+      }
+    },
+    {
+      "id": 736,
+      "source": "ceasertree01_lvs",
+      "asset": "lodceasertree01_lvs.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "17699d56763273fa07d7a00f2744ac020fbf13a4ac8eb62b67e1aefee944b9fa",
+      "evidence": "IPL link",
+      "original_asset_sha256": "0ee49c3e5f4fdec6a6cae16052952fda08bc9e9441f14ee76764873db01c1eaf",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "21518cc7dbb599baa82060857787a6a158ff51cc069191d2e12b0c51da2edba5"
+      }
+    },
+    {
+      "id": 739,
+      "source": "sjmpalmtall",
+      "asset": "lodsjmpalmtall.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "f67253f525db2d20c762cae34a1b6d024fcd403ccf3c28102deb872eb021ccd4",
+      "evidence": "IPL link",
+      "original_asset_sha256": "c10abc3c06a672d7c4592dfe0c76f8df03e5df2e0f86eb20a1cefb41b1fd6a82",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "351499db9463363b2ea6499597fc091f0c0f2a6652aca49eaa19964f0b69ae31"
+      }
+    },
+    {
+      "id": 740,
+      "source": "vgs_palmvtall",
+      "asset": "lodvgs_palmvtall.dff",
+      "transition": 250,
+      "range": 1000.0,
+      "sha256": "7603ce74b95cf43f709d22b1f9dd765f53725e33827de9b30007d8511c560b49",
+      "evidence": "IPL link",
+      "original_asset_sha256": "057cadbb08394e9e06c056ced530a776fdbad5f8dfbaaf1c9a47582a4c6bab61",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "686117d46429427d4c011f73b65b3f45414195e8fa2f9c70b0e62df722dc613f"
+      }
+    },
+    {
+      "id": 764,
+      "source": "Cedar3_hi",
+      "asset": "lodCedar3_hi.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "3e8b3f7497b90f48d8ffd5e7e56c87f091efab2cd9b10e0e577a8d0e119eb210",
+      "evidence": "IPL link",
+      "original_asset_sha256": "126d0788d33d8e7767885fdbe3c55e21903c7a82618c5ce98c61a8ce4156b95f",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "f7cd632c73dc783dacc2c71642f9e02b286b8bdc9c4b3ad0e778a2ab53a76f50"
+      }
+    },
+    {
+      "id": 766,
+      "source": "Cedar1_hi",
+      "asset": "lodCedar1_hi.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "26ae43b6379b358601f07b572be87a4946fd917521f0decc628d42226ba4daa2",
+      "evidence": "IPL link",
+      "original_asset_sha256": "3f054c11b0ab5a32c941e69af861e8f5eb636366fcd46ff790ed18bd73bf4757",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "a1312d7cf133c9ddba47c6692fe954bd0394062b292456b14b755423001321af"
+      }
+    },
+    {
+      "id": 767,
+      "source": "Elmtreegrn_hi",
+      "asset": "lodElmtreegrn_hi.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "12a44e73ec064b18e11ab8196acd85ef94c816f2aaf9dda1b7ae60747fcfc8c8",
+      "evidence": "IPL link",
+      "original_asset_sha256": "05cf22d4cb6f6568d93cd0254f2201084b82c3dd915452eb21a6f754a517d07a",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "704ae743a64aba05ebfb675942a1950f17e5a58508089b2b72f17883c5b87dea"
+      }
+    },
+    {
+      "id": 768,
+      "source": "Elmtreegrn2_hi",
+      "asset": "lodElmtreegrn2_hi.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "a0e7d491fb05c4107648ec7d7b8f2a2efd0b8cc3e10004b3c820c508796a0f9a",
+      "evidence": "IPL link",
+      "original_asset_sha256": "cbdd9aba578c730218a1170d595e87b3e431dc1c11ea1e3de352cdb592817431",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "965e56f00d0bc6b648121de68c2924da990156e038506f7a62c81daf35c53f9f"
+      }
+    },
+    {
+      "id": 769,
+      "source": "Locust_hi",
+      "asset": "lodLocust_hi.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "8acc688f4f79d71c7fc4d42d4177eca13faf828062725c15061e56b07142c81e",
+      "evidence": "IPL link",
+      "original_asset_sha256": "f5968b1b2e7a990579f18519edb20665281006ff5c133b4cafbf07a08f33593b",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "8e3f367dcbcaba1cf3deb2e4c5522b981330c4d20a5d486da131cb3e2b180ee7"
+      }
+    },
+    {
+      "id": 770,
+      "source": "Pinebg_hi",
+      "asset": "lodPinebg_hi.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "21839f3ee97ef23e3ff79dfcdef2d3616fc4291fd1a562386b7da940c049d4b8",
+      "evidence": "IPL link",
+      "original_asset_sha256": "88fec2da9b9ed586d95b759ba1337ce553377e55376ccfcc86428d5d3c3c6a12",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "119897eccad00ec5bb773d293d07b1b52ff9a3fd0d95d7f150568b3a722b958c"
+      }
+    },
+    {
+      "id": 771,
+      "source": "sprucetree_hi",
+      "asset": "lodsprucetree_hi.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "76befc1064869d80634c6ac8589921796e579d3968886b62a73f3f9291dfac06",
+      "evidence": "IPL link",
+      "original_asset_sha256": "f33a24081b8b41afc97476a1f0b214690fe68a0761ce15b08b41d3e2173076f4",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "4230c246f7d726eb29ba72663ce87c98cfbed14dfcaa8375a283e4aea46566b2"
+      }
+    },
+    {
+      "id": 772,
+      "source": "Elmred_hi",
+      "asset": "lodElmred_hi.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "fbe1a94c19d21fb1327a71375510a0fc7e7c7e14d6724adb5dc17b06cc9e63ad",
+      "evidence": "IPL link",
+      "original_asset_sha256": "a44bce2dc78e0191e7e01ece0813362bb58b02296f7e784cea842109ec45d7bd",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "3b78980154b63f37e90f8d24792549f5119b3f7822f35fa055daca5087511161"
+      }
+    },
+    {
+      "id": 773,
+      "source": "Elmdead_hi",
+      "asset": "lodElmdead_hi.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "322d7e95c46d0e97666995a11f6cc8e65f57342b7e259754fc29078488818b47",
+      "evidence": "IPL link",
+      "original_asset_sha256": "09eefbb72275f32afac317357d600ce055112d5d0726fed26f1e85e4e2ccd74f",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "f6cc89e428b59b706aa1aab1e77517080c9a951f253a21ae3adbadbdfa4aec2c"
+      }
+    },
+    {
+      "id": 774,
+      "source": "Elmsparse_hi",
+      "asset": "lodElmsparse_hi.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "ea6fe4089bdc45832b105c66090d85775d7dd2f63aa79a248af838d289f6d8b2",
+      "evidence": "IPL link",
+      "original_asset_sha256": "ef61f1a2945b4c34370058bb22cd16bb3b99450c686940b1aa3284f67ee0c85d",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "46be40f5957d0f81eff9c087885076bdfe9b66c2453e0ee22e97c8daad4676cc"
+      }
+    },
+    {
+      "id": 775,
+      "source": "Elmwee_hi",
+      "asset": "lodElmwee_hi.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "9cf03a5cf9e93ecdec216c0c8898164c83542f6ebdca9a9f667e79046812d990",
+      "evidence": "IPL link",
+      "original_asset_sha256": "38feeb4fc87ef8d1de0b788a9a540e14c0ffffc3388a982fc578ff9c34302478",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "70d0639270dcb54b7a02ba9dbb4a1c49322b23bc6348fa6a55712cd21c2d7178"
+      }
+    },
+    {
+      "id": 776,
+      "source": "Hazelweetree_hi",
+      "asset": "lodHazelweetree_hi.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "596f5d4eec9378d7046c531df38e5eb68d816a3de5c1a896dac7a6d7c47572b3",
+      "evidence": "IPL link",
+      "original_asset_sha256": "04d2316157017ca743705921a0c906ae1117cffa24ce2dc79f090c39b76f1a28",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "1142c5a50c96fef3884345f368809f8ea2465da39f85ca56bc0693153f48abfd"
+      }
+    },
+    {
+      "id": 777,
+      "source": "Hazeltall_hi",
+      "asset": "lodHazeltall_hi.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "ce85d069104c22d87df27be920655a700c570b3da3cd2a85f92d6e257a5723c5",
+      "evidence": "IPL link",
+      "original_asset_sha256": "1e9a031baa68457f3ab152e7eebcac9bd90c829a104b86a94cd61315585e40e2",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "2c9e5bbb7bd994ae4335bb706290d150ca1cc2ffe2d9aeb7dbd0c0b280dbbf52"
+      }
+    },
+    {
+      "id": 778,
+      "source": "Elmred_hism",
+      "asset": "lodElmred_hism.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "ee971806abf501d886e303ff44a7707ed73d831e6e158d162661d105e24ec98c",
+      "evidence": "IPL link",
+      "original_asset_sha256": "63dc6a52ab9821266d366f1aacfe56a8ecd9fa6e61c2951e96c142d62268b507",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "fbc190274375197af34c004fecbba93cf3416fdcec95929a086e99009cff800b"
+      }
+    },
+    {
+      "id": 780,
+      "source": "Elmsparse_hism",
+      "asset": "lodElmsparse_hism.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "0e97a3d91f92e08cf8f766a6ffd019a48340c3be595f9f2c7cb0bfd6f101f849",
+      "evidence": "IPL link",
+      "original_asset_sha256": "8e9560837b4be4b49ca32e43b756a51b39242b60811fff730b0c89853a9ea510",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "6aaa87540dfa7c455bbacd4420b05bec32a6b30bf3e281fab58ae6dfb71203ae"
+      }
+    },
+    {
+      "id": 784,
+      "source": "lod_redwoodgrp",
+      "asset": "lod_redwoodgrp.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "cdf54d6cffddf0ffdc0b6e2b45c57b1ca2299db98c43c138280285e0789168ef",
+      "evidence": "exact model name",
+      "original_asset_sha256": "a491598f844256f74a147247f5cd8a895415a9081e7705e785fb35910ec44b08",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "99281f78ee82725f0c4788c88dc398d7a754614e5ae3de161eef479a1950403f"
+      }
+    },
+    {
+      "id": 785,
+      "source": "lod_vbg_fir_co",
+      "asset": "lod_vbg_fir_co.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "de5a1acc082782c54bb7363813b42e53cb4db6a7086b880711c88080cd90c5d6",
+      "evidence": "exact model name",
+      "original_asset_sha256": "f8c19ec12f20647dac1fbdfccaee01510477e3085d0b713f1dadbb375b72e96f",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "2f312d96da6b4d473e402bf0127f00ec3f65faa2da5d66faff15fe839106f5e6"
+      }
+    },
+    {
+      "id": 789,
+      "source": "hashburytree4sfs",
+      "asset": "lodhburytree4sfs.dff",
+      "transition": 150.0,
+      "range": 1000.0,
+      "sha256": "9485ae739358627d2f1945fd188dc49d9d33640ca85784a7ab03c84b4d3399a1",
+      "evidence": "IPL link",
+      "original_asset_sha256": "e736b68dd408e7a4851de919e29db8d3b8394413606db265c4913198b16dec2e",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "49c866e4cbe6b20344abc976ece69a223f9d7f71304f8a30baf679c9604894aa"
+      }
+    },
+    {
+      "id": 790,
+      "source": "sm_fir_tallgroup",
+      "asset": "lodsm_fir_tallgroup.dff",
+      "transition": 250,
+      "range": 1600.0,
+      "sha256": "bbb4b5b5086d804e61b8a836636626fd313be5e283f043b9c22a44c004611ece",
+      "evidence": "IPL link",
+      "original_asset_sha256": "5e4e5811b5ed819fb940ea0ff14b4067910c717dad22c7ca588b5b6ad7be512c",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "f67ce44fc4d92f3dc0736e8f70b958fe0479111695aa72ed05fa099afab293c9"
+      }
+    },
+    {
+      "id": 3505,
+      "source": "VgsN_nitree_y01",
+      "asset": "lodVgsN_nitree_y01.dff",
+      "transition": 120,
+      "range": 1000.0,
+      "sha256": "90a772547b4f0694fd3eddf14e295d50f3d9abfcc5cfdd203b7436a2fa2479fe",
+      "evidence": "IPL link",
+      "original_asset_sha256": "5f12f5927a491521b7ba796b6fbe41ef067f02b14da2752057272395505b2207",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "7499518ea064554a08961417f43a72524baef03bfb7a38a172d550b45f801f84"
+      }
+    },
+    {
+      "id": 3507,
+      "source": "VgsN_nitree_g01",
+      "asset": "lodVgsN_nitree_g01.dff",
+      "transition": 120,
+      "range": 1000.0,
+      "sha256": "1c9f2230ffa0534837bdfec3c7906318a34e0d0c88d223cb509a8ee976bc44f0",
+      "evidence": "IPL link",
+      "original_asset_sha256": "0d1f52775016f90f97488ef24b16c46554e5ce49fcd7e27c5d7310c3bf4906c5",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "7f5992e98cb78d21129acc65b2999c1c864c7d16f732bfebd75570e6c534b26f"
+      }
+    },
+    {
+      "id": 3509,
+      "source": "VgsN_nitree_r01",
+      "asset": "lodVgsN_nitree_r01.dff",
+      "transition": 120,
+      "range": 1000.0,
+      "sha256": "2c5cb71caaa81dbc011eb5649c49e49be111c7e39589a5fd2ad12d8637bab038",
+      "evidence": "IPL link",
+      "original_asset_sha256": "59b0f24837e6bccf3585aba58f56c31b5e7812f6378d77a717f5895cc829d415",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "35bd0795eea981e469fab2d5a71968076b8f88019bb15f079971f0555daa83c6"
+      }
+    },
+    {
+      "id": 3511,
+      "source": "VgsN_nitree_b01",
+      "asset": "lodVgsN_nitree_b01.dff",
+      "transition": 120,
+      "range": 1000.0,
+      "sha256": "2e06e69b5b76a151eb9470e12788ad8ee6b92cc66f6ae62171dfa8eee436a442",
+      "evidence": "IPL link",
+      "original_asset_sha256": "75eaa8bd80b27af36cbe793e67e7f63607072798ba95fc01b13ccf4d2378edef",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "dc4b12d9335b6c80e4d9fede0f8359d82fa8e82dab7c730ae392ec464c5647dc"
+      }
+    },
+    {
+      "id": 3517,
+      "source": "ceasertree02_lvs",
+      "asset": "lodceasertree02_lvs.dff",
+      "transition": 120,
+      "range": 1000.0,
+      "sha256": "3cdc08333f93958c7c943cbdfd3dfc8d896c56b7ab83c821812f2a10913f4dd7",
+      "evidence": "exact model name",
+      "original_asset_sha256": "0ee49c3e5f4fdec6a6cae16052952fda08bc9e9441f14ee76764873db01c1eaf",
+      "prelight": {
+        "method": "closest-stock-triangle-rgb-v1",
+        "stock_sha256": "b56bcb126f91b03ed5dd5f97fac1b8a96505304f373acac73ee0bc43bcb18bd8"
+      }
+    }
+  ],
+  "excluded": [
+    {
+      "model": "lodvegvbbig",
+      "reason": "No verified stock model or IPL link"
+    },
+    {
+      "model": "lod_vegvbbigbrn",
+      "reason": "DFF absent from supplied archive"
+    },
+    {
+      "model": "lod_largefurs06",
+      "reason": "DFF absent from supplied archive"
+    },
+    {
+      "model": "lod_largefurs07",
+      "reason": "DFF absent from supplied archive"
+    },
+    {
+      "model": "lod_largefurs05",
+      "reason": "DFF absent from supplied archive"
+    }
+  ]
+}

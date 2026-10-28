@@ -877,4 +877,11 @@ public:
     virtual CNativeUI* GetNativeUI() = 0;
     // Resource-owned pedestrian path overlays; append-only published ABI.
     virtual CPedPathPatches* GetPedPathPatches() = 0;
+    // Append-only scoped native vegetation presentation. The opaque restore
+    // token is valid only until the matching End call on the same entity.
+    virtual float GetVegetationLODDistance(void* entity) = 0;
+    virtual void* BeginVegetationLODRender(void* entity) = 0;
+    virtual void  EndVegetationLODRender(void* entity, void* restoreToken) = 0;
+    virtual bool  HasModelLODDistanceOverride(unsigned int model) = 0;
+    virtual float GetProject2DFXNormalDrawDistance() = 0;
 };

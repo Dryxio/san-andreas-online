@@ -23,6 +23,9 @@ RenderEverythingBarRoadsHandler* pRenderEverythingBarRoadsHandler = nullptr;
 namespace
 {
     CEntitySAInterface* ms_Rendering = NULL;
+    void*               ms_VegetationRestoreToken = nullptr;
+    CEntitySAInterface* ms_FadingVegetationEntity = nullptr;
+    void*               ms_FadingVegetationRestoreToken = nullptr;
     CEntitySAInterface* ms_RenderingOneNonRoad = NULL;
     bool                ms_bIsMinimizedAndNotConnected = false;
 
@@ -317,6 +320,7 @@ bool IsEntityRenderable(CEntitySAInterface* pEntity)
 void OnMY_CEntity_Render_Pre(CEntitySAInterface* pEntity)
 {
     ms_Rendering = pEntity;
+    ms_VegetationRestoreToken = pGameInterface->BeginVegetationLODRender(pEntity);
 
     if (ms_Rendering)
         CallGameEntityRenderHandler(ms_Rendering);
@@ -324,6 +328,8 @@ void OnMY_CEntity_Render_Pre(CEntitySAInterface* pEntity)
 
 void OnMY_CEntity_Render_Post()
 {
+    pGameInterface->EndVegetationLODRender(ms_Rendering, ms_VegetationRestoreToken);
+    ms_VegetationRestoreToken = nullptr;
     if (ms_Rendering)
     {
         ms_Rendering = NULL;
@@ -361,6 +367,50 @@ inner:
         mov     esi,ecx
         mov     eax,dword ptr [esi+18h]
         jmp     RETURN_CEntity_Render
+    }
+    // clang-format on
+}
+
+// Fading entities bypass CEntity::Render and draw the atomic directly. Scope
+// the same substitution around that whole path so distance fades do not switch
+// back to HD or use the short authored HD range for the distant mesh.
+void BeginFadingVegetation(CEntitySAInterface* entity)
+{
+    ms_FadingVegetationEntity = entity;
+    ms_FadingVegetationRestoreToken = pGameInterface->BeginVegetationLODRender(entity);
+}
+void EndFadingVegetation()
+{
+    pGameInterface->EndVegetationLODRender(ms_FadingVegetationEntity, ms_FadingVegetationRestoreToken);
+    ms_FadingVegetationEntity = nullptr;
+    ms_FadingVegetationRestoreToken = nullptr;
+}
+#define HOOKPOS_VegetationRenderEntity  0x732B40
+#define HOOKSIZE_VegetationRenderEntity 5
+DWORD                         RETURN_VegetationRenderEntity = 0x732B45;
+static void __declspec(naked) HOOK_VegetationRenderEntity()
+{
+    MTA_VERIFY_HOOK_LOCAL_SIZE;
+    // clang-format off
+    __asm
+    {
+        pushad
+        push [esp+32+4]
+        call BeginFadingVegetation
+        add esp,4
+        popad
+        push [esp+8]
+        push [esp+8]
+        call inner
+        add esp,8
+        pushad
+        call EndFadingVegetation
+        popad
+        retn
+    inner:
+        push esi
+        mov esi,[esp+8]
+        jmp RETURN_VegetationRenderEntity
     }
     // clang-format on
 }
@@ -1201,6 +1251,7 @@ void CMultiplayerSA::InitHooks_Rendering()
 
     EZHookInstall(CallIdle);
     EZHookInstall(CEntity_Render);
+    EZHookInstall(VegetationRenderEntity);
     EZHookInstall(CEntity_RenderOneNonRoad);
     EZHookInstall(CVisibilityPlugins_RenderWeaponPedsForPC_Mid);
     EZHookInstall(CVisibilityPlugins_RenderWeaponPedsForPC_End);

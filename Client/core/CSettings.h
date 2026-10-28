@@ -188,6 +188,15 @@ protected:
     CGUILabel*                m_pDrawDistanceValueLabel;
     CGUILabel*                m_pNeonRenderingLabel;
     CGUICheckBox*             m_pCheckBoxExtendedDrawDistance;
+    CGUIComboBox*             m_pDrawDistanceMode{};
+    // Keep both drafts when the same slider changes units between modes.
+    int                       m_iWorldDistanceDraft{2000};
+    int                       m_iProject2DFXPercentDraft{100};
+    bool                      m_bUpdatingWorldSlider{};
+    CGUIEdit*                 m_pProject2DFXValues[8]{};
+    CGUICheckBox*             m_pProject2DFXPreload{};
+    CGUICheckBox*             m_pCheckBoxVegetationLod{};
+    CGUIEdit*                 m_pVegetationLodDistance{};
     CGUILabel*                m_pExtendedDrawDistanceLabel;
     CGUIScrollBar*            m_pExtendedDrawDistance;
     CGUILabel*                m_pExtendedDrawDistanceValueLabel;
@@ -444,6 +453,7 @@ protected:
     bool OnDrawDistanceChanged(CGUIElement* pElement);
     bool OnExtendedDrawDistanceEnabledClick(CGUIElement* pElement);
     bool OnExtendedDrawDistanceChanged(CGUIElement* pElement);
+    bool OnRestoreProject2DFXClick(CGUIElement* pElement);
     bool OnDistantLightsEnabledClick(CGUIElement* pElement);
     bool OnDistantLightAdvancedChanged(CGUIElement* pElement);
     bool OnDistantLightsDrawDistanceChanged(CGUIElement* pElement);
@@ -491,7 +501,6 @@ protected:
     CGUIEdit* m_pAimingMultiplier = nullptr;
     CGUIEdit* m_pSniperMultiplier = nullptr;
     bool m_bUpdatingMouseFields = false;
-
 
     bool OnVerticalAimSensitivityChanged(CGUIElement* pElement);
     bool OnBrowserBlacklistAdd(CGUIElement* pElement);

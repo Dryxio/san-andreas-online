@@ -12,6 +12,8 @@
 #pragma once
 
 #include <game/Common.h>
+#include <Project2DFXDrawDistance.h>
+#include <WorldRenderPolicy.h>
 #include <game/CModelInfo.h>
 #include "CRenderWareSA.h"
 #include "game/RenderWare.h"
@@ -363,6 +365,10 @@ public:
     eModelInfoType GetModelType();
     uint           GetAnimFileIndex();
 
+    // A resource owns both replacement geometry and explicit LOD policy.
+    bool HasScriptLODDistance() const { return MapContains(ms_ModelDefaultLodDistanceMap, m_dwModelID); }
+    bool HasVegetationLODOverride() const { return m_pCustomClump || MapContains(ms_ModelDefaultLodDistanceMap, m_dwModelID); }
+
     bool IsPlayerModel();
 
     bool IsBoat();
@@ -493,13 +499,15 @@ public:
     bool IsDynamic() { return m_pInterface ? m_pInterface->usDynamicIndex != MODEL_PROPERTIES_GROUP_STATIC : false; };
     bool IsDamageableAtomic() override;
 
-    static bool IsVehicleModel(std::uint32_t model) noexcept;
-    static void SetExtendedLodPreference(bool bEnabled, float fDistance);
-    static void ReapplyExtendedLodPreference();
+    static bool  IsVehicleModel(std::uint32_t model) noexcept;
+    static void  SetExtendedLodPreference(bool bEnabled, float fDistance, WorldRenderPolicy::Mode mode, const Project2DFXDrawDistance::Settings& settings);
+    static float GetProject2DFXNormalDrawDistance();
+    static void  ReapplyExtendedLodPreference();
 
 private:
     static void ApplyExtendedLodPreference();
     static void RestoreExtendedLodPreference();
+    void        RefreshExtendedModelDistance();
     void        CopyStreamingInfoFromModel(ushort usCopyFromModelID);
     void        RwSetSupportedUpgrades(RwFrame* parent, DWORD dwModel);
     void        SetModelSpecialType(eModelSpecialType eType, bool bState);

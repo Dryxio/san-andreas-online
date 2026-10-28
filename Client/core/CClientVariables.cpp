@@ -287,6 +287,17 @@ void CClientVariables::ValidateValues()
     ClampValue("distant_lights_draw_distance", 300, 5000);
     ClampValue("distant_lights_corona_radius_multiplier", 0.1f, 1.0f);
     ClampValue("extended_draw_distance_enabled", false, true);
+    ClampValue("extended_draw_distance_legacy", false, true);
+    ClampValue("extended_draw_distance_mode", 0, 2);
+    ClampValue("extended_draw_distance_p2_percent", 25, 200);
+    ClampValue("extended_draw_distance_p2_multiplier", 0.1f, 10.0f);
+    ClampValue("extended_draw_distance_p2_ceiling", 0.0f, 5000.0f);
+    ClampValue("extended_draw_distance_p2_sun_size", 0.0f, 100.0f);
+    for (const char* key : {"extended_draw_distance_p2_lod", "extended_draw_distance_p2_vegetation", "extended_draw_distance_p2_generic",
+                            "extended_draw_distance_p2_normal", "extended_draw_distance_p2_timed"})
+        ClampValue(key, 0.0f, 5000.0f);
+    ClampValue("vegetation_lod", false, true);
+    ClampValue("vegetation_lod_distance", 0.0f, 2000.0f);
     ClampValue("extended_draw_distance", 300, 5000);
     ClampValue("borderless_gamma_enabled", false, true);
     ClampValue("borderless_brightness_enabled", false, true);
@@ -387,15 +398,29 @@ void CClientVariables::LoadDefaults()
     DEFAULT("distant_lights_enabled", 0);                       // Disable Neon Project2DFX distant lights
     DEFAULT("distant_lights_draw_distance", 2000);              // Project2DFX distant light range in world units
     DEFAULT("distant_lights_corona_radius_multiplier", 0.25f);  // Less bloated distant coronas; Project2DFX master uses 0.5
-    DEFAULT("extended_draw_distance_enabled", 0);               // Keep vanilla far clip and model LOD distances
-    DEFAULT("extended_draw_distance", 2000);                    // Extended far clip and stock-world model LOD range
-    DEFAULT("dynamic_ped_shadows", 0);                          // Disable dynamic ped shadows
-    DEFAULT("fast_clothes_loading", 1);                         // 0-off 1-auto 2-on
-    DEFAULT("allow_screen_upload", 1);                          // 0-off 1-on
-    DEFAULT("allow_external_sounds", 1);                        // 0-off 1-on
-    DEFAULT("max_clientscript_log_kb", 5000);                   // Max size in KB (0-No limit)
-    DEFAULT("display_fullscreen_style", 0);                     // 0-standard 1-borderless 2-borderless keep res 3-borderless stretch
-    DEFAULT("display_windowed", 0);                             // 0-off 1-on
+    DEFAULT("extended_draw_distance_legacy", 0);                // Opt-in pre-HD-extension compatibility behavior
+    DEFAULT("extended_draw_distance_mode", CVARS_GET_VALUE<bool>("extended_draw_distance_legacy") ? 2 : 0);
+    DEFAULT("extended_draw_distance_p2_percent", 100);      // Independent scale; existing advanced preferences remain the baseline
+    DEFAULT("extended_draw_distance_p2_multiplier", 2.0f);  // Fixed weather far-clip multiplier; no FPS controller
+    DEFAULT("extended_draw_distance_p2_lod", 1300.0f);
+    DEFAULT("extended_draw_distance_p2_vegetation", 800.0f);
+    DEFAULT("extended_draw_distance_p2_generic", 300.0f);
+    DEFAULT("extended_draw_distance_p2_normal", 0.0f);
+    DEFAULT("extended_draw_distance_p2_timed", 0.0f);
+    DEFAULT("extended_draw_distance_p2_ceiling", 0.0f);
+    DEFAULT("extended_draw_distance_p2_sun_size", 20.0f);
+    DEFAULT("extended_draw_distance_p2_preload", true);
+    DEFAULT("vegetation_lod_distance", 0.0f);      // Zero retains the asset pack ranges
+    DEFAULT("vegetation_lod", 0);                  // Independent distant vegetation geometry
+    DEFAULT("extended_draw_distance_enabled", 0);  // Keep vanilla far clip and model LOD distances
+    DEFAULT("extended_draw_distance", 2000);       // Extended far clip and stock-world model LOD range
+    DEFAULT("dynamic_ped_shadows", 0);             // Disable dynamic ped shadows
+    DEFAULT("fast_clothes_loading", 1);            // 0-off 1-auto 2-on
+    DEFAULT("allow_screen_upload", 1);             // 0-off 1-on
+    DEFAULT("allow_external_sounds", 1);           // 0-off 1-on
+    DEFAULT("max_clientscript_log_kb", 5000);      // Max size in KB (0-No limit)
+    DEFAULT("display_fullscreen_style", 0);        // 0-standard 1-borderless 2-borderless keep res 3-borderless stretch
+    DEFAULT("display_windowed", 0);                // 0-off 1-on
     // Opt-in, per-profile window layout; changes take effect on client restart.
     DEFAULT("display_windowed_width", 0);  // 0 uses the normal video mode list
     DEFAULT("display_windowed_height", 0);
