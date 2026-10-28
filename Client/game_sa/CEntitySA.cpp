@@ -189,7 +189,12 @@ void CEntitySA::ProcessControl()
 
 void CEntitySA::SetupLighting()
 {
-    m_pInterface->SetupLighting();
+    // This SDK helper is called by object transforms/creation outside rendering.
+    // Native SetupLighting changes the shared RenderWare lights and ambient state.
+    // Keep its computed entity lighting, but never leak its temporary render state
+    // into the next entity (notably traffic lights and vehicle headlights).
+    const bool removeLighting = m_pInterface->SetupLighting();
+    m_pInterface->RemoveLighting(removeLighting);
 }
 
 // Remove this function?
