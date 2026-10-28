@@ -13,9 +13,13 @@ local function copyOptions(options)
         return false, "cible de rattrapage invalide"
     end
 
+    if options.distanceOrigin~=nil and not isElement(options.distanceOrigin) then
+        return false,"origine de rattrapage invalide"
+    end
     local pivotDistance = math.max(1, tonumber(options.pivotDistance) or 20)
     return {
         target = target,
+        distanceOrigin = options.distanceOrigin,
         distanceMode = options.distanceMode == "2d" and "2d" or "3d",
         pivotDistance = pivotDistance,
         -- Some SCM scripts compare against an integer threshold while their

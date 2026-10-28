@@ -23,6 +23,7 @@ local function cleanup(playback, forget)
         releaseElementStreamingLease(playback.lease)
         playback.lease = nil
     end
+    if playback.originLease then releaseElementStreamingLease(playback.originLease) playback.originLease=nil end
     if playback.targetLease then
         releaseElementStreamingLease(playback.targetLease)
         playback.targetLease = nil
@@ -42,7 +43,7 @@ local function playbackSpeed(playback)
     if not isElement(options.target) then
         return math.max(options.minimumSpeed, math.min(options.maximumSpeed, options.pivotSpeed))
     end
-    local x, y, z = getElementPosition(playback.vehicle)
+    local x, y, z = getElementPosition(options.distanceOrigin or playback.vehicle)
     local tx, ty, tz = getElementPosition(options.target)
     local distance = options.distanceMode == "2d" and getDistanceBetweenPoints2D(x, y, tx, ty) or
                          getDistanceBetweenPoints3D(x, y, z, tx, ty, tz)
@@ -68,6 +69,14 @@ local function begin(playback)
         type(stopVehiclePlayback) ~= "function" or type(isVehiclePlaybackActive) ~= "function" or
         type(acquireElementStreamingLease) ~= "function" then
         return fail(playback, "API Neon de playback enregistre absente")
+    end
+    if playback.options.distanceOrigin then
+        if not isElement(playback.options.distanceOrigin) then return fail(playback,"origine de rattrapage disparue") end
+        if not playback.originLease then
+            playback.originLease=acquireElementStreamingLease(playback.options.distanceOrigin)
+            if not playback.originLease then return fail(playback,"lease origine refusee") end
+        end
+        if not isElementStreamedIn(playback.options.distanceOrigin) then return end
     end
     if not playback.lease then
         playback.lease = acquireElementStreamingLease(playback.vehicle)
@@ -131,6 +140,10 @@ local function begin(playback)
         end
         if getTickCount() - playback.startedAt > playback.options.playbackTimeout then
             return fail(playback, "playback encore actif apres timeout")
+        end
+        if playback.options.distanceOrigin and (not isElement(playback.options.distanceOrigin) or
+            not isElementStreamedIn(playback.options.distanceOrigin)) then
+            return fail(playback,"origine de rattrapage disparue ou de-stream")
         end
         local currentSpeed, currentDistance = playbackSpeed(playback)
         if not setVehiclePlaybackSpeed(playback.vehicle, currentSpeed) then

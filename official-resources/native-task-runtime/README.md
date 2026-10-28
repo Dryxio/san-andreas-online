@@ -56,6 +56,12 @@ recording and receive the ordinary synchronized vehicle result.
   parameters describe a reusable catch-up profile. `closeThreshold` selects
   the comparison branch while `pivotDistance` remains the interpolation
   divisor, matching SCM scripts which use an integer gate around a float pivot.
+  Optional `distanceOrigin` is a ped, player, vehicle or object used instead of
+  the playback vehicle when measuring distance to `target`. This lets several
+  obstacle recordings share the chased actor's catch-up speed, as in SMOKE1.
+  The owner holds a streaming lease for that origin; losing it fails playback
+  instead of silently switching to a different distance reference. Omitting
+  the option preserves the vehicle-to-target behavior.
 - `cancelNativeRecordedVehiclePlayback(playback)` releases its native slot and
   streaming leases.
 - `getNativeRecordedVehiclePlaybackState(playback)` returns its server state.
