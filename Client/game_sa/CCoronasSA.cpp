@@ -12,6 +12,8 @@
 #include "StdInc.h"
 #include "CCoronasSA.h"
 #include "CDistantLightsSA.h"
+#include <DistantLightCandidateCache.h>
+#include <DistantLightSpriteBounds.h>
 #include "HookSystem.h"
 #include "CDistantLightNativeTransitionsSA.h"
 #include "CColModelSA.h"
@@ -362,6 +364,8 @@ namespace
                                   static_cast<DWORD>(definitionCount), namedModels, unresolvedModels, searchlights));
         return !modelDefinitions.empty() || !additionalDefinitions.empty();
     }
+
+    DistantLights::CandidateCache g_DistantLightCandidateCache;
 
     void ClearActiveDistantLights()
     {
@@ -753,6 +757,7 @@ CCoronasSA::~CCoronasSA()
     // before deleting them so reconnecting cannot retain dangling wrappers.
     ClearActiveDistantLights();
     g_DistantLights.clear();
+    g_DistantLightCandidateCache.Clear();
     g_DistantLightCandidates.clear();
     g_DistantLightRenderQueue.clear();
     g_DistantLightSourceInstances.clear();
@@ -974,6 +979,7 @@ void CCoronasSA::RebuildDistantLights()
     // Derived lights and DAT definitions must be replaced, otherwise edits and
     // removed definitions survive rebuilds. IPL placements outlive streaming.
     g_DistantLights.clear();
+    g_DistantLightCandidateCache.Clear();
     g_DistantLightKeys.clear();
     g_DistantLightDefinitions.clear();
     g_AdditionalDistantLightDefinitions.clear();
@@ -1053,7 +1059,17 @@ void CCoronasSA::DoPulseDistantLights()
     candidates.reserve(std::min<std::size_t>(g_DistantLights.size(), MAX_DISTANT_LIGHT_CORONAS));
     auto*      removals = static_cast<CBuildingRemovalSA*>(pGame->GetBuildingRemoval());
     const auto removalRevision = removals->GetRemovalRevision();
-    for (std::size_t i = 0; i < g_DistantLights.size(); ++i)
+    // Query a conservative local subset instead of evaluating lights across
+    // all three cities each frame. Searchlight reach remains independent of
+    // the corona range, and a rebuild invalidates indices even at equal size.
+    const auto& nearby = g_DistantLightCandidateCache.Select({cameraPosition.fX, cameraPosition.fY, cameraPosition.fZ},
+                                                             std::max(farDistance, g_bDistantLightSearchlightsEnabled ? 300.0f : 0.0f), g_DistantLights.size(),
+                                                             [](std::size_t i)
+                                                             {
+                                                                 const auto& p = g_DistantLights[i].position;
+                                                                 return std::array<float, 3>{p.fX, p.fY, p.fZ};
+                                                             });
+    for (std::size_t i : nearby)
     {
         SDistantLight& light = g_DistantLights[i];
         // Refresh only when the registry changes, avoiding thousands of spatial
@@ -1202,8 +1218,11 @@ void CCoronasSA::RenderDistantLights()
     renderStateSet(RW_RENDER_STATE_DESTINATION_BLEND, RwStateValue(RW_BLEND_ONE));
     renderStateSet(RW_RENDER_STATE_Z_TEST_ENABLE, RwStateValue(TRUE));
 
-    const float     screenWidth = static_cast<float>(camera->bufferColor->width);
-    const float     screenHeight = static_cast<float>(camera->bufferColor->height);
+    const float screenWidth = static_cast<float>(camera->bufferColor->width);
+    const float screenHeight = static_cast<float>(camera->bufferColor->height);
+    // CSprite clips against RsGlobal, which can differ from the active raster.
+    const float     clipWidth = static_cast<float>(*reinterpret_cast<const int*>(0xC17044));
+    const float     clipHeight = static_cast<float>(*reinterpret_cast<const int*>(0xC17048));
     const float     fogginess = *reinterpret_cast<const float*>(VAR_WEATHER_FOGGINESS);
     const RwMatrix& viewMatrix = camera->matrix;
     // Project2DFX registers DAT lights as HEADLIGHT coronas. GTA's stock slots
@@ -1230,6 +1249,13 @@ void CCoronasSA::RenderDistantLights()
         if (renderHeight < 0.35f)
             continue;
 
+        const float colorFogMultiplier = std::min(40.0f, viewZ) * fogginess * 0.025f + 1.0f;
+        // The native entry point computes sin/cos before testing its corners.
+        // All our sprites use angle zero; reject identical off-screen bounds
+        // before that call and before any texture switch can flush the batch.
+        if (DistantLights::SpriteOutsideScreen(screenX, screenY, renderHeight, renderHeight * colorFogMultiplier, clipWidth, clipHeight))
+            continue;
+
         const float halfRange = light.range * 0.5f;
         const float rangeFade = viewZ > halfRange ? 1.0f - (viewZ - halfRange) / halfRange : 1.0f;
         const short intensity = static_cast<short>(light.alpha * std::clamp(rangeFade, 0.0f, 1.0f));
@@ -1247,7 +1273,6 @@ void CCoronasSA::RenderDistantLights()
             renderStateSet(RW_RENDER_STATE_TEXTURE_RASTER, raster);
         }
 
-        const float colorFogMultiplier = std::min(40.0f, viewZ) * fogginess * 0.025f + 1.0f;
         renderBufferedSprite(screenX, screenY, viewZ, renderHeight, renderHeight * colorFogMultiplier,
                              static_cast<BYTE>(static_cast<float>(light.red) / colorFogMultiplier),
                              static_cast<BYTE>(static_cast<float>(light.green) / colorFogMultiplier),
