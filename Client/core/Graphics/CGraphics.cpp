@@ -1866,6 +1866,14 @@ bool CGraphics::HasPrimitive3DPostFXQueueItems()
 
 void CGraphics::DrawQueue(std::vector<sDrawQueueItem>& Queue)
 {
+    // Screen-space tiles/primitives use a perspective projection. GTA may leave
+    // fixed-function fog enabled, tinting clamped textures, SVGs and RTs with
+    // the sky colour. Isolate this queue without changing world/3D fog.
+    DWORD      dwPreviousFogEnable = FALSE;
+    const bool bRestoreFog = !Queue.empty() && SUCCEEDED(m_pDevice->GetRenderState(D3DRS_FOGENABLE, &dwPreviousFogEnable));
+    if (bRestoreFog)
+        m_pDevice->SetRenderState(D3DRS_FOGENABLE, FALSE);
+
     BeginDrawBatch();
     // Items to draw?
     if (Queue.size() > 0)
@@ -1881,7 +1889,10 @@ void CGraphics::DrawQueue(std::vector<sDrawQueueItem>& Queue)
         // Clear the list
         Queue.clear();
     }
+    // Flush every queued batch before restoring the incoming fog state.
     EndDrawBatch();
+    if (bRestoreFog)
+        m_pDevice->SetRenderState(D3DRS_FOGENABLE, dwPreviousFogEnable);
 }
 
 void CGraphics::AddQueueItem(const sDrawQueueItem& Item, bool bPostGUI)
