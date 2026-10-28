@@ -2,6 +2,7 @@
     <info author="MTA Neon" name="Story world runtime" type="script" version="0.3.0" />
 
     <script src="server.lua" type="server" />
+    <script src="scm_ped_client.lua" type="client" cache="false" />
     <script src="client.lua" type="client" cache="false" />
 
     <export function="createStoryScmVehicle" type="server" />

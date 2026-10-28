@@ -1,3 +1,4 @@
+local scmPeds = {}
 local placements = {}
 local placementsById = {}
 local teardowns = {}
@@ -206,6 +207,13 @@ function createStoryScmPed(model, x, y, scriptZ, heading, dimension)
     local ped = createPed(model, x, y, scriptZ + 1.0, heading)
     if not ped then return false, "ped creation failed" end
     setElementDimension(ped, dimension)
+    -- Persistent synchronized metadata reaches late joiners as well as current
+    -- owners. Clients cannot change this CREATE_CHAR classification policy.
+    if not setElementData(ped, "storyWorldRuntime:scmPed", true, "broadcast", "deny") then
+        destroyElement(ped)
+        return false, "SCM mission actor policy replication failed"
+    end
+    scmPeds[ped] = callerRoot()
     return ped
 end
 
@@ -1683,6 +1691,7 @@ addEventHandler("onPlayerQuit", root, function()
 end)
 
 addEventHandler("onElementDestroy", root, function()
+    scmPeds[source] = nil
     local relocation = vehicleRelocations[source]
     if relocation then
         if relocation.state ~= "ready" and relocation.state ~= "failed" then
@@ -1746,6 +1755,16 @@ addEventHandler("onResourceStop", root, function(stoppedResource)
         -- and will disappear after Lua stop handlers finish. Notify consumers
         -- while their own VMs and cleanup paths are still alive.
         triggerEvent("onStoryWorldRuntimeStopping", resourceRoot)
+    end
+    -- Export-created peds belong physically to this runtime, so explicitly
+    -- retire them when their calling mission stops as well.
+    local ownedPeds = {}
+    for ped, caller in pairs(scmPeds) do
+        if runtimeStopping or caller == stoppedRoot then ownedPeds[#ownedPeds + 1] = ped end
+    end
+    for _, ped in ipairs(ownedPeds) do
+        scmPeds[ped] = nil
+        if isElement(ped) then destroyElement(ped) end
     end
     local ownedPlacements, ownedTeardowns, ownedOccupancies, ownedPlayerModelLeases, ownedFileCutscenes,
         ownedRelocations = {}, {}, {}, {}, {}, {}

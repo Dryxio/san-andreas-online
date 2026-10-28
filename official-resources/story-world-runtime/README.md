@@ -7,7 +7,18 @@ SCM-authored mission worlds in synchronized MTA resources.
   base-to-centre Z conversion on the authoritative syncer and requires three
   stable client samples before reporting `ready`.
 - `createStoryScmPed` applies `CREATE_CHAR`'s verified `script Z + 1.0`
-  conversion.
+  conversion and classifies the NPC as a mission actor on every client. The
+  synchronized server-owned policy also reaches late joiners and is reapplied
+  on streaming; it does not depend on which client currently owns the NPC.
+  The existing native API preserves the classification across model recreation.
+  This excludes story actors from GTA's ambient player-area-clearing routine,
+  which otherwise can inject a scripted flee after vehicle entry. It does not
+  implement a mission's custom decision maker or group behavior.
+  The export returns the server ped immediately; client classification follows
+  element replication. Before dispatching native tasks, consumers can check
+  `isPedMissionActor` on the relevant clients. Destroying the ped, stopping its
+  calling resource or stopping this runtime retires the actor. Ordinary
+  `createPed` elements remain unaffected.
 - `createStoryPlayerModelLease` temporarily applies one cutscene-safe player
   model to a participant set and snapshots every original model independently.
   Explicit release, player destruction, caller shutdown and a standalone
@@ -184,3 +195,12 @@ the handle's `released` event, fail it on `failed`, call
 `skipStoryFileCutscene` for an administrative/headless skip, and then release
 the terminal handle. The mission no longer needs client cutscene tokens,
 per-client acknowledgement tables, or camera cleanup code.
+
+### SCM ped regression checks
+
+Run `lua official-resources/story-world-runtime/tests/scm_ped.lua` from the repository
+root. The stubs exercise protected metadata publication, failed publication,
+caller isolation and cleanup, live creation, late joining, stream-in, observer
+classification and restoration. These checks do not simulate native GTA AI.
+OG Loc's earlier local classification fix was confirmed in game by the user;
+the shared adapter still requires a fresh gameplay check after deployment.
