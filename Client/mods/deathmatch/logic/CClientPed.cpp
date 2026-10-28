@@ -6984,6 +6984,22 @@ bool CClientPed::HasNativeCollisionSupport()
     if (!m_pPlayerPed)
         return false;
 
+    // Extraction/exit legitimately separates the network seat from GTA's
+    // physical attachment before feet reach the ground. The caller still
+    // requires loaded collision residency. Do not freeze the native sequence
+    // or clear its queued response during this narrowly identified transition.
+    if (IsGettingJacked() || IsLeavingVehicle())
+        return true;
+    CTask* task = GetCurrentPrimaryTask();
+    for (unsigned depth = 0; task && depth < 64; ++depth, task = task->GetSubTask())
+    {
+        if (task->GetTaskType() == TASK_COMPLEX_CAR_QUICK_BE_DRAGGED_OUT || task->GetTaskType() == TASK_COMPLEX_CAR_SLOW_BE_DRAGGED_OUT_AND_STAND_UP ||
+            task->GetTaskType() == TASK_SIMPLE_BIKE_JACKED)
+            return true;
+        if (task->GetSubTask() == task)
+            break;
+    }
+
     CClientVehicle* occupiedVehicle = GetOccupiedVehicle();
     CVehicle*       nativeVehicle = m_pPlayerPed->GetVehicle();
     if (!occupiedVehicle && !nativeVehicle)

@@ -17,8 +17,21 @@
 #include "enums/PedMoveState.h"
 
 // To avoid VS intellisense highlight errors
+#include <array>
 #include <memory>
 #include <vector>
+
+class CPed;
+class CVehicle;
+// A bounded, portable description of remaining native vehicle reactions.
+// Native task pointers and animation state never cross a synchronizer boundary.
+struct SPedNativeVehicleTask
+{
+    int                   type{};
+    CPed*                 target{};
+    CVehicle*             vehicle{};
+    std::array<double, 8> values{};
+};
 
 class CPedIK;
 class CPedIKSAInterface;
@@ -384,4 +397,8 @@ public:
     // stable public bridge without moving those virtuals in the ABI.
     bool GetScriptStayInSamePlace() const { return GetStayInSamePlace(); }
     void SetScriptStayInSamePlace(bool stay) { SetStayInSamePlace(stay); }
+    // Semantic vehicle-event state only; native task/event pointers never
+    // cross the network or survive an ownership generation.
+    virtual bool GetNativeVehicleResponse(std::vector<SPedNativeVehicleTask>& tasks) const = 0;
+    virtual bool RestoreNativeVehicleResponse(const std::vector<SPedNativeVehicleTask>& tasks) = 0;
 };

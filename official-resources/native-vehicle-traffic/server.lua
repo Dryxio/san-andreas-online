@@ -56,7 +56,7 @@ local INITIAL_ASSIGNMENT_DELAY = 350
 -- can land and align it before the owner reveals it; otherwise long cars can
 -- begin embedded in steep roads and remain permanently wedged.
 local INITIAL_PLACEMENT_LIFT = 0.9
-local REVEAL_PROBE_TIMEOUT = 1000
+local REVEAL_PROBE_TIMEOUT = 3000
 local PRODUCTION_MAX_CANDIDATES_PER_BUBBLE = 4
 local PRODUCTION_ADMISSIONS_PER_TICK = 2
 local PRODUCTION_PREDICTION_MAX_LEAD = 45
@@ -129,7 +129,8 @@ for _, group in pairs(VEHICLE_GROUPS) do
 end
 for _, model in ipairs(CLASS_TEST_MODELS) do ALLOWED_MODELS[model] = true end
 local function selectVehicleModel(owner, session, mode)
-    if mode == "passengers" or mode == "interaction" or mode == "smooth" or mode == "soak" then return 401 end
+    if mode == "interaction" then return 426 end
+    if mode == "passengers" or mode == "smooth" or mode == "soak" then return 401 end
     if mode == "classes" and activeTest and activeTest.mode == "classes" then
         return CLASS_TEST_MODELS[activeTest.classIndex]
     end
@@ -549,6 +550,7 @@ local function destroyUnit(unit, reason)
     clearTimer(unit, "dispatchTimer")
     clearTimer(unit, "assignmentTimer")
     clearTimer(unit, "revealTimeoutTimer")
+    setUnitStagingVisible(unit, false)
     triggerClientEvent(root, "carTraffic:stop", resourceRoot, unit.id, unit.epoch)
     forEachOccupant(unit, function(ped)
         if isElement(ped) then destroyElement(ped) end
@@ -707,16 +709,17 @@ local function finalizePlayerTakeover(unit, player)
     clearTimer(unit, "handoffTimer")
     clearTimer(unit, "dispatchTimer")
     clearTimer(unit, "assignmentTimer")
-    triggerClientEvent(root, "carTraffic:stop", resourceRoot, unit.id, unit.epoch)
+    triggerClientEvent(root, "carTraffic:stop", resourceRoot, unit.id, unit.epoch, true)
     units[unit.id] = nil
+    local survivors = {}
     forEachOccupant(unit, function(ped)
-        if isElement(ped) then destroyElement(ped) end
+        if isElement(ped) then survivors[#survivors + 1] = ped end
     end)
     setElementSyncer(unit.vehicle, false)
     removeElementData(unit.vehicle, "neon:ambientVehicleTraffic")
     removeElementData(unit.vehicle, "neon:ambientVehicleTrafficId")
     removeElementData(unit.vehicle, "neon:ambientVehicleTrafficEpoch")
-    local takeover = {player = player, test = activeTest and activeTest.mode == "interaction" and activeTest or false}
+    local takeover = {player = player, peds = survivors, test = activeTest and activeTest.unit == unit and activeTest.mode == "interaction" and activeTest or false}
     takeoverVehicles[unit.vehicle] = takeover
     TrafficTakeoverLifecycle.retain(unit.vehicle, player)
     takeover.timer = setTimer(function(vehicle, expected)
@@ -730,7 +733,50 @@ local function finalizePlayerTakeover(unit, player)
         end
     end, 15000, 1, unit.vehicle, takeover)
     trace("takeover-ready", {id = unit.id, epoch = unit.epoch, player = getPlayerName(player)})
-    triggerClientEvent(player, takeover.test and "carTraffic:testEnterVehicle" or "carTraffic:takeoverReady", resourceRoot, unit.vehicle, 0)
+    -- The requesting player owns the victims during the paired native task.
+    -- Resume the original entry only after its streaming/profile ACK, so GTA
+    -- sees real occupants and MTA can run its existing jack confirmation lane.
+    TrafficOccupantLifecycle.retain(unit.vehicle, survivors, player, false, function()
+        if takeoverVehicles[unit.vehicle] == takeover and isElement(player) then
+            trace("takeover-occupants-ready", {id = unit.id, epoch = unit.epoch, player = getPlayerName(player)})
+            triggerClientEvent(player, takeover.test and "carTraffic:testEnterVehicle" or "carTraffic:takeoverReady",
+                resourceRoot, unit.vehicle, unit.takeoverSeat or 0)
+        end
+    end)
+end
+
+-- End the road activity without ending any actor's lifetime. Native seat
+-- changes and deaths are normal outcomes, not a reason to delete survivors.
+local function retainIncidentOccupants(unit, owner, destroying)
+    unit.removing = true
+    for _, name in ipairs({"monitorTimer", "handoffTimer", "dispatchTimer", "assignmentTimer", "revealTimeoutTimer"}) do
+        clearTimer(unit, name)
+    end
+    triggerClientEvent(root, "carTraffic:stop", resourceRoot, unit.id, unit.epoch, true)
+    units[unit.id] = nil
+    local peds = {}
+    forEachOccupant(unit, function(ped) if ped ~= destroying and isElement(ped) then peds[#peds + 1] = ped end end)
+    local vehicle = unit.vehicle ~= destroying and isElement(unit.vehicle) and unit.vehicle or false
+    if vehicle then
+        removeElementData(unit.vehicle, "neon:ambientVehicleTraffic")
+        removeElementData(unit.vehicle, "neon:ambientVehicleTrafficId")
+        removeElementData(unit.vehicle, "neon:ambientVehicleTrafficEpoch")
+        setElementSyncer(unit.vehicle, false)
+        TrafficTakeoverLifecycle.retain(unit.vehicle, false)
+        TrafficTakeoverLifecycle.expire(unit.vehicle)
+    end
+    TrafficOccupantLifecycle.retain(vehicle, peds, owner,
+        not vehicle or isVehicleBlown(vehicle) or unit.ped == destroying or not isElement(unit.ped) or isPedDead(unit.ped))
+    trace("occupants-retained", {id = unit.id, count = #peds})
+end
+
+local function hasOccupantTransition(unit)
+    if not isElement(unit.vehicle) or not isElement(unit.ped) or isPedDead(unit.ped) or isVehicleBlown(unit.vehicle)
+        or getPedOccupiedVehicle(unit.ped) ~= unit.vehicle or getPedOccupiedVehicleSeat(unit.ped) ~= 0 then return true end
+    for _, p in ipairs(unit.passengers or {}) do
+        if not isElement(p.ped) or isPedDead(p.ped) or getPedOccupiedVehicle(p.ped) ~= unit.vehicle or getPedOccupiedVehicleSeat(p.ped) ~= p.seat then return true end
+    end
+    return false
 end
 
 local function assign(unit, owner, reason)
@@ -788,7 +834,8 @@ local function assign(unit, owner, reason)
                 if participant == owner or distanceToUnit(participant, unit) <= RESIDENCY_DISTANCE then
                     unit.participants[participant] = true
                     unit.attached[participant] = true
-                    triggerClientEvent(participant, "carTraffic:observe", resourceRoot, unit.id, unit.epoch, unit.ped, unit.vehicle, passengers)
+                    triggerClientEvent(participant, "carTraffic:observe", resourceRoot, unit.id, unit.epoch, unit.ped, unit.vehicle, passengers,
+                        unit.stagedHidden == true)
                 end
             end
             -- Commit the synchronized pose before GTA consumes the script
@@ -864,7 +911,10 @@ local function startMonitor(unit)
     clearTimer(unit, "monitorTimer")
     unit.monitorTimer = setTimer(function()
         if units[unit.id] ~= unit or unit.state ~= "active" then return end
-        if not isElement(unit.ped) or not isElement(unit.vehicle) then return fail(unit, "element-missing") end
+        if not isElement(unit.ped) or not isElement(unit.vehicle) then return retainIncidentOccupants(unit, unit.owner) end
+        if (not activeTest or activeTest.unit ~= unit) and hasOccupantTransition(unit) then
+            return retainIncidentOccupants(unit, unit.owner)
+        end
         if isVehicleBlown(unit.vehicle) or isPedDead(unit.ped) then
             if activeTest and activeTest.unit == unit and (activeTest.mode == "lifecycle" or
                 (activeTest.mode == "soak" and activeTest.scenario == "lifecycle")) and unit.expectDestruction then
@@ -1151,9 +1201,13 @@ local function createUnit(candidate, owner, observers, mode)
     end
 
     local spawnZ = candidate.z + INITIAL_PLACEMENT_LIFT
-    local vehicle = createVehicle(candidate.model, candidate.x, candidate.y, spawnZ, 0, 0, candidate.rotation)
+    -- Creation has no initial-alpha argument. Construct the atomic unit below
+    -- the world first, hide/freeze it, then move it to the road so a creation
+    -- packet can never expose an unprepared vehicle at the candidate point.
+    local stagingX, stagingY, stagingZ = 0, 0, -1000
+    local vehicle = createVehicle(candidate.model, stagingX, stagingY, stagingZ, 0, 0, candidate.rotation)
     local driverModel = tonumber(candidate.occupantModels and candidate.occupantModels[1])
-    local ped = vehicle and createPed(driverModel, candidate.x, candidate.y, spawnZ + 1.0, candidate.rotation) or nil
+    local ped = vehicle and createPed(driverModel, stagingX, stagingY, stagingZ + 1.0, candidate.rotation) or nil
     if not isElement(vehicle) or not isElement(ped) then
         if isElement(vehicle) then destroyElement(vehicle) end
         if isElement(ped) then destroyElement(ped) end
@@ -1172,6 +1226,10 @@ local function createUnit(candidate, owner, observers, mode)
     if tonumber(candidate.vehicleClass) == 0 and maximumPassengers > 0 then
         if mode == "passengers" or (mode == "soak" and activeTest and activeTest.scenario == "passengers") then
             requestedSeats[1] = 1
+        elseif mode == "interaction" and maximumPassengers >= 2 then
+            -- Leave the front passenger seat available for the human ride
+            -- while retaining a real passenger through the later carjacking.
+            requestedSeats[1] = 2
         elseif (mode == "production" or mode == "density") and not population.demo then
             -- Retail performs one independent 1/8 trial for every available
             -- passenger seat. A deterministic Park-Miller sequence seeded by the
@@ -1202,7 +1260,7 @@ local function createUnit(candidate, owner, observers, mode)
     end
     for _, seat in ipairs(requestedSeats) do
         local passengerModel = tonumber(candidate.occupantModels[math.min(#candidate.occupantModels, #passengers + 2)])
-        local passengerPed = createPed(passengerModel, candidate.x, candidate.y, spawnZ + 1.0, candidate.rotation)
+        local passengerPed = createPed(passengerModel, stagingX, stagingY, stagingZ + 1.0, candidate.rotation)
         if isElement(passengerPed) then warpPedIntoVehicle(passengerPed, vehicle, seat) end
         if not isElement(passengerPed) or getPedOccupiedVehicle(passengerPed) ~= vehicle or getPedOccupiedVehicleSeat(passengerPed) ~= seat then
             if isElement(passengerPed) then destroyElement(passengerPed) end
@@ -1244,6 +1302,8 @@ local function createUnit(candidate, owner, observers, mode)
     -- native driving task. Keep the complete atomic unit invisible until the
     -- owner proves that DriveWander and the initial road velocity are active.
     setUnitStagingVisible(unit, false)
+    setElementPosition(vehicle, candidate.x, candidate.y, spawnZ)
+    setElementRotation(vehicle, 0, 0, candidate.rotation)
     -- Vehicle occupants are governed by the car task and seat attachment, not
     -- by the on-foot native-ped collision-residency fence. Marking the driver
     -- as ambientPedTraffic would make that fence compare its seated root to
@@ -1489,6 +1549,10 @@ local function completeUnitActivation(unit, data)
         readyLatencyByPlayer[unit.anchorPlayer] = previous and previous * 0.8 + readyLatency * 0.2 or readyLatency
     end
     if unit.stagedHidden then setUnitStagingVisible(unit, true) end
+    for participant in pairs(unit.revealCommitParticipants or {}) do
+        if isElement(participant) then triggerClientEvent(participant, "carTraffic:revealCommit", resourceRoot, unit.id, unit.epoch) end
+    end
+    unit.revealCommitParticipants = nil
     if unit.handoffMetrics then
         local x, y, z = getElementPosition(unit.vehicle)
         local _, _, rz = getElementRotation(unit.vehicle)
@@ -1538,17 +1602,27 @@ local function beginUnitReveal(unit, data)
 end
 
 addEvent("carTraffic:revealVisibility", true)
-addEventHandler("carTraffic:revealVisibility", resourceRoot, function(id, epoch, veto, visible, distance)
+addEventHandler("carTraffic:revealVisibility", resourceRoot, function(id, epoch, veto, visible, distance, streamed, modelsReady, hidden, modelReason)
     local unit = units[tonumber(id)]
     if not unit or tonumber(epoch) ~= unit.epoch or unit.state ~= "revealing" or not unit.revealExpected[client] or
         unit.revealResponses[client] then
         return
     end
     unit.revealResponses[client] = true
+    local allowedModelReasons = {
+        ["model-streaming-api-missing"] = true, ["model-request-refused"] = true,
+        ["model-not-loaded"] = true, ["model-set-empty"] = true,
+    }
+    modelReason = allowedModelReasons[modelReason] and modelReason or "state"
     if veto == true then
         trace("reveal-veto", {id = unit.id, epoch = unit.epoch, player = getPlayerName(client), visible = visible == true,
             distance = tonumber(distance)})
         return fail(unit, "reveal-visible-too-close")
+    end
+    if streamed ~= true or modelsReady ~= true or hidden ~= true then
+        trace("reveal-unprepared", {id = unit.id, epoch = unit.epoch, player = getPlayerName(client), streamed = streamed == true,
+            modelsReady = modelsReady == true, hidden = hidden == true, modelReason = tostring(modelReason)})
+        return fail(unit, "reveal-client-unprepared:" .. tostring(modelReason or "state"))
     end
     for participant in pairs(unit.revealExpected) do
         if not unit.revealResponses[participant] then return end
@@ -1556,6 +1630,7 @@ addEventHandler("carTraffic:revealVisibility", resourceRoot, function(id, epoch,
     clearTimer(unit, "revealTimeoutTimer")
     local data = unit.pendingAcceptedData or {}
     unit.pendingAcceptedData = nil
+    unit.revealCommitParticipants = unit.revealExpected
     unit.revealExpected = nil
     unit.revealResponses = nil
     completeUnitActivation(unit, data)
@@ -1599,10 +1674,14 @@ local function receiveEvidence(id, epoch, evidence, data)
         return completeUnitActivation(unit, data)
     end
     if evidence == "owner-sample" and client == unit.owner and unit.state == "active" then
+        if (not activeTest or activeTest.unit ~= unit) and hasOccupantTransition(unit) then return retainIncidentOccupants(unit, unit.owner) end
         local pedVehicleDelta = tonumber(data.pedVehicleDelta)
         local seq = tonumber(data.seq)
         if not seq or seq % 1 ~= 0 or seq <= unit.ownerLastSeq then return fail(unit, "owner-sequence-invalid") end
         if data.task ~= true or data.pedSyncer ~= true or data.vehicleSyncer ~= true or tonumber(data.seat) ~= 0 or not pedVehicleDelta or pedVehicleDelta > 5 then
+            if not activeTest or activeTest.unit ~= unit then return retainIncidentOccupants(unit, unit.owner) end
+            trace("owner-state-invalid", {id = unit.id, task = data.task, pedSyncer = data.pedSyncer,
+                vehicleSyncer = data.vehicleSyncer, seat = data.seat, pedVehicleDelta = pedVehicleDelta})
             return fail(unit, "owner-native-state-lost")
         end
         if type(data.passengers) ~= "table" or #data.passengers ~= #(unit.passengers or {}) then return fail(unit, "owner-passenger-evidence-invalid") end
@@ -1610,7 +1689,8 @@ local function receiveEvidence(id, epoch, evidence, data)
             local sample = data.passengers[index]
             if type(sample) ~= "table" or sample.ped ~= passenger.ped or tonumber(sample.expectedSeat) ~= passenger.seat or
                 tonumber(sample.seat) ~= passenger.seat or sample.occupied ~= true or sample.syncer ~= true then
-                return fail(unit, "owner-passenger-state-lost")
+                if not activeTest or activeTest.unit ~= unit then return retainIncidentOccupants(unit, unit.owner) end
+            return fail(unit, "owner-passenger-state-lost")
             end
         end
         unit.ownerLastSeq = seq
@@ -1646,13 +1726,19 @@ local function receiveEvidence(id, epoch, evidence, data)
         return
     end
     if evidence == "observer-sample" and client ~= unit.owner and unit.state == "active" then
-        if data.pedSyncer == true or data.vehicleSyncer == true or tonumber(data.seat) ~= 0 then return fail(unit, "observer-authority-invalid") end
+        if not unit.participants[client] then return end
+        if (not activeTest or activeTest.unit ~= unit) and hasOccupantTransition(unit) then return retainIncidentOccupants(unit, unit.owner) end
+        if data.pedSyncer == true or data.vehicleSyncer == true or tonumber(data.seat) ~= 0 then
+            if not activeTest or activeTest.unit ~= unit then return end
+            return fail(unit, "observer-authority-invalid")
+        end
         if not unit.participants[client] then return end
         if type(data.passengers) ~= "table" or #data.passengers ~= #(unit.passengers or {}) then return fail(unit, "observer-passenger-evidence-invalid") end
         for index, passenger in ipairs(unit.passengers or {}) do
             local sample = data.passengers[index]
             if type(sample) ~= "table" or sample.ped ~= passenger.ped or tonumber(sample.expectedSeat) ~= passenger.seat or
                 tonumber(sample.seat) ~= passenger.seat or sample.occupied ~= true or sample.syncer == true then
+                if not activeTest or activeTest.unit ~= unit then return end
                 return fail(unit, "observer-passenger-state-lost")
             end
         end
@@ -1964,6 +2050,16 @@ local function handleTrafficCommand(player, action, mode, value)
         -- creation oracle walks only 230 m of non-repeating path links, so a
         -- cul-de-sac is a bad harness origin even though it is valid gameplay.
         for index, participant in ipairs(ps) do
+            if mode == "interaction" then
+                -- This fixture also runs without a gamemode. A merely
+                -- connected player is frozen until spawned: enter tasks
+                -- then accept the request but cannot walk to the door.
+                if not spawnPlayer(participant, 1540 + index * 2, -1675, 13.55, 90, 0) then
+                    return trace("test-refused", {reason = "interaction-spawn-failed"})
+                end
+                setElementFrozen(participant, false)
+                fadeCamera(participant, true)
+            end
             setElementInterior(participant, 0)
             setElementDimension(participant, 0)
             if mode == "spatial" and index == 2 then
@@ -2033,6 +2129,7 @@ local function handleTrafficCommand(player, action, mode, value)
         if activeTest and isTimer(activeTest.watchdogTimer) then killTimer(activeTest.watchdogTimer) end
         activeTest = false
         destroyUnitsWhere("command-cleanup")
+        TrafficOccupantLifecycle.clear()
         clearTakeovers(false, "command-cleanup")
     else
         trace("usage", {command = "cartraffic test fixture|all|smooth|ownerquit|lifecycle|density|spatial|passengers|classes|interaction|highway|soak [cycles] | cartraffic start [perBubble] [cap] | demo on|off | stop | status | cleanup"})
@@ -2211,31 +2308,33 @@ addEventHandler("carTraffic:clientReady", resourceRoot, function()
 end)
 
 addEventHandler("onVehicleStartEnter", root, function(player, seat)
+    if getElementType(player) ~= "player" then return end
     for _, unit in pairs(units) do
         if source == unit.vehicle then
-            if seat ~= 0 then
-                for index, passenger in ipairs(unit.passengers or {}) do
-                    if passenger.seat == seat then
-                        cancelEvent()
-                        table.remove(unit.passengers, index)
-                        if isElement(passenger.ped) then destroyElement(passenger.ped) end
-                        unit.pendingPassengerEntry = {player = player, seat = seat}
-                        if not beginRevoke(unit, unit.owner, "passenger-seat-release") then return fail(unit, "passenger-release-refused") end
-                        trace("passenger-seat-release", {id = unit.id, epoch = unit.epoch, seat = seat, player = getPlayerName(player)})
-                        return
-                    end
-                end
-                return
-            end
+            -- A free passenger seat does not end the driver's road activity.
+            -- Stock MTA redirects passenger requests to a free seat before
+            -- this event; its carjacking lane applies to the driver.
+            local occupant = getVehicleOccupant(source, seat)
+            -- MTA reserves a free passenger seat for the entrant before
+            -- raising this event. That reservation is not a jack victim.
+            if seat ~= 0 and (not occupant or occupant == player) then return end
             cancelEvent()
-            if unit.state ~= "active" or not beginRevoke(unit, player, "player-takeover") then return fail(unit, "takeover-revoke-refused") end
-            unit.pendingTakeover = player
+            if unit.state ~= "active" then return end
+            if beginRevoke(unit, player, "player-takeover") then
+                unit.pendingTakeover = player
+                unit.takeoverSeat = seat
+            end
             return
         end
     end
 end)
 
 addEventHandler("onVehicleEnter", root, function(player, seat)
+    -- Any player may win the race to a retained car, including one released
+    -- after an accident. Do not leave its former NPC owner's override active.
+    if seat == 0 and getElementType(player) == "player" and TrafficOccupantLifecycle.contains(source) then
+        setElementSyncer(source, true)
+    end
     for _, unit in pairs(units) do
         if source == unit.vehicle and activeTest and activeTest.unit == unit and activeTest.mode == "interaction" and
             activeTest.phase == "passenger-request" and player == activeTest.interactionPlayer and seat == 1 then
@@ -2250,21 +2349,63 @@ addEventHandler("onVehicleEnter", root, function(player, seat)
         end
     end
     local takeover = takeoverVehicles[source]
-    if not takeover or takeover.player ~= player or seat ~= 0 then return end
-    if getVehicleOccupant(source, 0) ~= player or getElementData(source, "neon:ambientVehicleTraffic") ~= false or
+    if not takeover or takeover.player ~= player then return end
+    if getVehicleOccupant(source, seat) ~= player or getElementData(source, "neon:ambientVehicleTraffic") ~= false or
         getElementData(source, "neon:ambientVehicleTrafficId") ~= false or getElementData(source, "neon:ambientVehicleTrafficEpoch") ~= false then
         if takeover.test and activeTest == takeover.test then return terminalTestFailure("takeover-postcondition-invalid") end
         return
     end
     if isTimer(takeover.timer) then killTimer(takeover.timer) end
-    TrafficTakeoverLifecycle.confirm(source)
+    if seat == 0 then
+        setElementSyncer(source, true)
+        TrafficTakeoverLifecycle.confirm(source)
+    else TrafficTakeoverLifecycle.expire(source) end
     takeoverVehicles[source] = nil
     trace("PASS-takeover", {player = getPlayerName(player), vehiclePreserved = true, occupant = true})
     if takeover.test and activeTest == takeover.test then
-        activeTest.waitForTakeoverEnter = false
-        if isElement(source) then destroyElement(source) end
-        finishTestCleanupIfReady()
+        local expected, vehicle = activeTest, source
+        setElementFrozen(vehicle, false)
+        -- Ordinary jack completion is not proof of occupant continuity. Let
+        -- both clients receive several sync frames before checking identity.
+        setTimer(function()
+            if activeTest ~= expected then return end
+            for _, ped in ipairs(takeover.peds) do
+                if not isElement(ped) then return terminalTestFailure("takeover-occupant-deleted") end
+            end
+            if not isElement(vehicle) or getVehicleOccupant(vehicle, 0) ~= player
+                or getPedOccupiedVehicle(takeover.peds[1]) == vehicle then
+                return terminalTestFailure("takeover-driver-not-extracted")
+            end
+            expected.occupantProbe = {vehicle = vehicle, peds = takeover.peds, pending = {}}
+            for _, participant in ipairs(players()) do
+                expected.occupantProbe.pending[participant] = true
+                triggerClientEvent(participant, "carTraffic:occupantProbe", resourceRoot, vehicle, takeover.peds)
+            end
+        end, 3000, 1)
     end
+end)
+
+addEvent("carTraffic:occupantProbeResult", true)
+addEventHandler("carTraffic:occupantProbeResult", resourceRoot, function(vehicle, samples)
+    local probe = activeTest and activeTest.occupantProbe
+    if source ~= resourceRoot or not probe or not probe.pending[client] or vehicle ~= probe.vehicle then return end
+    if type(samples) ~= "table" or #samples ~= #probe.peds then return terminalTestFailure("occupant-probe-invalid") end
+    local proof = {}
+    for index, ped in ipairs(probe.peds) do
+        local sample = samples[index]
+        if type(sample) ~= "table" or sample.ped ~= ped or not isElement(ped) or sample.streamed ~= true or sample.alpha ~= 255
+            or (index == 1 and sample.inOriginalVehicle ~= false) then
+            return terminalTestFailure("occupant-observer-postcondition")
+        end
+        proof[index] = {streamed = sample.streamed, alpha = sample.alpha, inOriginalVehicle = sample.inOriginalVehicle,
+            primary = sample.primary, response = sample.response, temporary = sample.temporary}
+    end
+    trace("occupant-client-proof", {client = getPlayerName(client), samples = proof})
+    probe.pending[client] = nil
+    if next(probe.pending) then return end
+    trace("PASS-occupant-continuity", {count = #probe.peds, driverPreserved = true, vehiclePreserved = true, clients = #players()})
+    activeTest.waitForTakeoverEnter = false
+    finishTestCleanupIfReady()
 end)
 
 addEventHandler("onVehicleExit", root, function(player, seat)
@@ -2290,6 +2431,7 @@ addEventHandler("onElementDestroy", root, function()
             if source == passenger.ped then member = true break end
         end
         if not unit.removing and member then
+            if not activeTest or activeTest.unit ~= unit then return retainIncidentOccupants(unit, unit.owner, source) end
             return fail(unit, "member-destroyed")
         end
     end

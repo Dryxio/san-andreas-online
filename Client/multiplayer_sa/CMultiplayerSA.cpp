@@ -4003,6 +4003,12 @@ static bool IsNativeAmbientWanderProfileEvent(int eventType)
 {
     switch (eventType)
     {
+        // EnterCar emits DRAGGED_OUT_CAR (7) for the existing occupant.
+        // Its personality decision belongs to the same authority as walking;
+        // observers must not create their own flee/reclaim-car response.
+        case 7:
+        // Undragged passengers receive PED_ENTERED_MY_VEHICLE, not event 7.
+        case 17:
         case EVENT_TYPE_BUILDING_COLLISION:
         case EVENT_TYPE_DAMAGE:
         case EVENT_TYPE_POTENTIAL_GET_RUN_OVER:
@@ -4358,6 +4364,9 @@ static bool IsNativeAmbientBehaviorIsPlayerCallSite(DWORD returnAddress)
 {
     switch (returnAddress)
     {
+        // Compact 1.0: victim IsPlayer in ComputeDraggedOutCarResponse.
+        // The separate jacker test at 0x4BD121 must retain player identity.
+        case 0x4BCC6B:
         case RETURN_CEventDamage_ComputeDamageAnim_Floor_IsPlayer:
         case RETURN_CEventDamage_ComputeDamageAnim_Pistol_IsPlayer:
         case RETURN_CEventDamage_ComputeDamageAnim_Heavy_IsPlayer:

@@ -549,6 +549,8 @@ public:
     bool        AddNativeGunAimedAtEvent(CPed* aimingPed) override;
     int         GetNativeCurrentEventType() const override;
     bool        AddNativeDamageResponseEvent(CPed* attackingPed, eWeaponType weaponType, ePedPieceTypes hitZone) override;
+    bool        GetNativeVehicleResponse(std::vector<SPedNativeVehicleTask>& tasks) const override;
+    bool        RestoreNativeVehicleResponse(const std::vector<SPedNativeVehicleTask>& tasks) override;
     bool        AddNativeDamageEvent(CPed* attackingPed, eWeaponType weaponType, ePedPieceTypes hitZone, int damageFactor, unsigned char direction) override;
     eWeaponType GetLastWeaponDamage() const noexcept override { return static_cast<eWeaponType>(GetPedInterface()->lastWeaponDamage); }
     void        SetNativeTaskAirbornePresentationState(bool airborne, bool observer) override;

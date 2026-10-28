@@ -52,6 +52,7 @@ function addEventHandler(name,_,fn) handlers[name]=fn end
 function isElement(v) return type(v)=='table' end
 function getTickCount() return 1000 end
 function finiteNumber(v) return type(v)=='number' and v==v and v or nil end
+function hasOccupantTransition() return false end
 local failures=0
 function fail() failures=failures+1 end
 VehicleTrafficTelemetry={record=function() end,updateMotion=function() return {},false end}

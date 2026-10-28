@@ -356,6 +356,8 @@ void CLuaPedDefs::LoadFunctions()
         {"isPedNativePointArmActive", IsPedNativePointArmActive},
         {"addPedNativeGunAimedAtEvent", AddPedNativeGunAimedAtEvent},
         {"addPedNativeDamageResponseEvent", AddPedNativeDamageResponseEvent},
+        {"getPedNativeVehicleResponse", GetPedNativeVehicleResponse},
+        {"restorePedNativeVehicleResponse", RestorePedNativeVehicleResponse},
         {"addPedNativeDamageEvent", AddPedNativeDamageEvent},
         {"addPedNativeBikeJackTask", AddPedNativeBikeJackTask},
         {"setPedStoryProtected", ArgumentParser<SetPedStoryProtected>},
@@ -4220,6 +4222,125 @@ int CLuaPedDefs::IsPedNativePointArmActive(lua_State* luaVM)
     CLuaMain*  pLuaMain = !argStream.HasErrors() ? m_pLuaManager->GetVirtualMachine(luaVM) : nullptr;
     CResource* pResource = pLuaMain ? pLuaMain->GetResource() : nullptr;
     lua_pushboolean(luaVM, pResource && pResource->IsPedNativePointArmActive(token));
+    return 1;
+}
+
+int CLuaPedDefs::GetPedNativeVehicleResponse(lua_State* luaVM)
+{
+    CClientPed*      ped = nullptr;
+    unsigned int     token = 0;
+    CScriptArgReader reader(luaVM);
+    reader.ReadUserData(ped);
+    reader.ReadNumber(token);
+    auto*                              luaMain = m_pLuaManager->GetVirtualMachine(luaVM);
+    auto*                              resource = luaMain ? luaMain->GetResource() : nullptr;
+    std::vector<SPedNativeVehicleTask> descriptions;
+    if (reader.HasErrors() || !ped || ped->GetType() != CCLIENTPED || !ped->IsSyncing() || !ped->GetGamePlayer() || !resource ||
+        !resource->HasPedNativeEventProfileLease(ped, token) || !ped->GetGamePlayer()->GetNativeVehicleResponse(descriptions))
+    {
+        lua_pushboolean(luaVM, false);
+        return 1;
+    }
+    lua_createtable(luaVM, descriptions.size(), 0);
+    int index = 0;
+    for (const auto& d : descriptions)
+    {
+        auto* target = d.target ? g_pGame->GetPools()->GetClientEntity(reinterpret_cast<DWORD*>(d.target->GetInterface())) : nullptr;
+        auto* vehicle = d.vehicle ? g_pGame->GetPools()->GetClientEntity(reinterpret_cast<DWORD*>(d.vehicle->GetInterface())) : nullptr;
+        if ((d.target && !target) || (d.vehicle && !vehicle))
+        {
+            lua_pop(luaVM, 1);
+            lua_pushboolean(luaVM, false);
+            return 1;
+        }
+        lua_createtable(luaVM, 0, 4);
+        lua_pushinteger(luaVM, d.type);
+        lua_setfield(luaVM, -2, "type");
+        if (target)
+        {
+            lua_pushelement(luaVM, target);
+            lua_setfield(luaVM, -2, "target");
+        }
+        if (vehicle)
+        {
+            lua_pushelement(luaVM, vehicle);
+            lua_setfield(luaVM, -2, "vehicle");
+        }
+        lua_createtable(luaVM, d.values.size(), 0);
+        for (size_t i = 0; i < d.values.size(); ++i)
+        {
+            lua_pushnumber(luaVM, d.values[i]);
+            lua_rawseti(luaVM, -2, i + 1);
+        }
+        lua_setfield(luaVM, -2, "values");
+        lua_rawseti(luaVM, -2, ++index);
+    }
+    return 1;
+}
+
+int CLuaPedDefs::RestorePedNativeVehicleResponse(lua_State* luaVM)
+{
+    auto*              ped = dynamic_cast<CClientPed*>(lua_toelement(luaVM, 1));
+    auto*              luaMain = m_pLuaManager->GetVirtualMachine(luaVM);
+    auto*              resource = luaMain ? luaMain->GetResource() : nullptr;
+    const double       tokenValue = lua_isnumber(luaVM, 3) ? lua_tonumber(luaVM, 3) : 0;
+    const unsigned int token = std::isfinite(tokenValue) && tokenValue >= 1 && tokenValue <= 4294967295.0 && std::floor(tokenValue) == tokenValue
+                                   ? static_cast<unsigned int>(tokenValue)
+                                   : 0;
+    bool               valid = ped && ped->GetType() == CCLIENTPED && ped->IsSyncing() && !ped->IsDead() && ped->GetGamePlayer() && resource &&
+                 resource->IsPedNativeEventProfileActive(ped, token) && lua_istable(luaVM, 2);
+    const size_t count = valid ? lua_objlen(luaVM, 2) : 0;
+    valid = valid && count > 0 && count <= 8;
+    std::vector<SPedNativeVehicleTask> descriptions;
+    for (size_t i = 0; valid && i < count; ++i)
+    {
+        const int base = lua_gettop(luaVM);
+        lua_rawgeti(luaVM, 2, i + 1);
+        if (!lua_istable(luaVM, -1))
+        {
+            lua_settop(luaVM, base);
+            valid = false;
+            break;
+        }
+        SPedNativeVehicleTask d{};
+        lua_getfield(luaVM, -1, "type");
+        double type = lua_isnumber(luaVM, -1) ? lua_tonumber(luaVM, -1) : -1;
+        valid = std::isfinite(type) && type >= 0 && type <= 2000 && std::floor(type) == type;
+        if (valid)
+            d.type = static_cast<int>(type);
+        lua_pop(luaVM, 1);
+        lua_getfield(luaVM, -1, "target");
+        if (!lua_isnil(luaVM, -1))
+        {
+            auto* target = dynamic_cast<CClientPed*>(lua_toelement(luaVM, -1));
+            valid = valid && target && target != ped && target->GetGamePlayer();
+            if (target)
+                d.target = target->GetGamePlayer();
+        }
+        lua_pop(luaVM, 1);
+        lua_getfield(luaVM, -1, "vehicle");
+        if (!lua_isnil(luaVM, -1))
+        {
+            auto* vehicle = dynamic_cast<CClientVehicle*>(lua_toelement(luaVM, -1));
+            valid = valid && vehicle && vehicle->GetGameVehicle();
+            if (vehicle)
+                d.vehicle = vehicle->GetGameVehicle();
+        }
+        lua_pop(luaVM, 1);
+        lua_getfield(luaVM, -1, "values");
+        valid = valid && lua_istable(luaVM, -1) && lua_objlen(luaVM, -1) == d.values.size();
+        for (size_t j = 0; valid && j < d.values.size(); ++j)
+        {
+            lua_rawgeti(luaVM, -1, j + 1);
+            valid = lua_isnumber(luaVM, -1);
+            if (valid)
+                d.values[j] = lua_tonumber(luaVM, -1);
+            lua_pop(luaVM, 1);
+        }
+        lua_settop(luaVM, base);
+        descriptions.push_back(d);
+    }
+    lua_pushboolean(luaVM, valid && ped->GetGamePlayer()->RestoreNativeVehicleResponse(descriptions));
     return 1;
 }
 

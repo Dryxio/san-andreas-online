@@ -8,6 +8,7 @@ local INITIAL_PLACEMENT_STABLE_SAMPLES = 3
 local INITIAL_PLACEMENT_TIMEOUT = 2500
 local INITIAL_PLACEMENT_VERTICAL_SPEED = 0.025
 local REVEAL_VISIBLE_MIN_DISTANCE = 70.0
+local REVEAL_MODEL_HOLD_AFTER_COMMIT = 500
 
 local function clearTimer(unit, name)
     if isTimer(unit[name]) then killTimer(unit[name]) end
@@ -99,6 +100,46 @@ local function passengersReady(unit, requireSyncer)
     return true
 end
 
+local function releaseUnitModelReferences(unit)
+    if isTimer(unit.modelReleaseTimer) then killTimer(unit.modelReleaseTimer) end
+    unit.modelReleaseTimer = nil
+    if type(engineStreamingReleaseModel) == "function" then
+        for model in pairs(unit.modelReferences or {}) do
+            pcall(engineStreamingReleaseModel, model, true)
+        end
+    end
+    unit.modelReferences = {}
+end
+
+local function acquireUnitModelReferences(unit)
+    if type(engineStreamingRequestModel) ~= "function" or type(engineStreamingGetModelLoadState) ~= "function" or
+        type(engineStreamingReleaseModel) ~= "function" then
+        return false, "model-streaming-api-missing"
+    end
+    unit.modelReferences = unit.modelReferences or {}
+    local models = {}
+    local function addElementModel(element)
+        local model = isElement(element) and tonumber(getElementModel(element)) or nil
+        if model and model >= 0 then models[model] = true end
+    end
+    addElementModel(unit.vehicle)
+    addElementModel(unit.ped)
+    for _, passenger in ipairs(unit.passengers or {}) do
+        addElementModel(passenger.ped)
+    end
+    for model in pairs(models) do
+        if not unit.modelReferences[model] then
+            local invoked = pcall(engineStreamingRequestModel, model, true, true)
+            if not invoked then return false, "model-request-refused" end
+            unit.modelReferences[model] = true
+        end
+        local queried, state = pcall(engineStreamingGetModelLoadState, model)
+        if not queried or state ~= "loaded" then return false, "model-not-loaded" end
+    end
+    if not next(models) then return false, "model-set-empty" end
+    return true
+end
+
 local function applyPassengerMissionActors(unit)
     if #unit.passengers == 0 then return true end
     if type(setPedMissionActor) ~= "function" or type(isPedMissionActor) ~= "function" then return false end
@@ -158,6 +199,7 @@ local function releaseUnit(unit, killTask)
     clearTimer(unit, "retryTimer")
     clearTimer(unit, "monitorTimer")
     clearTimer(unit, "observerTimer")
+    releaseUnitModelReferences(unit)
     if killTask and (unit.accepted or unit.taskQueued) and isElement(unit.ped) then
         proof.taskKillAccepted = killPedTask(unit.ped, "primary", 3, false) == true
     end
@@ -303,8 +345,21 @@ local function acceptOwner(unit)
         x = x, y = y, z = z, rx = rx, ry = ry, rz = rz, vx = vx, vy = vy, vz = vz, avx = avx, avy = avy, avz = avz,
         oracle = unit.oracleDiagnostic, nativeAutoPilot = nativeAutoPilotDiagnostic(unit.vehicle),
     })
+    if not unit.initialVelocityRequested then
+        unit.modelReleaseTimer = setTimer(function()
+            if units[unit.id] == unit then releaseUnitModelReferences(unit) end
+        end, REVEAL_MODEL_HOLD_AFTER_COMMIT, 1)
+    end
     unit.monitorTimer = setTimer(function()
         if units[unit.id] ~= unit or not isElement(unit.ped) or not isElement(unit.vehicle) then return end
+        if unit.testResumePending then
+            -- The fixture replaces DriveWander after the human boards.
+            -- Native script-command tasks install on the next game pulse;
+            -- don't publish that deliberate empty slot as a driving failure.
+            if isPedDoingTask(unit.ped, TASK_NAME) then unit.testResumePending = nil
+            elseif getTickCount() - unit.testResumePending < 2000 then return
+            else return fail(unit, "test-drive-resume-timeout") end
+        end
         local x, y, z = getElementPosition(unit.vehicle)
         local vx, vy, vz = getElementVelocity(unit.vehicle)
         local rx, ry, rz = getElementRotation(unit.vehicle)
@@ -354,6 +409,8 @@ local function beginOwner(unit)
         unit.passengerLeases[passenger.ped] = unit.passengerLeases[passenger.ped] or acquireElementStreamingLease(passenger.ped)
         if not unit.passengerLeases[passenger.ped] then return fail(unit, "passenger-streaming-lease-refused") end
     end
+    local modelsReady, modelReason = acquireUnitModelReferences(unit)
+    if not modelsReady then return fail(unit, modelReason) end
 
     if not unit.readinessReported then
         unit.readinessReported = true
@@ -434,6 +491,8 @@ local function beginObserver(unit)
         unit.passengerLeases[passenger.ped] = unit.passengerLeases[passenger.ped] or acquireElementStreamingLease(passenger.ped)
         if not unit.passengerLeases[passenger.ped] then return fail(unit, "passenger-observer-lease-refused") end
     end
+    local modelsReady, modelReason = acquireUnitModelReferences(unit)
+    if not modelsReady then return fail(unit, modelReason) end
     if not isElementStreamedIn(unit.ped) or not isElementStreamedIn(unit.vehicle) or not passengersReady(unit, false) then
         if getTickCount() - unit.requestedAt < 10000 then
             unit.retryTimer = setTimer(function() beginObserver(unit) end, 100, 1)
@@ -445,6 +504,11 @@ local function beginObserver(unit)
     report(unit, "observer-ready", {
         pedSyncer = isElementSyncer(unit.ped), vehicleSyncer = isElementSyncer(unit.vehicle), passengers = passengerSamples(unit),
     })
+    if not unit.staged then
+        unit.modelReleaseTimer = setTimer(function()
+            if units[unit.id] == unit then releaseUnitModelReferences(unit) end
+        end, REVEAL_MODEL_HOLD_AFTER_COMMIT, 1)
+    end
     unit.observerTimer = setTimer(function()
         if units[unit.id] ~= unit or not isElement(unit.ped) or not isElement(unit.vehicle) then return end
         local x, y, z = getElementPosition(unit.vehicle)
@@ -463,7 +527,7 @@ local function beginObserver(unit)
 end
 
 addEvent("carTraffic:observe", true)
-addEventHandler("carTraffic:observe", resourceRoot, function(id, epoch, ped, vehicle, passengers)
+addEventHandler("carTraffic:observe", resourceRoot, function(id, epoch, ped, vehicle, passengers, staged)
     sendDiagnostic(id, epoch, "observe-received", {
         ped = isElement(ped), vehicle = isElement(vehicle), pedStreamed = isElement(ped) and isElementStreamedIn(ped) or false,
         vehicleStreamed = isElement(vehicle) and isElementStreamedIn(vehicle) or false,
@@ -473,7 +537,7 @@ addEventHandler("carTraffic:observe", resourceRoot, function(id, epoch, ped, veh
     local normalizedPassengers, passengerContractValid = normalizePassengers(passengers, ped)
     local unit = {
         id = id, epoch = epoch, ped = ped, vehicle = vehicle, owner = false, requestedAt = getTickCount(),
-        passengers = normalizedPassengers, passengerContractValid = passengerContractValid, observerSeq = 0, ownerSeq = 0,
+        passengers = normalizedPassengers, passengerContractValid = passengerContractValid, observerSeq = 0, ownerSeq = 0, staged = staged == true,
     }
     releasedProofs[id] = nil
     units[id] = unit
@@ -517,6 +581,7 @@ addEventHandler("carTraffic:testResumeDrive", resourceRoot, function(id, epoch)
     local started = setPedDriveWander(unit.ped, unit.vehicle, unit.cruiseSpeed, drivingStyleName)
     unit.taskStartedAt = getTickCount()
     unit.taskQueued = started == true
+    unit.testResumePending = getTickCount()
     sendDiagnostic(unit.id, unit.epoch, "test-drive-resume", {
         started = started == true, cleared = cleared == true, drivingStyle = unit.drivingStyle,
         remoteCollisionGhostPolicy = true,
@@ -551,10 +616,22 @@ addEventHandler("carTraffic:revoke", resourceRoot, function(id, epoch)
 end)
 
 addEvent("carTraffic:stop", true)
-addEventHandler("carTraffic:stop", resourceRoot, function(id, epoch)
+addEventHandler("carTraffic:stop", resourceRoot, function(id, epoch, preserveOccupants)
     local unit = units[id]
     local proof
     if unit and unit.epoch <= epoch then
+        -- Ending a road activity does not hide actors retained for a jack
+        -- or an incident. Only actual removal uses the fade-before-delete path.
+        if not preserveOccupants then
+            if isElement(unit.vehicle) then
+                setElementAlpha(unit.vehicle, 0)
+                setVehicleOverrideLights(unit.vehicle, 1)
+            end
+            if isElement(unit.ped) then setElementAlpha(unit.ped, 0) end
+            for _, passenger in ipairs(unit.passengers or {}) do
+                if isElement(passenger.ped) then setElementAlpha(passenger.ped, 0) end
+            end
+        end
         proof = releaseUnit(unit, unit.owner == true)
         units[id] = nil
     end
@@ -716,9 +793,20 @@ end)
 
 addEvent("carTraffic:revealProbe", true)
 addEventHandler("carTraffic:revealProbe", resourceRoot, function(id, epoch, vehicle)
-    if not isElement(vehicle) then
-        return triggerServerEvent("carTraffic:revealVisibility", resourceRoot, id, epoch, true, false, false)
+    local unit = units[id]
+    if not unit or unit.epoch ~= epoch or unit.vehicle ~= vehicle or not isElement(vehicle) then
+        return triggerServerEvent("carTraffic:revealVisibility", resourceRoot, id, epoch, true, false, false, false, false, "unit-unavailable")
     end
+    local modelsReady, modelReason = acquireUnitModelReferences(unit)
+    local streamed = isElementStreamedIn(unit.vehicle) and isElementStreamedIn(unit.ped) and passengersReady(unit, false)
+    -- Reinforce staging locally before acknowledging it. This closes the
+    -- first-render window even if replicated alpha arrives after the element.
+    setElementAlpha(unit.vehicle, 0)
+    setVehicleOverrideLights(unit.vehicle, 1)
+    setElementAlpha(unit.ped, 0)
+    for _, passenger in ipairs(unit.passengers) do setElementAlpha(passenger.ped, 0) end
+    local hidden = getElementAlpha(unit.vehicle) == 0 and getElementAlpha(unit.ped) == 0
+    for _, passenger in ipairs(unit.passengers) do hidden = hidden and getElementAlpha(passenger.ped) == 0 end
     local x, y, z = getElementPosition(vehicle)
     local px, py, pz = getElementPosition(localPlayer)
     local distance = getDistanceBetweenPoints3D(px, py, pz, x, y, z)
@@ -727,7 +815,23 @@ addEventHandler("carTraffic:revealProbe", resourceRoot, function(id, epoch, vehi
     -- reveal time so a formerly valid distant candidate can never pop into an
     -- already visible near field.
     local veto = visible and distance < REVEAL_VISIBLE_MIN_DISTANCE
-    triggerServerEvent("carTraffic:revealVisibility", resourceRoot, id, epoch, veto, visible, distance)
+    triggerServerEvent("carTraffic:revealVisibility", resourceRoot, id, epoch, veto, visible, distance,
+        streamed, modelsReady, hidden, modelReason)
+end)
+
+addEvent("carTraffic:revealCommit", true)
+addEventHandler("carTraffic:revealCommit", resourceRoot, function(id, epoch)
+    local unit = units[id]
+    if not unit or unit.epoch ~= epoch or not isElement(unit.vehicle) then return end
+    setElementAlpha(unit.vehicle, 255)
+    setVehicleOverrideLights(unit.vehicle, 0)
+    if isElement(unit.ped) then setElementAlpha(unit.ped, 255) end
+    for _, passenger in ipairs(unit.passengers) do
+        if isElement(passenger.ped) then setElementAlpha(passenger.ped, 255) end
+    end
+    unit.modelReleaseTimer = setTimer(function()
+        if units[id] == unit and unit.epoch == epoch then releaseUnitModelReferences(unit) end
+    end, REVEAL_MODEL_HOLD_AFTER_COMMIT, 1)
 end)
 
 local interactionProbe
@@ -762,6 +866,20 @@ end
 local function attemptInteractionEntry()
     local probe = interactionProbe
     if not probe then return end
+    if isElement(probe.vehicle) and getTickCount() - (probe.lastDiagnostic or 0) >= 2000 then
+        probe.lastDiagnostic = getTickCount()
+        local driver = getVehicleOccupant(probe.vehicle, 0)
+        reportInteractionDiagnostic("interaction-entry-progress", {
+            seat = probe.seat, attempts = probe.attempts, playerTask = {getPedTask(localPlayer, "primary", 3)},
+            playerPhysical = {getPedTask(localPlayer, "primary", 0)},
+            driverTask = isElement(driver) and {getPedTask(driver, "primary", 3)} or false,
+            driverPhysical = isElement(driver) and {getPedTask(driver, "primary", 0)} or false,
+            driverResponse = isElement(driver) and {getPedTask(driver, "primary", 2)} or false,
+            draggable = isElement(driver) and canPedBeDraggedOut(driver),
+            frozen = isElementFrozen(probe.vehicle), playerFrozen = isElementFrozen(localPlayer),
+            vehicleAlpha = getElementAlpha(probe.vehicle), driverAlpha = isElement(driver) and getElementAlpha(driver),
+        })
+    end
     if getTickCount() - probe.startedAt >= 15000 then
         reportInteractionDiagnostic("interaction-entry-timeout",
             {seat = probe.seat, attempts = probe.attempts, accepted = probe.accepted == true, harness = probe.harness})
@@ -801,6 +919,22 @@ end
 
 addEvent("carTraffic:testEnterVehicle", true)
 addEventHandler("carTraffic:testEnterVehicle", resourceRoot, function(vehicle, seat) requestInteractionEntry(vehicle, seat, true) end)
+
+addEvent("carTraffic:occupantProbe", true)
+addEventHandler("carTraffic:occupantProbe", resourceRoot, function(vehicle, peds)
+    local samples = {}
+    for _, ped in ipairs(peds) do
+        samples[#samples + 1] = {
+            ped = ped, streamed = isElement(ped) and isElementStreamedIn(ped),
+            alpha = isElement(ped) and getElementAlpha(ped),
+            inOriginalVehicle = isElement(ped) and getPedOccupiedVehicle(ped) == vehicle,
+            primary = isElement(ped) and {getPedTask(ped, "primary", 3)},
+            response = isElement(ped) and {getPedTask(ped, "primary", 2)},
+            temporary = isElement(ped) and {getPedTask(ped, "primary", 1)},
+        }
+    end
+    triggerServerEvent("carTraffic:occupantProbeResult", resourceRoot, vehicle, samples)
+end)
 
 addEvent("carTraffic:takeoverReady", true)
 addEventHandler("carTraffic:takeoverReady", resourceRoot, function(vehicle, seat) requestInteractionEntry(vehicle, seat, false) end)

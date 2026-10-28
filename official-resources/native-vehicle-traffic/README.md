@@ -11,6 +11,34 @@ driving task. Owner epochs, streamed leases, contextual models, GTA lane
 placement, smooth handoff, density bubbles, player passenger entry/takeover,
 stuck recovery, destruction and cleanup are part of the same lifecycle.
 
+Drivers and passengers keep their existing ped elements when a player steals
+the driver’s seat or an incident ends road driving. GTA can drag the occupant
+out, get them upright, and choose a flee, fight or vehicle-recovery reaction.
+Other clients receive the normal MTA ped/vehicle synchronization. Surviving
+passengers and visible bodies have independent ownership and cleanup, so a
+passenger travelling away cannot make a nearby former driver disappear.
+Player entry into a free passenger seat keeps the road activity running.
+Extracting an occupied passenger is not exposed by stock MTA's entry protocol;
+it redirects passenger requests to a free seat before this resource's handler.
+
+Retained actors choose a ready owner within 220 units in the same world. They
+are removed after 60 seconds without a nearby player; their departure never
+deletes the retained vehicle. `cartraffic cleanup` also clears retained actors.
+Stopping the resource releases their profiles and streaming references.
+
+Ownership handoff preserves supported remaining flee, fight, leave, enter and
+reclaim tasks, preferring persistent intent over a temporary avoidance reaction.
+This is semantic continuation: native timers restart and decorative pauses,
+heading changes and fist gestures are omitted. Unsupported responses, missing
+targets or unavailable streaming cannot be restored; the client reports a
+restore timeout when a received continuation remains unavailable. A newly
+selected native response takes precedence over an older snapshot.
+
+The contact bridge covers stock unarmed occupants hitting remote players and
+remote players' unarmed hits supplying missing NPC reactions. It validates the
+owner, epoch, distance, cadence and native damage factor. Cross-owner NPC-to-NPC
+and armed damage relays are not provided by this resource.
+
 Boats, aircraft, trailers, parked car generators, mission routes, emergency
 response and service-specific gameplay remain outside this civilian-road
 checkpoint. Model distribution follows GTA popcycle/car-group context through
@@ -98,7 +126,8 @@ checks cap 2-to-1-to-2 reconciliation. `passengers` validates atomic seats and
 handoff. `classes` covers car, van, truck, motorcycle, BMX and quad.
 `interaction` uses GTA's real enter/exit tasks for a player passenger ride and
 driver takeover; it does not synthesize lifecycle events or warp the player
-into the vehicle.
+into the vehicle. It respawns its players, so it also works without a gamemode,
+and retains a rear-seat NPC while the human uses the front passenger seat.
 
 `highway` deterministically replays both legal lane poses from the LS Airport
 tunnel regression. Each vehicle must travel at least 25 metres in its expected
@@ -146,3 +175,29 @@ the repository root for mocked transport and logging checks. The fixture
 reduces 32 periodic events (16 vehicles over two sampling cycles) to two
 batches. This measures event envelopes, not total bytes or live-server load;
 spawn bursts and other resources still count toward the server event limit.
+
+## Occupant continuation API
+
+Client-side `table|false getPedNativeVehicleResponse(ped, token)` captures up to
+eight remaining supported native response steps for a synchronized script ped.
+The token must belong to this resource's native event-profile lease. An empty
+table means no remaining semantic step; `false` means unavailable or unsupported.
+Each step contains `type`, optional element references `target` and `vehicle`,
+and eight numeric `values`. Treat this as an opaque, version-specific descriptor;
+do not build native task data from arbitrary network messages.
+
+Client-side `bool restorePedNativeVehicleResponse(ped, steps, token)` requires a
+living synchronized ped with an active resource-owned profile, available native
+targets, empty native response slots and valid supported descriptors. It returns
+`false` when those conditions fail. It creates native tasks with registered
+entity references; pointers and animation memory are never transported. A
+ScreamInCarThenLeave snapshot is rejected if the ped has already left that car.
+
+These functions are registered in `Client/mods/deathmatch/logic/luadefs/CLuaPedDefs.cpp`;
+the native implementation is in `Client/game_sa/CPedSA.cpp`. The focused client
+and server lifecycle tests are `tests/occupant_client_spec.lua` and
+`tests/occupant_lifecycle_spec.lua`. The two-client `cartraffic test interaction`
+harness additionally checks that the former driver remains the same element
+three seconds after the player takes the vehicle. Each connected client must
+then report the original driver and passenger streamed and visible, with the
+former driver outside the original vehicle.

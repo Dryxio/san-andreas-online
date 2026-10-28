@@ -188,6 +188,8 @@ public:
     LUA_DECLARE(IsPedNativePointArmActive);
     LUA_DECLARE(AddPedNativeGunAimedAtEvent);
     LUA_DECLARE(AddPedNativeDamageResponseEvent);
+    LUA_DECLARE(GetPedNativeVehicleResponse);
+    LUA_DECLARE(RestorePedNativeVehicleResponse);
     LUA_DECLARE(AddPedNativeDamageEvent);
     LUA_DECLARE(AddPedNativeBikeJackTask);
     static bool SetPedStoryProtected(CClientPed* ped, bool enabled);

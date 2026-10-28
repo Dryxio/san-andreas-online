@@ -19,6 +19,7 @@
 #include "CStatsSA.h"
 #include "TaskAttackSA.h"
 #include "CTaskManagerSA.h"
+#include "CTaskManagementSystemSA.h"
 #include "CTasksSA.h"
 #include "CProjectileInfoSA.h"
 #include "CWeaponStatManagerSA.h"
@@ -155,6 +156,273 @@ int CPedSA::GetNativeCurrentEventType() const
 
     using GetCurrentEventType = int(__thiscall*)(const void*);
     return reinterpret_cast<GetCurrentEventType>(FUNC_CEventHandler_GetCurrentEventType)(intelligence->eventHandler);
+}
+
+namespace
+{
+    // This is a semantic snapshot, never a native pointer/memory snapshot. The
+    // layouts/constructors below were checked against compact 1.0. Replaying event
+    // 7 would redraw flee versus reclaim; event 17 rejects actors already on foot.
+    template <typename T>
+    T VehicleTaskField(const unsigned char* task, unsigned offset)
+    {
+        return *reinterpret_cast<const T*>(task + offset);
+    }
+
+    bool CaptureVehicleTask(CTask* task, std::vector<SPedNativeVehicleTask>& result, unsigned depth)
+    {
+        if (!task)
+            return true;
+        if (depth >= 16 || result.size() >= 8)
+            return false;
+        const int   type = task->GetTaskType();
+        const auto* raw = reinterpret_cast<const unsigned char*>(task->GetInterface());
+        if (!raw)
+            return false;
+        if (type == TASK_COMPLEX_SEQUENCE)
+        {
+            const int index = VehicleTaskField<int>(raw, 0xC);
+            if (index < 0 || index >= 8)
+                return false;
+            for (int i = index; i < 8; ++i)
+            {
+                auto*  nativeTask = VehicleTaskField<CTaskSAInterface*>(raw, 0x10 + i * 4);
+                CTask* next = i == index && task->GetSubTask() ? task->GetSubTask() : pGame->GetTaskManagementSystem()->GetTask(nativeTask);
+                if (!CaptureVehicleTask(next, result, depth + 1))
+                    return false;
+            }
+            return true;
+        }
+        // Cosmetic preambles may finish locally; they must not restart a fight or
+        // obscure the remaining steal action after a change of synchronizer.
+        if (type == TASK_SIMPLE_PAUSE || type == TASK_SIMPLE_ACHIEVE_HEADING || type == TASK_SIMPLE_SHAKE_FIST || type == TASK_NONE)
+            return true;
+        if ((type == TASK_COMPLEX_LEAVE_CAR_AND_FLEE || type == TASK_COMPLEX_SCREAM_IN_CAR_THEN_LEAVE) && task->GetSubTask())
+        {
+            const int childType = task->GetSubTask()->GetTaskType();
+            if (childType == TASK_COMPLEX_SMART_FLEE_POINT || childType == TASK_COMPLEX_LEAVE_CAR_AND_FLEE)
+                return CaptureVehicleTask(task->GetSubTask(), result, depth + 1);
+        }
+        SPedNativeVehicleTask d{};
+        d.type = type;
+        unsigned   pedOffset = 0, vehicleOffset = 0;
+        const auto integer = [&](unsigned offset) { return static_cast<double>(VehicleTaskField<int>(raw, offset)); };
+        const auto number = [&](unsigned offset) { return static_cast<double>(VehicleTaskField<float>(raw, offset)); };
+        switch (type)
+        {
+            case TASK_COMPLEX_SMART_FLEE_ENTITY:
+                pedOffset = 0xC;
+                d.values = {integer(0x1C), number(0x20), double(raw[0x24] != 0), integer(0x28), number(0x2C)};
+                break;
+            case TASK_COMPLEX_SMART_FLEE_POINT:
+                d.values = {number(0x18), number(0x1C), number(0x20), double(raw[0x24] != 0), integer(0x28), number(0x2C)};
+                break;
+            case TASK_COMPLEX_KILL_PED_ON_FOOT:
+                pedOffset = 0x10;
+                d.values = {integer(0x28), integer(0x14), integer(0x18), integer(0x1C), double(raw[0x20])};
+                break;
+            case TASK_COMPLEX_STEAL_CAR:
+                vehicleOffset = 0xC;
+                break;
+            case TASK_COMPLEX_ENTER_CAR_AS_DRIVER:
+                vehicleOffset = 0xC;
+                d.values[0] = integer(0x24);
+                break;
+            case TASK_COMPLEX_ENTER_CAR_AS_PASSENGER:
+                vehicleOffset = 0xC;
+                d.values = {integer(0x1C), double((raw[0x10] & 8) != 0), integer(0x24)};
+                break;
+            case TASK_COMPLEX_DRAG_PED_FROM_CAR:
+                pedOffset = 0x50;
+                d.values[0] = integer(0x20);
+                break;
+            case TASK_COMPLEX_LEAVE_CAR:
+                vehicleOffset = 0xC;
+                d.values = {integer(0x10), integer(0x14), double(raw[0x18] != 0), double(raw[0x19] != 0)};
+                break;
+            case TASK_COMPLEX_DESTROY_CAR:
+                vehicleOffset = 0x10;
+                d.values = {integer(0x14), integer(0x18), integer(0x1C)};
+                break;
+            case TASK_COMPLEX_LEAVE_CAR_AND_FLEE:
+                vehicleOffset = 0xC;
+                d.values = {number(0x14), number(0x18), number(0x1C), integer(0x10), integer(0x20), double(raw[0x24] != 0)};
+                break;
+            case TASK_COMPLEX_LEAVE_CAR_AND_WANDER:
+                vehicleOffset = 0xC;
+                d.values = {integer(0x10), integer(0x14), double(raw[0x18] != 0)};
+                break;
+            case TASK_COMPLEX_SCREAM_IN_CAR_THEN_LEAVE:
+                vehicleOffset = 0xC;
+                d.values[0] = integer(0x10);
+                break;
+            default:
+                // In particular do not turn an unknown active response into a
+                // successful empty snapshot, which would silently forget intent.
+                return false;
+        }
+        if (pedOffset)
+        {
+            auto* entry = pGame->GetPools()->GetPed(VehicleTaskField<DWORD*>(raw, pedOffset));
+            if (!entry)
+                return false;
+            d.target = entry->pEntity;
+        }
+        if (vehicleOffset)
+        {
+            auto* entry = pGame->GetPools()->GetVehicle(VehicleTaskField<DWORD*>(raw, vehicleOffset));
+            if (!entry)
+                return false;
+            d.vehicle = entry->pEntity;
+        }
+        result.push_back(d);
+        return true;
+    }
+
+    template <typename... Args>
+    void* ConstructVehicleTask(std::uintptr_t address, unsigned size, Args... args)
+    {
+        void* storage = reinterpret_cast<void*(__cdecl*)(unsigned)>(FUNC_CTask__Operator_New)(size);
+        if (!storage)
+            return nullptr;
+        return reinterpret_cast<void*(__thiscall*)(void*, Args...)>(address)(storage, args...);
+    }
+
+    void DeleteVehicleTask(void* task)
+    {
+        if (task)
+            reinterpret_cast<void(__thiscall*)(void*, unsigned)>(*reinterpret_cast<DWORD**>(task)[0])(task, 1);
+    }
+
+    void* RestoreVehicleTask(const SPedNativeVehicleTask& d)
+    {
+        const auto& v = d.values;
+        // Every scalar is transported as a number. Bound before all integer casts
+        // and native calls, even for locally invoked Lua functions.
+        for (double value : v)
+            if (!std::isfinite(value) || value < -1000000 || value > 100000000)
+                return nullptr;
+        void*         target = d.target ? d.target->GetInterface() : nullptr;
+        void*         vehicle = d.vehicle ? d.vehicle->GetInterface() : nullptr;
+        const CVector point(static_cast<float>(v[0]), static_cast<float>(v[1]), static_cast<float>(v[2]));
+        switch (d.type)
+        {
+            case TASK_COMPLEX_SMART_FLEE_ENTITY:
+                if (target && v[0] >= -1 && v[1] > 0 && v[3] >= 0 && v[4] >= 0)
+                    return ConstructVehicleTask(0x65C430, 0x40, target, v[2] != 0, float(v[1]), int(v[0]), int(v[3]), float(v[4]));
+                break;
+            case TASK_COMPLEX_SMART_FLEE_POINT:
+                if (v[4] >= -1 && v[5] > 0)
+                    return ConstructVehicleTask(0x65BD20, 0x44, &point, v[3] != 0, float(v[5]), int(v[4]));
+                break;
+            case TASK_COMPLEX_KILL_PED_ON_FOOT:
+                if (target && v[4] >= 0 && v[4] <= 255)
+                    return ConstructVehicleTask(0x620E30, 0x38, target, int(v[0]), int(v[1]), int(v[2]), int(v[3]), static_cast<unsigned char>(v[4]));
+                break;
+            case TASK_COMPLEX_STEAL_CAR:
+                if (vehicle)
+                    return ConstructVehicleTask(0x63B7D0, 0x20, vehicle);
+                break;
+            case TASK_COMPLEX_ENTER_CAR_AS_DRIVER:
+            case TASK_COMPLEX_ENTER_CAR_AS_PASSENGER:
+                if (vehicle)
+                {
+                    const double movement = d.type == TASK_COMPLEX_ENTER_CAR_AS_DRIVER ? v[0] : v[2];
+                    if (movement < 0 || movement > 7 || (d.type == TASK_COMPLEX_ENTER_CAR_AS_PASSENGER && (v[0] < -1 || v[0] > 7)))
+                        break;
+                    void* task = d.type == TASK_COMPLEX_ENTER_CAR_AS_DRIVER ? ConstructVehicleTask(0x6402F0, 0x50, vehicle)
+                                                                            : ConstructVehicleTask(0x640340, 0x50, vehicle, int(v[0]), v[1] != 0);
+                    if (task)
+                        *reinterpret_cast<int*>(static_cast<unsigned char*>(task) + 0x24) = int(movement);
+                    return task;
+                }
+                break;
+            case TASK_COMPLEX_DRAG_PED_FROM_CAR:
+                if (target && v[0] >= 0)
+                    return ConstructVehicleTask(0x640430, 0x54, target, int(v[0]));
+                break;
+            case TASK_COMPLEX_LEAVE_CAR:
+                if (vehicle && v[0] >= 0 && v[0] <= 255 && v[1] >= 0)
+                    return ConstructVehicleTask(0x63B8C0, 0x34, vehicle, int(v[0]), int(v[1]), v[2] != 0, v[3] != 0);
+                break;
+            case TASK_COMPLEX_DESTROY_CAR:
+                if (vehicle)
+                    return ConstructVehicleTask(0x621C00, 0x20, vehicle, int(v[0]), int(v[1]), int(v[2]));
+                break;
+            case TASK_COMPLEX_LEAVE_CAR_AND_FLEE:
+                if (vehicle && v[3] >= 0 && v[3] <= 255 && v[4] >= 0)
+                    return ConstructVehicleTask(0x63BF90, 0x28, vehicle, &point, int(v[3]), int(v[4]), v[5] != 0);
+                break;
+            case TASK_COMPLEX_LEAVE_CAR_AND_WANDER:
+                if (vehicle && v[0] >= 0 && v[0] <= 255 && v[1] >= 0)
+                    return ConstructVehicleTask(0x63BDD0, 0x1C, vehicle, int(v[0]), int(v[1]), v[2] != 0);
+                break;
+            case TASK_COMPLEX_SCREAM_IN_CAR_THEN_LEAVE:
+                if (vehicle && v[0] >= 0 && v[0] <= 255)
+                    return ConstructVehicleTask(0x63C240, 0x20, vehicle, int(v[0]));
+                break;
+        }
+        return nullptr;
+    }
+}
+
+bool CPedSA::GetNativeVehicleResponse(std::vector<SPedNativeVehicleTask>& tasks) const
+{
+    tasks.clear();
+    auto* intelligence = GetPedIntelligence();
+    auto* manager = intelligence ? intelligence->GetTaskManager() : nullptr;
+    if (!manager)
+        return false;
+    // A temporary avoidance/hit animation overlays the persistent reaction.
+    // Preserve the durable objective instead of replacing it with that overlay.
+    CTask* task = manager->GetTask(TASK_PRIORITY_EVENT_RESPONSE_NONTEMP);
+    if (!task)
+        task = manager->GetTask(TASK_PRIORITY_EVENT_RESPONSE_TEMP);
+    if (!CaptureVehicleTask(task, tasks, 0))
+    {
+        tasks.clear();
+        return false;
+    }
+    return true;
+}
+
+bool CPedSA::RestoreNativeVehicleResponse(const std::vector<SPedNativeVehicleTask>& tasks)
+{
+    auto* intelligence = GetPedIntelligence();
+    auto* manager = intelligence ? static_cast<CTaskManagerSA*>(intelligence->GetTaskManager()) : nullptr;
+    if (!manager || tasks.empty() || tasks.size() > 8)
+        return false;
+    // A freshly selected native response takes precedence over a network
+    // snapshot. Never abort a new collision/damage response to replay history.
+    if (manager->GetTask(TASK_PRIORITY_EVENT_RESPONSE_TEMP) || manager->GetTask(TASK_PRIORITY_EVENT_RESPONSE_NONTEMP))
+        return false;
+    void* sequence = ConstructVehicleTask(0x632BD0, 0x40);
+    if (!sequence)
+        return false;
+    for (const auto& description : tasks)
+    {
+        // A last snapshot can predate an exit by one network tick. Scream's
+        // first subtask has no on-foot guard and would install CAR_DRIVE.
+        if (description.type == TASK_COMPLEX_SCREAM_IN_CAR_THEN_LEAVE && (!description.vehicle || GetVehicle() != description.vehicle))
+        {
+            DeleteVehicleTask(sequence);
+            return false;
+        }
+        void* task = RestoreVehicleTask(description);
+        if (!task)
+        {
+            DeleteVehicleTask(sequence);
+            return false;
+        }
+        if (!reinterpret_cast<bool(__thiscall*)(void*, void*)>(0x632D10)(sequence, task))
+        {
+            // AddTask owns (and deletes) a rejected child.
+            DeleteVehicleTask(sequence);
+            return false;
+        }
+    }
+    reinterpret_cast<void(__thiscall*)(void*, void*, int, bool)>(FUNC_SetTask)(manager->GetInterface(), sequence, TASK_PRIORITY_EVENT_RESPONSE_NONTEMP, false);
+    return true;
 }
 
 bool CPedSA::AddNativeDamageResponseEvent(CPed* attackingPed, eWeaponType weaponType, ePedPieceTypes hitZone)
