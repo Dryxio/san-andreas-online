@@ -19,6 +19,8 @@ public:
     LUA_DECLARE(EngineGetPedPathPatchRevision);
     LUA_DECLARE(EngineGetPedPathGraphRevision);
 
+    LUA_DECLARE(SetOcclusionRegion);
+    LUA_DECLARE(ResetOcclusionRegion);
     LUA_DECLARE(GetTime);
     LUA_DECLARE(GetGroundPosition);
     LUA_DECLARE(GetRoofPosition);

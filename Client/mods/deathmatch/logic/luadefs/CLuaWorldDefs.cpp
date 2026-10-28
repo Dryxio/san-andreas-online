@@ -150,6 +150,8 @@ void CLuaWorldDefs::LoadFunctions()
         {"setAircraftMaxHeight", SetAircraftMaxHeight},
         {"setAircraftMaxVelocity", SetAircraftMaxVelocity},
         {"setOcclusionsEnabled", SetOcclusionsEnabled},
+        {"setOcclusionRegion", SetOcclusionRegion},
+        {"resetOcclusionRegion", ResetOcclusionRegion},
         {"setBirdsEnabled", SetBirdsEnabled},
         {"setPedTargetingMarkerEnabled", SetPedTargetingMarkerEnabled},
         {"setMoonSize", SetMoonSize},
@@ -3111,6 +3113,43 @@ CLuaMultiReturn<bool, CClientEntity*, int, float, float, float, float, float, fl
             ConvertRadiansToDegrees(result.entityRotation.fZ),
             result.lodID,
             result.type};
+}
+
+// Keep exclusions attached to the calling resource, so one resource cannot
+// restore occluders still excluded by another resource.
+int CLuaWorldDefs::SetOcclusionRegion(lua_State* luaVM)
+{
+    CVector          minimum, maximum;
+    CScriptArgReader args(luaVM);
+    args.ReadNumber(minimum.fX);
+    args.ReadNumber(minimum.fY);
+    args.ReadNumber(maximum.fX);
+    args.ReadNumber(maximum.fY);
+    const auto owner = GetCallingResource(luaVM);
+    if (args.HasErrors() || !owner)
+    {
+        lua_pushboolean(luaVM, false);
+        return 1;
+    }
+    const int count = g_pGame->GetWorld()->SetOcclusionRegion(minimum, maximum, owner);
+    if (count < 0)
+        lua_pushboolean(luaVM, false);
+    else
+        lua_pushnumber(luaVM, count);
+    return 1;
+}
+
+int CLuaWorldDefs::ResetOcclusionRegion(lua_State* luaVM)
+{
+    const auto owner = GetCallingResource(luaVM);
+    if (!owner)
+    {
+        lua_pushboolean(luaVM, false);
+        return 1;
+    }
+    g_pGame->GetWorld()->ResetOcclusionRegion(owner);
+    lua_pushboolean(luaVM, true);
+    return 1;
 }
 
 int CLuaWorldDefs::EngineLoadPedPathPatch(lua_State* luaVM)

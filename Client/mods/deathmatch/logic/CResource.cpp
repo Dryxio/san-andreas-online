@@ -188,7 +188,10 @@ CResource::~CResource()
     // Custom CULL zones are client-native state rather than elements, so restore
     // vanilla edits and remove this resource's additions explicitly.
     if (g_pGame && g_pGame->GetWorld())
+    {
         g_pGame->GetWorld()->RemoveCullZoneChangesByOwner(this);
+        g_pGame->GetWorld()->ResetOcclusionRegion(this);
+    }
 
     // Remove refrences from requested models
     m_modelStreamer.ReleaseAll();
@@ -1654,7 +1657,10 @@ void CResource::Stop()
     g_pCore->ClearNeonClientSettingOverrides(m_strResourceName);
 
     if (g_pGame && g_pGame->GetWorld())
+    {
         g_pGame->GetWorld()->RemoveCullZoneChangesByOwner(this);
+        g_pGame->GetWorld()->ResetOcclusionRegion(this);
+    }
 
     // When a custom application is used - reset discord stuff
     const auto discord = g_pCore->GetDiscord();

@@ -336,4 +336,8 @@ public:
     virtual void          RemoveCullZoneChangesByOwner(const void* owner) = 0;
     virtual void          SetCullMirrorZonesEnabled(bool enabled) = 0;
     virtual void          UpdateCullZoneFlags(const CVector& playerPosition, const CVector& cameraPosition) = 0;
+    // Resource-owned exterior occlusion exclusions. An XY rectangle also covers
+    // tall occluders belonging to buildings removed for an arena excavation.
+    virtual int  SetOcclusionRegion(const CVector& minimum, const CVector& maximum, const void* owner) = 0;
+    virtual void ResetOcclusionRegion(const void* owner) = 0;
 };

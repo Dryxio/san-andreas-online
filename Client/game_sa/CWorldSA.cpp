@@ -10,9 +10,13 @@
  *****************************************************************************/
 
 #include "StdInc.h"
+#include <OcclusionRegionBounds.h>
 #include <WorldLimits.h>
 #include "CCullZonesSA.h"
 #include <numbers>
+#include <map>
+#include <cmath>
+#include <cstring>
 #include <multiplayer/CMultiplayer.h>
 #include <core/CCoreInterface.h>
 #include "CGameSA.h"
@@ -216,7 +220,7 @@ static void __declspec(naked) HOOK_FallenCars()
 
 void CWorldSA::InstallHooks()
 {
-    const bool extendedWorldSectorsInstalled = InstallExtendedWorldSectorPatch();
+    const bool  extendedWorldSectorsInstalled = InstallExtendedWorldSectorPatch();
     static bool bWorldBoundsPatched = false;
     if (!extendedWorldSectorsInstalled && !bWorldBoundsPatched)
     {
@@ -1049,3 +1053,88 @@ namespace
         0x10, 0x00, 0x12, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x02, 0x01, 0x90, 0x01, 0x00, 0x22, 0x00, 0x00};
     static_assert(sizeof(CSurfaceType) == sizeof(aOriginalSurfaceInfo), "invalid size of aOriginalSurfaceInfo");
 }  // namespace
+
+namespace
+{
+    struct SOcclusionRegion
+    {
+        CVector minimum;
+        CVector maximum;
+    };
+    std::map<const void*, SOcclusionRegion> occlusionRegions;
+
+    // GTA SA 1.0's exterior COccluder records are 18 bytes: fixed-point
+    // position/size (scale 4), three angle bytes, then the streaming link.
+    // Preserve geometry and the high DontStream flag. Only rebuild the native
+    // near/far lists, excluding the union of resource-owned rectangles.
+    // Layout/reference: gta-reversed source/game_sa/Occluder.h, Occlusion.h.
+    short ReadOccluderShort(const unsigned char* record, std::size_t offset)
+    {
+        short value;
+        std::memcpy(&value, record + offset, sizeof(value));
+        return value;
+    }
+
+    bool OccluderIntersectsRegion(const unsigned char* record, const SOcclusionRegion& region)
+    {
+        const float x = ReadOccluderShort(record, 0) / 4.0f;
+        const float y = ReadOccluderShort(record, 2) / 4.0f;
+        const float length = ReadOccluderShort(record, 6) / 4.0f;
+        const float width = ReadOccluderShort(record, 8) / 4.0f;
+        const float height = ReadOccluderShort(record, 10) / 4.0f;
+        const auto [extentX, extentY] = OcclusionRegionBounds::HorizontalExtents(width, length, height, record[12], record[13], record[14]);
+        return x + extentX >= region.minimum.fX && x - extentX <= region.maximum.fX && y + extentY >= region.minimum.fY && y - extentY <= region.maximum.fY;
+    }
+
+    int RebuildExteriorOcclusionLists(const void* countOwner = nullptr)
+    {
+        const auto count = *reinterpret_cast<const unsigned int*>(0xC73F98);
+        if (count > 1000)
+            return -1;
+        auto* records = reinterpret_cast<unsigned char*>(0xC73FA0);
+        short head = -1;
+        int   matched = 0;
+        for (unsigned int i = 0; i < count; ++i)
+        {
+            auto* record = records + i * 18;
+            bool  excluded = false;
+            for (const auto& [owner, region] : occlusionRegions)
+            {
+                if (OccluderIntersectsRegion(record, region))
+                {
+                    excluded = true;
+                    if (owner == countOwner)
+                        ++matched;
+                }
+            }
+            const auto previous = static_cast<unsigned short>(ReadOccluderShort(record, 16));
+            const auto next = static_cast<unsigned short>((previous & 0x8000u) | ((excluded ? 0x7FFFu : static_cast<unsigned short>(head)) & 0x7FFFu));
+            std::memcpy(record + 16, &next, sizeof(next));
+            if (!excluded)
+                head = static_cast<short>(i);
+        }
+        // Reset both list walkers, never leave an index into a removed list.
+        // GTA repopulates its nearby list through the normal bounded scan.
+        *reinterpret_cast<short*>(0x8D5D68) = head;
+        *reinterpret_cast<short*>(0x8D5D6C) = -1;
+        *reinterpret_cast<short*>(0x8D5D70) = -1;
+        *reinterpret_cast<short*>(0x8D5D74) = -1;
+        *reinterpret_cast<int*>(VAR_COcclusion_NumActiveOccluders) = 0;
+        return matched;
+    }
+}
+
+int CWorldSA::SetOcclusionRegion(const CVector& minimum, const CVector& maximum, const void* owner)
+{
+    if (!owner || !std::isfinite(minimum.fX) || !std::isfinite(minimum.fY) || !std::isfinite(maximum.fX) || !std::isfinite(maximum.fY) ||
+        minimum.fX >= maximum.fX || minimum.fY >= maximum.fY || *reinterpret_cast<const unsigned int*>(0xC73F98) > 1000)
+        return -1;
+    occlusionRegions[owner] = {minimum, maximum};
+    return RebuildExteriorOcclusionLists(owner);
+}
+
+void CWorldSA::ResetOcclusionRegion(const void* owner)
+{
+    if (occlusionRegions.erase(owner))
+        RebuildExteriorOcclusionLists();
+}

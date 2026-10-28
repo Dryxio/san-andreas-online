@@ -71,6 +71,8 @@ public:
     float GetAircraftMaxVelocity();
     void  SetOcclusionsEnabled(bool bEnabled);
     bool  GetOcclusionsEnabled();
+    int   SetOcclusionRegion(const CVector& minimum, const CVector& maximum, const void* owner) override;
+    void  ResetOcclusionRegion(const void* owner) override;
     void  FindWorldPositionForRailTrackPosition(float fRailTrackPosition, int iTrackId, CVector* pOutVecPosition);
     int   FindClosestRailTrackNode(const CVector& vecPosition, uchar& ucOutTrackId, float& fOutRailDistance);
     bool  CalculateImpactPosition(const CVector& vecInputStart, CVector& vecInputEnd);
