@@ -100,9 +100,9 @@ DRIVETHRU = {
             primaryColor = {105, 30, 59},
             secondaryColor = {105, 30, 59},
             health = 2700,
-            -- Initial entity creation uses MTA's 12-bit vehicle-health sync,
-            -- whose maximum representable value is 2047.5. The server sends
-            -- the full vanilla health again after the stream barrier.
+            -- Protocol 1E6 initially clamps entity-add vehicle health to the
+            -- largest value represented by the legacy 12-bit codec. The
+            -- server reapplies the full vanilla value after stream readiness.
             initialStreamHealth = 2047.5,
             doorLockMode = 3,
             tyresCanBurst = false,

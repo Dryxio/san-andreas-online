@@ -38,6 +38,21 @@ local mission = {
 
 local finishChaseDamageTrace
 
+local function notifyTransitionHarness(method, ...)
+    local harness = rawget(_G, "DRIVETHRU_TRANSITION_HARNESS")
+    local callback = type(harness) == "table" and harness[method] or nil
+    if type(callback) == "function" then
+        local ok, reason = pcall(callback, ...)
+        if not ok then
+            outputDebugString(("[drive-thru] Transition harness callback %s failed: %s"):format(method, tostring(reason)), 1)
+            local errorCallback = harness.onInternalError
+            if method ~= "onInternalError" and type(errorCallback) == "function" then
+                pcall(errorCallback, method, tostring(reason))
+            end
+        end
+    end
+end
+
 local function nativeTaskRuntimeRunning()
     local runtime = getResourceFromName("native-task-runtime")
     return runtime and getResourceState(runtime) == "running"
@@ -330,6 +345,8 @@ addEventHandler("drivethru:presentationDiagnostic", resourceRoot,
             occupiedVehicle, occupiedSeat, tostring(physicallyInVehicle), x, y, z, heading, speed, moveState, animation,
             simplestTask, primaryPhysical, primaryScript, secondaryAttack, weapon, target, shots, tostring(driveBy),
             tostring(killOnFoot), tostring(changed)))
+    notifyTransitionHarness("onPresentationDiagnostic", player, partyRole, actorLabel, mission.stage, streamed,
+                            clientClaimsSyncer, serverOwner, shots, driveBy, killOnFoot, weapon, target)
 end)
 
 local function destroyMissionEntities()
@@ -392,6 +409,7 @@ local function cleanupMission(reason, restore)
         restorePlayer(leader, snapshot)
     end
     outputDebugString(("[drive-thru] Cleanup complete: %s"):format(tostring(reason or "cleanup")))
+    notifyTransitionHarness("onMissionCleanup", reason or "cleanup", leader, snapshot, restore == true)
     resetMissionState()
 end
 
@@ -407,6 +425,7 @@ local function failMission(reason, textKey)
         mission.hoodFailure.frozenElement = nil
     end
     outputDebugString("[drive-thru] Mission failed: " .. tostring(reason), 1)
+    notifyTransitionHarness("onMissionFailed", tostring(reason), textKey)
     publishPresentationState()
     if isElement(mission.leader) then
         triggerClientEvent(mission.leader, "drivethru:failed", resourceRoot, textKey, reason)
@@ -1174,6 +1193,7 @@ local function finishReturnMission()
     triggerClientEvent(mission.leader, "drivethru:passed", resourceRoot, DRIVETHRU.returnTrip.reward, DRIVETHRU.returnTrip.tune)
     outputDebugString(("[drive-thru] MISSION PASSED: return scenes complete; visible reward=$%d tune=%d"):format(
                           DRIVETHRU.returnTrip.reward, DRIVETHRU.returnTrip.tune))
+    notifyTransitionHarness("onMissionPassed", DRIVETHRU.returnTrip.reward, DRIVETHRU.returnTrip.tune)
     rememberTimer(setTimer(function()
         cleanupMission("complete", true)
     end, DRIVETHRU.returnTrip.completionDisplayDuration, 1))
@@ -1264,9 +1284,12 @@ local function startFileCutscene(purpose)
 end
 
 local function startMission(player)
+    if not isElement(player) or getElementType(player) ~= "player" then
+        return false, "leader unavailable"
+    end
     if mission.running then
         outputChatBox("Drive-Thru est deja en cours.", player, 255, 190, 80)
-        return
+        return false, "mission already running"
     end
     mission.running = true
     mission.leader = player
@@ -1277,7 +1300,7 @@ local function startMission(player)
     if not applied then
         outputDebugString("[drive-thru] CJ appearance failed: " .. tostring(details), 1)
         cleanupMission("appearance_failed", true)
-        return
+        return false, "appearance failed: " .. tostring(details)
     end
     removePedFromVehicle(player)
     setElementInterior(player, 0)
@@ -1290,6 +1313,7 @@ local function startMission(player)
     startFileCutscene("intro")
     publishPresentationState()
     rememberTimer(setTimer(publishPresentationState, 1000, 0))
+    return true
 end
 
 addEvent("drivethru:cutsceneReady", true)
@@ -1304,6 +1328,7 @@ addEventHandler("drivethru:cutsceneReady", resourceRoot, function(sceneId, resul
     scene.ready = true
     scene.started = true
     triggerClientEvent(mission.leader, "drivethru:cutsceneStart", resourceRoot, scene.id)
+    notifyTransitionHarness("onCutsceneStarted", scene.id, scene.name, scene.purpose)
 end)
 
 addEvent("drivethru:cutsceneSkipRequest", true)
@@ -1327,6 +1352,7 @@ addEventHandler("drivethru:cutsceneFinished", resourceRoot, function(sceneId, re
     scene.finished = true
     outputDebugString(("[drive-thru] %s finished skipped=%s elapsed=%s ms"):format(scene.name, tostring(skipped == true),
                                                                                    tostring(elapsed or "?")))
+    notifyTransitionHarness("onCutsceneFinished", scene.id, scene.name, scene.purpose, skipped == true, tonumber(elapsed))
     triggerClientEvent(mission.leader, "drivethru:cutsceneRelease", resourceRoot, scene.id)
     rememberTimer(setTimer(function(expectedId)
         if mission.cutscene and mission.cutscene.id == expectedId then
@@ -1392,11 +1418,12 @@ addEventHandler("drivethru:restaurantRebuildReady", resourceRoot, function(resul
     if result ~= "ready" then
         return failMission("Restaurant reconstruction barrier failed: " .. tostring(result) .. " " .. tostring(details or ""))
     end
+    notifyTransitionHarness("onRestaurantRebuildReady", details, mission.entities)
     setVehicleEngineState(mission.entities.vehicle, true)
     setVehicleEngineState(mission.entities.voodoo, true)
-    -- Entity creation compresses vehicle health to 12 bits and therefore
-    -- initially exposes 2047.5. Once the leader confirms the streamed native
-    -- vehicle, this ordinary health RPC carries the full SWEET3 value.
+    -- Protocol 1E6 compresses the entity-add health to 2047.5. Once the
+    -- leader has acknowledged that streamed native vehicle, the established
+    -- health RPC carries SWEET3's full-float 2700 value before route setup.
     setElementHealth(mission.entities.voodoo, DRIVETHRU.restaurant.voodoo.health)
     mission.stage = "pursuit_route_barrier"
     mission.pursuitRouteActivated = false
@@ -1503,6 +1530,7 @@ addEventHandler("drivethru:pursuitTasksReady", resourceRoot, function(result, de
     if result ~= "active" then
         return failMission("Pursuit task assignment failed: " .. tostring(result) .. " " .. tostring(details or ""))
     end
+    notifyTransitionHarness("onPursuitTasksReady", details, mission.entities)
     local expected = {
         ballas_passenger = {vehicle = mission.entities.voodoo, seat = DRIVETHRU.chase.ballasPassenger.seat},
         ryder = {vehicle = mission.entities.vehicle, seat = DRIVETHRU.restaurant.passengerSeats.ryder},
@@ -1526,6 +1554,7 @@ addEventHandler("drivethru:footCombatReady", resourceRoot, function(result, deta
     if result ~= "active" then
         return failMission("Vehicle-to-foot combat task assignment failed: " .. tostring(result) .. " " .. tostring(details or ""))
     end
+    notifyTransitionHarness("onFootCombatReady", details, mission.entities)
     outputDebugString("[drive-thru] Surviving Ballas and Grove shooters accepted the native on-foot retargeting")
 end)
 
@@ -1883,6 +1912,7 @@ addEventHandler("drivethru:returnSceneReleased", resourceRoot, function(sceneId,
     end
     local phase, skipped = scene.phase, scene.skipped
     mission.returnScene = nil
+    notifyTransitionHarness("onReturnSceneReleased", phase, skipped == true)
     if phase == "grove" then
         for _, name in ipairs({"sweet", "ryder"}) do
             if isElement(mission.entities[name]) then
@@ -2027,6 +2057,12 @@ addEventHandler("onPedWasted", root, function()
     end
 end)
 
+addEventHandler("onPedDamage", root, function(attacker, weapon, bodypart, loss)
+    if mission.running then
+        notifyTransitionHarness("onPedDamage", source, attacker, tonumber(weapon), tonumber(bodypart), tonumber(loss))
+    end
+end)
+
 addEventHandler("onPlayerWasted", root, function()
     if mission.running and source == mission.leader then
         failMission("CJ died")
@@ -2082,6 +2118,153 @@ addCommandHandler("drivethruskip", function(player)
     end
 end)
 
+-- The transition harness deliberately receives only narrow, state-checked
+-- operations. It must enter through startMission and let the production graph
+-- own every scene, barrier and reward; these helpers only stage a real arrival
+-- gate after physical input proof or close combat after live native evidence.
+DRIVETHRU_MISSION_HARNESS_API = {
+    start = function(player)
+        return startMission(player)
+    end,
+    snapshot = function()
+        local observers = {}
+        for observer in pairs(mission.observers) do
+            if isElement(observer) then
+                observers[#observers + 1] = observer
+            end
+        end
+        return {
+            running = mission.running,
+            finishing = mission.finishing,
+            stage = mission.stage,
+            leader = mission.leader,
+            observers = observers,
+            entities = mission.entities,
+            cutscene = mission.cutscene,
+            returnPhase = mission.returnPhase,
+            returnScene = mission.returnScene,
+            footCombat = mission.footCombat,
+            pursuitRouteActivated = mission.pursuitRouteActivated,
+            pursuitRouteIndex = mission.pursuitRouteIndex,
+        }
+    end,
+    stageEntry = function()
+        local vehicle, leader = mission.entities.vehicle, mission.leader
+        if not mission.running or mission.stage ~= "enter_car" or not isElement(vehicle) or not isElement(leader) or
+            getPedOccupiedVehicle(leader) then
+            return false, "entry staging precondition failed"
+        end
+        local matrix = getElementMatrix(vehicle)
+        if type(matrix) ~= "table" then
+            return false, "Greenwood matrix unavailable"
+        end
+        -- Put CJ beside the physical driver door. The harness still has to
+        -- deliver and observe a real enter/exit key; this only removes the
+        -- several metres of manual walking that cannot be driven headlessly.
+        local offsetX, offsetY, offsetZ = -1.45, 0.55, 0.75
+        local x = offsetX * matrix[1][1] + offsetY * matrix[2][1] + offsetZ * matrix[3][1] + matrix[4][1]
+        local y = offsetX * matrix[1][2] + offsetY * matrix[2][2] + offsetZ * matrix[3][2] + matrix[4][2]
+        local z = offsetX * matrix[1][3] + offsetY * matrix[2][3] + offsetZ * matrix[3][3] + matrix[4][3]
+        if not setElementPosition(leader, x, y, z) or not setElementRotation(leader, 0, 0, DRIVETHRU.vehicle.position.heading) or
+            not setElementFrozen(leader, false) then
+            return false, "entry staging mutation refused"
+        end
+        return true, vehicle
+    end,
+    stageArrival = function(name)
+        local placements = {
+            restaurant = {stage = "drive", x = 2404.1, y = -1886.9, z = 12.8, heading = 180},
+            grove = {stage = "return_grove_drive", x = 2513.3, y = -1676.5, z = 13.02, heading = 0},
+            smoke = {stage = "return_smoke_drive", x = 2066.4648, y = -1699.55, z = 13.0547, heading = 0},
+        }
+        local placement = placements[name]
+        local vehicle, leader = mission.entities.vehicle, mission.leader
+        if not mission.running or not placement or mission.stage ~= placement.stage or not isElement(vehicle) or
+            not isElement(leader) or getPedOccupiedVehicle(leader) ~= vehicle or getPedOccupiedVehicleSeat(leader) ~= 0 then
+            return false, "arrival staging precondition failed"
+        end
+        if not setElementPosition(vehicle, placement.x, placement.y, placement.z) or
+            not setElementRotation(vehicle, 0, 0, placement.heading) or not setElementVelocity(vehicle, 0, 0, 0) or
+            not setElementAngularVelocity(vehicle, 0, 0, 0) or not setElementFrozen(vehicle, false) or
+            not setElementFrozen(leader, false) or not setVehicleEngineState(vehicle, true) then
+            return false, "arrival staging mutation refused"
+        end
+        return true, vehicle
+    end,
+    skipCurrentScene = function()
+        local scene = mission.cutscene
+        if mission.running and scene and scene.started and not scene.skipRequested then
+            scene.skipRequested = true
+            triggerClientEvent(mission.leader, "drivethru:cutsceneSkip", resourceRoot, scene.id)
+            return true, "cutscene", scene.id
+        end
+        scene = mission.returnScene
+        if mission.running and scene and scene.skippable and not scene.releasing then
+            requestReturnSceneRelease(scene, true)
+            return true, "return", scene.id
+        end
+        return false, "no skippable scene"
+    end,
+    forceFootCombat = function()
+        local voodoo = mission.entities.voodoo
+        if not mission.running or mission.stage ~= "chase" or mission.footCombat or not isElement(voodoo) then
+            return false, "foot-combat precondition failed"
+        end
+        return setElementHealth(voodoo, 250) == true, "Voodoo health mutation refused"
+    end,
+    stageFootCombat = function()
+        local vehicle = mission.entities.vehicle
+        if not mission.running or mission.stage ~= "chase" or not mission.footCombat or not isElement(vehicle) then
+            return false, "foot-combat staging precondition failed"
+        end
+        local matrix = getElementMatrix(vehicle)
+        if type(matrix) ~= "table" then
+            return false, "Greenwood matrix unavailable"
+        end
+        for index, name in ipairs({"ballas_driver", "ballas_passenger"}) do
+            local ped = mission.entities[name]
+            if isElement(ped) and not isPedDead(ped) then
+                removePedFromVehicle(ped)
+                local offsetX, offsetY, offsetZ = index == 1 and 2.0 or -2.0, 7.0, 0.3
+                local x = offsetX * matrix[1][1] + offsetY * matrix[2][1] + offsetZ * matrix[3][1] + matrix[4][1]
+                local y = offsetX * matrix[1][2] + offsetY * matrix[2][2] + offsetZ * matrix[3][2] + matrix[4][2]
+                local z = offsetX * matrix[1][3] + offsetY * matrix[2][3] + offsetZ * matrix[3][3] + matrix[4][3]
+                if not setElementPosition(ped, x, y, z) or not setElementFrozen(ped, false) then
+                    return false, "Ballas combat staging refused: " .. name
+                end
+            end
+        end
+        -- A positional warp clears GTA's current intelligence task. Re-enter
+        -- the production combat assignment after the bounded headless
+        -- staging; its ordinary readiness event remains the acceptance gate.
+        triggerClientEvent(mission.leader, "drivethru:footCombat", resourceRoot, mission.entities,
+                           "headless proximity staging after native acceptance")
+        return true
+    end,
+    completeCombat = function()
+        if not mission.running or mission.stage ~= "chase" or not mission.footCombat then
+            return false, "combat-completion precondition failed"
+        end
+        local killed = 0
+        for _, name in ipairs({"ballas_driver", "ballas_passenger"}) do
+            local ped = mission.entities[name]
+            if isElement(ped) and not isPedDead(ped) then
+                if killPed(ped) then
+                    killed = killed + 1
+                end
+            end
+        end
+        return killed > 0, killed > 0 and killed or "no living Ballas"
+    end,
+    abort = function(reason)
+        if not mission.running then
+            return false
+        end
+        cleanupMission(reason or "transition_harness_abort", true)
+        return true
+    end,
+}
+
 addEventHandler("onResourceStart", resourceRoot, function()
     outputDebugString("[drive-thru] Resource ready. Use /drivethru to run the complete multiplayer-visible SWEET3 mission.")
 end)
@@ -2100,4 +2283,5 @@ addEventHandler("onResourceStop", resourceRoot, function()
         end
         resetMissionState()
     end
+    DRIVETHRU_MISSION_HARNESS_API = nil
 end)

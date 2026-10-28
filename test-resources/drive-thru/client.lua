@@ -22,6 +22,7 @@ local state = {
     pursuitTimers = {},
     footCombat = false,
     supportChatAccepted = false,
+    supportChatWaitStarted = false,
     returnPhase = nil,
     returnScene = nil,
     hoodFailure = nil,
@@ -33,6 +34,7 @@ local state = {
     presentationSerial = 0,
     presentationActors = {},
     presentationShots = {},
+    nativeTaskWaitTimers = {},
 }
 
 local PRESENTATION_DIAGNOSTIC_INTERVAL = 250
@@ -98,6 +100,81 @@ local function ensureMissionText()
     end
     state.missionTextReady = callMissionTextApi("acquireMissionText", "SWEET3")
     return state.missionTextReady
+end
+
+local function releaseOwnedMissionText()
+    if not state.missionTextReady then
+        return true
+    end
+    local released = callMissionTextApi("releaseMissionText")
+    if released then
+        state.missionTextReady = false
+    end
+    return released
+end
+
+local function nativeTaskReadiness(ped)
+    if type(isPedNativeTaskReady) ~= "function" then
+        return false, "api_unavailable"
+    end
+    if not isElement(ped) or getElementType(ped) ~= "ped" then
+        return false, "ped_unavailable"
+    end
+    if not isElementStreamedIn(ped) then
+        return false, "streamed=false"
+    end
+    if not isElementSyncer(ped) then
+        return false, "syncer=false"
+    end
+    local queried, ready = pcall(isPedNativeTaskReady, ped)
+    if not queried then
+        return false, "query_failed"
+    end
+    return ready == true, "native=" .. tostring(ready)
+end
+
+-- Script-command events cannot be dispatched until GTA has rebuilt the
+-- streamed ped's intelligence. Every caller supplies its mission-generation
+-- predicate, so a late callback cannot mutate a replacement scene.
+local function waitForNativeTaskReadiness(label, entries, timeout, isCurrent, onReady, onTimeout)
+    local startedAt = getTickCount()
+    local lastReportAt = startedAt - 1000
+    local function poll()
+        if type(isCurrent) == "function" and not isCurrent() then
+            return
+        end
+        local ready = true
+        local details = {}
+        for _, entry in ipairs(entries) do
+            local entryReady, detail = nativeTaskReadiness(entry.ped)
+            ready = ready and entryReady
+            details[#details + 1] = ("%s=%s"):format(entry.name, detail)
+        end
+        local now = getTickCount()
+        local joined = table.concat(details, ",")
+        if ready then
+            outputDebugString(("[drive-thru] Native task readiness passed: %s elapsed=%dms %s"):format(
+                                  label, now - startedAt, joined))
+            return onReady(joined)
+        end
+        if now - startedAt >= timeout then
+            outputDebugString(("[drive-thru] Native task readiness timed out: %s elapsed=%dms %s"):format(
+                                  label, now - startedAt, joined), 1)
+            return onTimeout(joined)
+        end
+        if now - lastReportAt >= 1000 then
+            lastReportAt = now
+            outputDebugString(("[drive-thru] Native task readiness waiting: %s elapsed=%dms %s"):format(
+                                  label, now - startedAt, joined))
+        end
+        local timer
+        timer = setTimer(function()
+            state.nativeTaskWaitTimers[timer] = nil
+            poll()
+        end, DRIVETHRU.chase.monitorInterval, 1)
+        state.nativeTaskWaitTimers[timer] = true
+    end
+    poll()
 end
 
 local function printMissionText(key, duration)
@@ -197,9 +274,22 @@ local function applyActorPolicies(ped)
                                   tostring(role), eventProfileToken))
         end
         local profile = role == "ballas_driver" and DRIVETHRU.restaurant.ballasDriver or DRIVETHRU.chase.ballasPassenger
-        return isPedNativeEventProfileActive(ped, eventProfileToken) == true and setPedSuffersCriticalHits(ped, false) == true and
-                   getPedSuffersCriticalHits(ped) == false and
-                   setPedWeaponAccuracy(ped, profile.accuracy) == true
+        local eventProfileActive = isPedNativeEventProfileActive(ped, eventProfileToken) == true
+        local criticalSet = setPedSuffersCriticalHits(ped, false) == true
+        local criticalState = getPedSuffersCriticalHits(ped) == false
+        local accuracySet = setPedWeaponAccuracy(ped, profile.accuracy) == true
+        local ready = eventProfileActive and criticalSet and criticalState and accuracySet
+        if not ready then
+            state.actorPolicyFailure = state.actorPolicyFailure or {}
+            local details = ("profile=%s criticalSet=%s criticalState=%s accuracySet=%s token=%s"):format(
+                                tostring(eventProfileActive), tostring(criticalSet), tostring(criticalState),
+                                tostring(accuracySet), tostring(eventProfileToken))
+            if state.actorPolicyFailure[ped] ~= details then
+                state.actorPolicyFailure[ped] = details
+                outputDebugString(("[drive-thru] Native actor policy waiting role=%s %s"):format(tostring(role), details))
+            end
+        end
+        return ready
     elseif role == "grove_support" then
         if type(setPedStayInSamePlace) ~= "function" or type(getPedStayInSamePlace) ~= "function" or
             type(setPedNeverTargeted) ~= "function" or type(isPedNeverTargeted) ~= "function" then
@@ -722,6 +812,12 @@ local function clearClientState(reason)
         killTimer(state.restaurantRebuildTimer)
     end
     state.restaurantRebuildTimer = nil
+    for timer in pairs(state.nativeTaskWaitTimers) do
+        if isTimer(timer) then
+            killTimer(timer)
+        end
+    end
+    state.nativeTaskWaitTimers = {}
     for _, timer in ipairs(state.pursuitTimers) do
         if isTimer(timer) then
             killTimer(timer)
@@ -768,8 +864,7 @@ local function clearClientState(reason)
     end
     if state.missionTextReady then
         callMissionTextApi("clearMissionHelp")
-        callMissionTextApi("clearMissionTexts")
-        callMissionTextApi("releaseMissionText")
+        releaseOwnedMissionText()
     end
     state.active = false
     if state.observer then
@@ -785,6 +880,7 @@ local function clearClientState(reason)
     state.greenwoodPolicyLogged = false
     state.footCombat = false
     state.supportChatAccepted = false
+    state.supportChatWaitStarted = false
     state.returnPhase = nil
     state.damageTrace = nil
     state.presentationStage = nil
@@ -1024,11 +1120,13 @@ local function beginActorEntry(entities)
         local actorsReady = true
         for _, name in ipairs({"smoke", "sweet", "ryder"}) do
             local ped = state.actors[name]
-            if not isElement(ped) or not isElementStreamedIn(ped) or not isElementSyncer(ped) or not applyActorPolicies(ped) then
+            local nativeReady, nativeDetails = nativeTaskReadiness(ped)
+            if not isElement(ped) or not isElementStreamedIn(ped) or not isElementSyncer(ped) or not applyActorPolicies(ped) or
+                not nativeReady then
                 actorsReady = false
-                lastReadiness = lastReadiness .. (" %s(element=%s stream=%s syncer=%s)"):format(
+                lastReadiness = lastReadiness .. (" %s(element=%s stream=%s syncer=%s task=%s)"):format(
                                     name, tostring(isElement(ped)), tostring(isElement(ped) and isElementStreamedIn(ped)),
-                                    tostring(isElement(ped) and isElementSyncer(ped)))
+                                    tostring(isElement(ped) and isElementSyncer(ped)), nativeDetails)
             end
         end
 
@@ -1163,7 +1261,7 @@ addEventHandler("drivethru:audioStart", resourceRoot, function(audioId)
             local elapsed = getTickCount() - audio.startedAt
             killTimer(audio.finishTimer)
             stopSpeaker(audio)
-            callMissionTextApi("clearMissionTexts")
+            releaseOwnedMissionText()
             pcall(releaseMissionAudio, audio.handle)
             audio.handle = nil
             state.audio = nil
@@ -1317,7 +1415,8 @@ local function showPursuitPedNavigation()
 end
 
 local function dispatchDriveBy(ped, target, profile)
-    return isElement(ped) and isElement(target) and type(setPedDriveBy) == "function" and
+    local nativeReady = nativeTaskReadiness(ped)
+    return nativeReady and target ~= nil and type(setPedDriveBy) == "function" and
                setPedDriveBy(ped, target, profile.abortRange, profile.style, profile.seatRHS, profile.frequency) == true
 end
 
@@ -1334,12 +1433,23 @@ local function tryStartSupportChat()
         triggerServerEvent("drivethru:supportChatReady", resourceRoot, "api_unavailable")
         return false
     end
-    local lead = setPedChatWith(mate1, mate2, true, true, true)
-    local reply = setPedChatWith(mate2, mate1, false, true, true)
-    state.supportChatAccepted = lead == true and reply == true
-    outputDebugString(("[drive-thru] Grove support chat acceptance=%s/%s"):format(tostring(lead), tostring(reply)))
-    triggerServerEvent("drivethru:supportChatReady", resourceRoot, state.supportChatAccepted and "accepted" or "refused")
-    return state.supportChatAccepted
+    if state.supportChatWaitStarted then
+        return false
+    end
+    state.supportChatWaitStarted = true
+    waitForNativeTaskReadiness("grove_support_chat", {{name = "mate1", ped = mate1}, {name = "mate2", ped = mate2}},
+                               DRIVETHRU.chase.taskActivationTimeout, function()
+            return state.active and not state.observer and not state.supportChatAccepted
+        end, function()
+            local lead = setPedChatWith(mate1, mate2, true, true, true)
+            local reply = setPedChatWith(mate2, mate1, false, true, true)
+            state.supportChatAccepted = lead == true and reply == true
+            outputDebugString(("[drive-thru] Grove support chat acceptance=%s/%s"):format(tostring(lead), tostring(reply)))
+            triggerServerEvent("drivethru:supportChatReady", resourceRoot, state.supportChatAccepted and "accepted" or "refused")
+        end, function(details)
+            triggerServerEvent("drivethru:supportChatReady", resourceRoot, "native_task_not_ready", details)
+        end)
+    return false
 end
 
 addEvent("drivethru:restaurantRebuilt", true)
@@ -1380,11 +1490,19 @@ addEventHandler("drivethru:restaurantRebuilt", resourceRoot, function(entities)
             local expectedVehicle = name == "ballas_driver" and voodoo or state.vehicle
             local expectedSeat = name == "ballas_driver" and DRIVETHRU.restaurant.ballasDriver.seat or
                                      DRIVETHRU.restaurant.passengerSeats[name]
-            local ready = isElement(ped) and isElementStreamedIn(ped) and isElementSyncer(ped) and applyActorPolicies(ped) and
-                              getPedOccupiedVehicle(ped) == expectedVehicle and getPedOccupiedVehicleSeat(ped) == expectedSeat
+            local elementReady = isElement(ped)
+            local streamedReady = elementReady and isElementStreamedIn(ped)
+            local syncerReady = elementReady and isElementSyncer(ped)
+            local policyReady = elementReady and applyActorPolicies(ped)
+            local vehicleReady = elementReady and getPedOccupiedVehicle(ped) == expectedVehicle
+            local seatReady = elementReady and getPedOccupiedVehicleSeat(ped) == expectedSeat
+            local ready = elementReady and streamedReady and syncerReady and policyReady and vehicleReady and seatReady
             actorsReady = actorsReady and ready
-            seatDetails[#seatDetails + 1] = ("%s=%s/%s"):format(name, tostring(ready),
-                                                                 tostring(isElement(ped) and getPedOccupiedVehicleSeat(ped) or "none"))
+            seatDetails[#seatDetails + 1] = ("%s=%s/%s(e=%s stream=%s syncer=%s policy=%s vehicle=%s)"):format(
+                                                name, tostring(ready),
+                                                tostring(elementReady and getPedOccupiedVehicleSeat(ped) or "none"),
+                                                tostring(elementReady), tostring(streamedReady), tostring(syncerReady),
+                                                tostring(policyReady), tostring(vehicleReady))
         end
         local cjReady = getPedOccupiedVehicle(localPlayer) == state.vehicle and getPedOccupiedVehicleSeat(localPlayer) == 0
         local blipReady = isElement(state.pursuitBlip)
@@ -1446,12 +1564,16 @@ addEventHandler("drivethru:pursuitActorsCreated", resourceRoot, function(entitie
         if not state.active or state.stage ~= "pursuit_task_barrier" then
             return
         end
+        local readinessDetails = {}
         local ready = isElement(state.vehicle) and isElement(voodoo) and isElementStreamedIn(state.vehicle) and
                           isElementStreamedIn(voodoo) and isElementSyncer(state.vehicle) and isElementSyncer(voodoo) and
                           applyGreenwoodPolicies(state.vehicle) and applyGreenwoodPolicies(voodoo)
         for _, name in ipairs({"sweet", "ryder", "ballas_driver", "ballas_passenger"}) do
             local ped = state.actors[name]
-            ready = ready and isElement(ped) and isElementStreamedIn(ped) and isElementSyncer(ped) and applyActorPolicies(ped)
+            local nativeReady, nativeDetails = nativeTaskReadiness(ped)
+            ready = ready and isElement(ped) and isElementStreamedIn(ped) and isElementSyncer(ped) and applyActorPolicies(ped) and
+                        nativeReady
+            readinessDetails[#readinessDetails + 1] = name .. "=" .. nativeDetails
         end
         ready = ready and getPedOccupiedVehicle(state.actors.ballas_driver) == voodoo and
                     getPedOccupiedVehicleSeat(state.actors.ballas_driver) == 0 and
@@ -1493,7 +1615,8 @@ addEventHandler("drivethru:pursuitActorsCreated", resourceRoot, function(entitie
         end
         if getTickCount() - requestedAt >= DRIVETHRU.chase.taskActivationTimeout then
             killTimer(timer)
-            triggerServerEvent("drivethru:pursuitTasksReady", resourceRoot, "timeout", "native tasks were not all observed active")
+            triggerServerEvent("drivethru:pursuitTasksReady", resourceRoot, "timeout",
+                               "native tasks were not all observed active; " .. table.concat(readinessDetails, ","))
         end
     end, DRIVETHRU.chase.monitorInterval, 0))
 end)
@@ -1567,8 +1690,9 @@ addEventHandler("drivethru:greenwoodFailureTasks", resourceRoot, function(actorN
         for _, name in ipairs(actorNames) do
             local ped = entities[name]
             state.actors[name] = ped
+            local nativeReady, nativeDetails = nativeTaskReadiness(ped)
             local ready = isElement(ped) and isElementStreamedIn(ped) and isElementSyncer(ped) and isElement(state.vehicle) and
-                              isElementStreamedIn(state.vehicle) and applyActorPolicies(ped)
+                              isElementStreamedIn(state.vehicle) and applyActorPolicies(ped) and nativeReady
             allReady = allReady and ready
             if ready and not accepted[name] then
                 accepted[name] = setPedTaskSequence(ped, {
@@ -1590,7 +1714,8 @@ addEventHandler("drivethru:greenwoodFailureTasks", resourceRoot, function(actorN
                 observed[name] = true
             end
             allActive = allActive and observed[name] == true
-            details[#details + 1] = ("%s=%s/%s"):format(name, tostring(accepted[name] == true), tostring(index))
+            details[#details + 1] = ("%s=%s/%s/task:%s"):format(name, tostring(accepted[name] == true), tostring(index),
+                                                                  nativeDetails)
         end
         if allReady and allActive then
             killTimer(timer)
@@ -1660,11 +1785,12 @@ local function hoodFailureReadiness(failure)
         local policiesReady = authoritative and applyActorPolicies(entry.ped)
         local correctVehicle = exists and getPedOccupiedVehicle(entry.ped) == voodoo
         local seat = exists and getPedOccupiedVehicleSeat(entry.ped) or "none"
-        local pedReady = exists and streamed and authoritative and policiesReady and correctVehicle and seat == entry.seat
+        local nativeReady, nativeDetails = nativeTaskReadiness(entry.ped)
+        local pedReady = exists and streamed and authoritative and policiesReady and correctVehicle and seat == entry.seat and nativeReady
         ready = ready and pedReady
-        details[#details + 1] = ("%s=%s/stream:%s/sync:%s/policy:%s/vehicle:%s/seat:%s"):format(
+        details[#details + 1] = ("%s=%s/stream:%s/sync:%s/policy:%s/vehicle:%s/seat:%s/task:%s"):format(
                                     entry.name, tostring(pedReady), tostring(streamed), tostring(authoritative),
-                                    tostring(policiesReady), tostring(correctVehicle), tostring(seat))
+                                    tostring(policiesReady), tostring(correctVehicle), tostring(seat), nativeDetails)
     end
 
     for _, name in ipairs({"mate1", "mate2"}) do
@@ -1681,11 +1807,12 @@ local function hoodFailureReadiness(failure)
             bx, by, bz = getElementBonePosition(ped, 2)
         end
         local boneReady = type(bx) == "number" and type(by) == "number" and type(bz) == "number"
+        local nativeReady, nativeDetails = nativeTaskReadiness(ped)
         local pedReady = isElement(ped) and isElementStreamedIn(ped) and isElementSyncer(ped) and not isPedDead(ped) and
-                             applyActorPolicies(ped) and distance <= profile.supportPositionTolerance and boneReady
+                             applyActorPolicies(ped) and distance <= profile.supportPositionTolerance and boneReady and nativeReady
         ready = ready and pedReady
-        details[#details + 1] = ("%s=%s/%.2f@(%.2f,%.2f,%.2f)/bone:%s"):format(name, tostring(pedReady), distance,
-                                                                                 px, py, pz, tostring(boneReady))
+        details[#details + 1] = ("%s=%s/%.2f@(%.2f,%.2f,%.2f)/bone:%s/task:%s"):format(
+                                    name, tostring(pedReady), distance, px, py, pz, tostring(boneReady), nativeDetails)
     end
 
     local chatReady = ready and tryStartSupportChat()
@@ -1849,71 +1976,111 @@ addEventHandler("drivethru:hoodFailureFrozen", resourceRoot, function(failureId,
         type(getPedTaskSequenceProgress) ~= "function" or type(isPedDoingTask) ~= "function" then
         return triggerServerEvent("drivethru:hoodFailureActive", resourceRoot, failure.id, "api_or_vehicle_unavailable")
     end
-    if type(killPedTask) == "function" then
-        pcall(killPedTask, passenger, "primary", 3, false)
-    end
-    local escape = DRIVETHRU.chase.hoodFailure.escape
-    local slowDrive = setPedDriveTo(driver, voodoo, Vector3(escape.target.x, escape.target.y, escape.target.z), escape.slowSpeed,
-                                    escape.drivingMode, escape.drivingStyle)
-    if slowDrive ~= true or not fadeScriptCamera(failure.cameraToken, true, DRIVETHRU.chase.hoodFailure.fadeDuration, 0, 0, 0) then
-        return triggerServerEvent("drivethru:hoodFailureActive", resourceRoot, failure.id, "slow_drive_or_fade_refused")
-    end
-    rememberHoodFailureTimer(failure, setTimer(function()
+    local function beginHoodFailureTasks()
         if state.hoodFailure ~= failure then
             return
         end
-        local driveBy = DRIVETHRU.chase.hoodFailure.driveBy
-        setPedWeaponAccuracy(passenger, driveBy.accuracy)
-        setPedWeaponShootingRate(passenger, driveBy.shootRate)
-        local accepted = setPedDriveBy(passenger, Vector3(driveBy.target.x, driveBy.target.y, driveBy.target.z), driveBy.abortRange,
-                                       driveBy.style, driveBy.seatRHS, driveBy.frequency)
-        if accepted ~= true then
-            return triggerServerEvent("drivethru:hoodFailureActive", resourceRoot, failure.id, "driveby_refused")
+        if type(killPedTask) == "function" then
+            pcall(killPedTask, passenger, "primary", 3, false)
         end
-        traceCurrent("hood_driveby")
-        triggerServerEvent("drivethru:hoodFailureActive", resourceRoot, failure.id, "active", "slow_drive=true driveby=true")
-        failure.deathAccepted = {}
-        failure.deathTaskObserved = {}
-        failure.deathReported = {}
-        local function dispatchDeath(name)
-            local ped = failure.entities[name]
-            local accepted = isElement(ped) and isElementStreamedIn(ped) and isElementSyncer(ped) and
-                                 setPedTaskSequence(ped, {{task = "die"}}, false) == true
-            failure.deathAccepted[name] = accepted
-            if not accepted then
-                triggerServerEvent("drivethru:hoodFailureActive", resourceRoot, failure.id, "die_refused", name)
-            end
+        local escape = DRIVETHRU.chase.hoodFailure.escape
+        local slowDrive = setPedDriveTo(driver, voodoo, Vector3(escape.target.x, escape.target.y, escape.target.z), escape.slowSpeed,
+                                        escape.drivingMode, escape.drivingStyle)
+        if slowDrive ~= true or not fadeScriptCamera(failure.cameraToken, true, DRIVETHRU.chase.hoodFailure.fadeDuration, 0, 0, 0) then
+            return triggerServerEvent("drivethru:hoodFailureActive", resourceRoot, failure.id, "slow_drive_or_fade_refused")
         end
-        local deathMonitor
-        deathMonitor = rememberHoodFailureTimer(failure, setTimer(function()
+        rememberHoodFailureTimer(failure, setTimer(function()
             if state.hoodFailure ~= failure then
                 return
             end
-            for _, name in ipairs({"mate1", "mate2"}) do
-                local ped = failure.entities[name]
-                if failure.deathAccepted[name] and not failure.deathReported[name] and isElement(ped) and isElementStreamedIn(ped) and
-                    isElementSyncer(ped) then
-                    local sequenceIndex = getPedTaskSequenceProgress(ped)
-                    local taskName = getObservedDeathTask(ped)
-                    if sequenceIndex >= 0 or taskName then
-                        failure.deathTaskObserved[name] = taskName or ("sequence:" .. tostring(sequenceIndex))
+            waitForNativeTaskReadiness("hood_failure_driveby", {{name = "passenger", ped = passenger}},
+                                       DRIVETHRU.chase.taskActivationTimeout,
+                                       function()
+                    return state.hoodFailure == failure and state.stage == "hood_failure_setup"
+                end,
+                                       function()
+                    local driveBy = DRIVETHRU.chase.hoodFailure.driveBy
+                    setPedWeaponAccuracy(passenger, driveBy.accuracy)
+                    setPedWeaponShootingRate(passenger, driveBy.shootRate)
+                    local accepted = dispatchDriveBy(passenger, Vector3(driveBy.target.x, driveBy.target.y, driveBy.target.z), driveBy)
+                    if accepted ~= true then
+                        return triggerServerEvent("drivethru:hoodFailureActive", resourceRoot, failure.id, "driveby_refused")
                     end
-                    local health = getElementHealth(ped)
-                    if failure.deathTaskObserved[name] and type(health) == "number" then
-                        failure.deathReported[name] = true
-                        triggerServerEvent("drivethru:hoodFailureDeathObserved", resourceRoot, failure.id, name, health,
-                                           failure.deathTaskObserved[name])
+
+                    traceCurrent("hood_driveby")
+                    -- The leader does not mirror presentationState into its
+                    -- execution stage. Commit the locally observed task phase
+                    -- before arming the delayed deaths; otherwise their
+                    -- generation predicate rejects them after the server has
+                    -- already accepted this exact drive-by evidence.
+                    state.stage = "hood_failure_active"
+                    triggerServerEvent("drivethru:hoodFailureActive", resourceRoot, failure.id, "active",
+                                       "slow_drive=true driveby=true")
+                    failure.deathAccepted = {}
+                    failure.deathTaskObserved = {}
+                    failure.deathReported = {}
+                    local function dispatchDeath(name)
+                        local ped = failure.entities[name]
+                        waitForNativeTaskReadiness("hood_failure_die_" .. name, {{name = name, ped = ped}},
+                                                   DRIVETHRU.chase.taskActivationTimeout,
+                                                   function()
+                                return state.hoodFailure == failure and state.stage == "hood_failure_active"
+                            end,
+                                                   function()
+                                local accepted = setPedTaskSequence(ped, {{task = "die"}}, false) == true
+                                failure.deathAccepted[name] = accepted
+                                if not accepted then
+                                    triggerServerEvent("drivethru:hoodFailureActive", resourceRoot, failure.id, "die_refused", name)
+                                end
+                            end,
+                                                   function(details)
+                                triggerServerEvent("drivethru:hoodFailureActive", resourceRoot, failure.id, "die_task_not_ready",
+                                                   name .. " " .. details)
+                            end)
                     end
-                end
-            end
-            if failure.deathReported.mate1 and failure.deathReported.mate2 and isTimer(deathMonitor) then
-                killTimer(deathMonitor)
-            end
-        end, DRIVETHRU.chase.monitorInterval, 0))
-        traceCurrent("hood_deaths")
-        rememberHoodFailureTimer(failure, setTimer(dispatchDeath, DRIVETHRU.chase.hoodFailure.mate1DeathDelay, 1, "mate1"))
-        rememberHoodFailureTimer(failure, setTimer(dispatchDeath, DRIVETHRU.chase.hoodFailure.mate2DeathDelay, 1, "mate2"))
-    end, DRIVETHRU.chase.hoodFailure.revealDelay, 1))
+                    local deathMonitor
+                    deathMonitor = rememberHoodFailureTimer(failure, setTimer(function()
+                        if state.hoodFailure ~= failure then
+                            return
+                        end
+                        for _, name in ipairs({"mate1", "mate2"}) do
+                            local ped = failure.entities[name]
+                            if failure.deathAccepted[name] and not failure.deathReported[name] and isElement(ped) and
+                                isElementStreamedIn(ped) and isElementSyncer(ped) then
+                                local sequenceIndex = getPedTaskSequenceProgress(ped)
+                                local taskName = getObservedDeathTask(ped)
+                                if sequenceIndex >= 0 or taskName then
+                                    failure.deathTaskObserved[name] = taskName or ("sequence:" .. tostring(sequenceIndex))
+                                end
+                                local health = getElementHealth(ped)
+                                if failure.deathTaskObserved[name] and type(health) == "number" then
+                                    failure.deathReported[name] = true
+                                    triggerServerEvent("drivethru:hoodFailureDeathObserved", resourceRoot, failure.id, name, health,
+                                                       failure.deathTaskObserved[name])
+                                end
+                            end
+                        end
+                        if failure.deathReported.mate1 and failure.deathReported.mate2 and isTimer(deathMonitor) then
+                            killTimer(deathMonitor)
+                        end
+                    end, DRIVETHRU.chase.monitorInterval, 0))
+                    traceCurrent("hood_deaths")
+                    rememberHoodFailureTimer(failure,
+                                             setTimer(dispatchDeath, DRIVETHRU.chase.hoodFailure.mate1DeathDelay, 1, "mate1"))
+                    rememberHoodFailureTimer(failure,
+                                             setTimer(dispatchDeath, DRIVETHRU.chase.hoodFailure.mate2DeathDelay, 1, "mate2"))
+                end,
+                                       function(details)
+                    triggerServerEvent("drivethru:hoodFailureActive", resourceRoot, failure.id, "driveby_task_not_ready", details)
+                end)
+        end, DRIVETHRU.chase.hoodFailure.revealDelay, 1))
+    end
+    waitForNativeTaskReadiness("hood_failure_initial", {{name = "driver", ped = driver}, {name = "passenger", ped = passenger}},
+                               DRIVETHRU.chase.taskActivationTimeout, function()
+            return state.hoodFailure == failure and state.stage == "hood_failure_setup"
+        end, beginHoodFailureTasks, function(details)
+            triggerServerEvent("drivethru:hoodFailureActive", resourceRoot, failure.id, "native_task_not_ready", details)
+        end)
 end)
 
 addEvent("drivethru:hoodFailureEscape", true)
@@ -1923,37 +2090,48 @@ addEventHandler("drivethru:hoodFailureEscape", resourceRoot, function(failureId,
         return
     end
     state.stage = "hood_failure_escape"
+    local driver = entities.ballas_driver
     local escape = DRIVETHRU.chase.hoodFailure.escape
-    if not isElement(entities.ballas_driver) or not isElement(entities.voodoo) or
-        setPedDriveTo(entities.ballas_driver, entities.voodoo, Vector3(escape.target.x, escape.target.y, escape.target.z), escape.fastSpeed,
-                      escape.drivingMode, escape.drivingStyle) ~= true then
-        return triggerServerEvent("drivethru:hoodFailureEscapeBlack", resourceRoot, failure.id, "drive_refused")
-    end
-    rememberHoodFailureTimer(failure, setTimer(function()
-        if state.hoodFailure ~= failure or
-            not fadeScriptCamera(failure.cameraToken, false, DRIVETHRU.chase.hoodFailure.fadeDuration, 0, 0, 0) then
-            return triggerServerEvent("drivethru:hoodFailureEscapeBlack", resourceRoot, failure.id, "fade_refused")
-        end
-        local fadeStartedAt = getTickCount()
-        local fadeTimer
-        fadeTimer = rememberHoodFailureTimer(failure, setTimer(function()
-            if state.hoodFailure ~= failure then
-                return
+    waitForNativeTaskReadiness("hood_failure_escape", {{name = "driver", ped = driver}},
+                               DRIVETHRU.chase.taskActivationTimeout,
+                               function()
+            return state.hoodFailure == failure and state.stage == "hood_failure_escape"
+        end,
+                               function()
+            if not isElement(entities.voodoo) or
+                setPedDriveTo(driver, entities.voodoo, Vector3(escape.target.x, escape.target.y, escape.target.z), escape.fastSpeed,
+                              escape.drivingMode, escape.drivingStyle) ~= true then
+                return triggerServerEvent("drivethru:hoodFailureEscapeBlack", resourceRoot, failure.id, "drive_refused")
             end
-            local queried, fading = pcall(isScriptCameraFading, failure.cameraToken)
-            if not queried then
-                killTimer(fadeTimer)
-                return triggerServerEvent("drivethru:hoodFailureEscapeBlack", resourceRoot, failure.id, "fade_query_refused")
-            end
-            if fading == false then
-                killTimer(fadeTimer)
-                triggerServerEvent("drivethru:hoodFailureEscapeBlack", resourceRoot, failure.id, "black")
-            elseif getTickCount() - fadeStartedAt >= DRIVETHRU.chase.taskActivationTimeout then
-                killTimer(fadeTimer)
-                triggerServerEvent("drivethru:hoodFailureEscapeBlack", resourceRoot, failure.id, "fade_timeout")
-            end
-        end, DRIVETHRU.chase.monitorInterval, 0))
-    end, DRIVETHRU.chase.hoodFailure.postDeathDrive, 1))
+            rememberHoodFailureTimer(failure, setTimer(function()
+                if state.hoodFailure ~= failure or
+                    not fadeScriptCamera(failure.cameraToken, false, DRIVETHRU.chase.hoodFailure.fadeDuration, 0, 0, 0) then
+                    return triggerServerEvent("drivethru:hoodFailureEscapeBlack", resourceRoot, failure.id, "fade_refused")
+                end
+                local fadeStartedAt = getTickCount()
+                local fadeTimer
+                fadeTimer = rememberHoodFailureTimer(failure, setTimer(function()
+                    if state.hoodFailure ~= failure then
+                        return
+                    end
+                    local queried, fading = pcall(isScriptCameraFading, failure.cameraToken)
+                    if not queried then
+                        killTimer(fadeTimer)
+                        return triggerServerEvent("drivethru:hoodFailureEscapeBlack", resourceRoot, failure.id, "fade_query_refused")
+                    end
+                    if fading == false then
+                        killTimer(fadeTimer)
+                        triggerServerEvent("drivethru:hoodFailureEscapeBlack", resourceRoot, failure.id, "black")
+                    elseif getTickCount() - fadeStartedAt >= DRIVETHRU.chase.taskActivationTimeout then
+                        killTimer(fadeTimer)
+                        triggerServerEvent("drivethru:hoodFailureEscapeBlack", resourceRoot, failure.id, "fade_timeout")
+                    end
+                end, DRIVETHRU.chase.monitorInterval, 0))
+            end, DRIVETHRU.chase.hoodFailure.postDeathDrive, 1))
+        end,
+                               function(details)
+            triggerServerEvent("drivethru:hoodFailureEscapeBlack", resourceRoot, failure.id, "native_task_not_ready", details)
+        end)
 end)
 
 addEvent("drivethru:hoodFailureRestore", true)
@@ -1992,55 +2170,73 @@ addEventHandler("drivethru:footCombat", resourceRoot, function(entities, reason)
     callMissionTextApi("clearMissionHelp")
     printMissionText("K_BALLA", 6000)
 
-    local expected = {}
-    local accepted = true
     if type(setPedKillOnFoot) ~= "function" or type(isPedDoingTask) ~= "function" then
         return triggerServerEvent("drivethru:footCombatReady", resourceRoot, "api_unavailable")
     end
+    local expected = {}
+    local readinessEntries = {}
     for _, name in ipairs({"ballas_driver", "ballas_passenger"}) do
         local ped = state.actors[name]
         if isElement(ped) and not isPedDead(ped) then
             expected[name] = "kill"
-            accepted = setPedKillOnFoot(ped, localPlayer) == true and accepted
+            readinessEntries[#readinessEntries + 1] = {name = name, ped = ped}
         end
     end
     local driver, passenger = state.actors.ballas_driver, state.actors.ballas_passenger
     if isElement(driver) and not isPedDead(driver) then
         expected.ryder = "driveby"
-        accepted = dispatchDriveBy(state.actors.ryder, driver, DRIVETHRU.chase.driveBy.ryderOnFoot) and accepted
+        readinessEntries[#readinessEntries + 1] = {name = "ryder", ped = state.actors.ryder}
     end
     if isElement(passenger) and not isPedDead(passenger) then
         expected.sweet = "driveby"
-        accepted = dispatchDriveBy(state.actors.sweet, passenger, DRIVETHRU.chase.driveBy.sweetOnFoot) and accepted
+        readinessEntries[#readinessEntries + 1] = {name = "sweet", ped = state.actors.sweet}
     end
-    outputDebugString(("[drive-thru] Foot-combat acceptance=%s trigger=%s"):format(tostring(accepted), tostring(reason)))
-    if not accepted then
-        return triggerServerEvent("drivethru:footCombatReady", resourceRoot, "refused")
-    end
-
-    local requestedAt = getTickCount()
-    local timer
-    timer = rememberPursuitTimer(setTimer(function()
-        if not state.active or state.stage ~= "chase" then
-            return
-        end
-        local active = true
-        for name, kind in pairs(expected) do
-            local ped = state.actors[name]
-            if isElement(ped) and not isPedDead(ped) then
-                local task = kind == "kill" and "TASK_COMPLEX_KILL_PED_ON_FOOT" or "TASK_SIMPLE_GANG_DRIVEBY"
-                active = isPedDoingTask(ped, task) and active
+    waitForNativeTaskReadiness("foot_combat", readinessEntries, DRIVETHRU.chase.taskActivationTimeout, function()
+            return state.active and state.stage == "chase" and state.footCombat
+        end, function()
+            local accepted = true
+            for _, name in ipairs({"ballas_driver", "ballas_passenger"}) do
+                if expected[name] then
+                    accepted = setPedKillOnFoot(state.actors[name], localPlayer) == true and accepted
+                end
             end
-        end
-        if active then
-            killTimer(timer)
-            triggerServerEvent("drivethru:footCombatReady", resourceRoot, "active",
-                               ("elapsed=%dms"):format(getTickCount() - requestedAt))
-        elseif getTickCount() - requestedAt >= DRIVETHRU.chase.taskActivationTimeout then
-            killTimer(timer)
-            triggerServerEvent("drivethru:footCombatReady", resourceRoot, "timeout")
-        end
-    end, DRIVETHRU.chase.monitorInterval, 0))
+            if expected.ryder then
+                accepted = dispatchDriveBy(state.actors.ryder, driver, DRIVETHRU.chase.driveBy.ryderOnFoot) and accepted
+            end
+            if expected.sweet then
+                accepted = dispatchDriveBy(state.actors.sweet, passenger, DRIVETHRU.chase.driveBy.sweetOnFoot) and accepted
+            end
+            outputDebugString(("[drive-thru] Foot-combat acceptance=%s trigger=%s"):format(tostring(accepted), tostring(reason)))
+            if not accepted then
+                return triggerServerEvent("drivethru:footCombatReady", resourceRoot, "refused")
+            end
+
+            local requestedAt = getTickCount()
+            local timer
+            timer = rememberPursuitTimer(setTimer(function()
+                if not state.active or state.stage ~= "chase" then
+                    return
+                end
+                local active = true
+                for name, kind in pairs(expected) do
+                    local ped = state.actors[name]
+                    if isElement(ped) and not isPedDead(ped) then
+                        local task = kind == "kill" and "TASK_COMPLEX_KILL_PED_ON_FOOT" or "TASK_SIMPLE_GANG_DRIVEBY"
+                        active = isPedDoingTask(ped, task) and active
+                    end
+                end
+                if active then
+                    killTimer(timer)
+                    triggerServerEvent("drivethru:footCombatReady", resourceRoot, "active",
+                                       ("elapsed=%dms"):format(getTickCount() - requestedAt))
+                elseif getTickCount() - requestedAt >= DRIVETHRU.chase.taskActivationTimeout then
+                    killTimer(timer)
+                    triggerServerEvent("drivethru:footCombatReady", resourceRoot, "timeout")
+                end
+            end, DRIVETHRU.chase.monitorInterval, 0))
+        end, function(details)
+            triggerServerEvent("drivethru:footCombatReady", resourceRoot, "native_task_not_ready", details)
+        end)
 end)
 
 addEvent("drivethru:chaseCheckpoint", true)
@@ -2252,24 +2448,31 @@ addEventHandler("drivethru:returnSceneDepartures", resourceRoot, function(sceneI
             not applyActorPolicies(ped) then
             return reportFailure("not_ready", departure.actor)
         end
-        local accepted = setPedTaskSequence(ped, {
-            {task = "leave_car", vehicle = state.vehicle},
-            {
-                task = "go_to",
-                x = departure.target.x,
-                y = departure.target.y,
-                z = departure.target.z,
-                movement = "walk",
-                radius = 0.5,
-                slowdownRadius = 2.0,
-                timeout = departure.timeout,
-            },
-        }, false)
-        if accepted ~= true then
-            return reportFailure("refused", departure.actor)
-        end
-        scene.departureAccepted[departure.actor] = true
-        outputDebugString(("[drive-thru] %s return sequence accepted for %s"):format(phase, departure.actor))
+        waitForNativeTaskReadiness(phase .. "_departure_" .. departure.actor, {{name = departure.actor, ped = ped}},
+                                   DRIVETHRU.returnTrip.departureActivationTimeout, function()
+                return not failed and state.returnScene == scene
+            end, function()
+                local accepted = setPedTaskSequence(ped, {
+                    {task = "leave_car", vehicle = state.vehicle},
+                    {
+                        task = "go_to",
+                        x = departure.target.x,
+                        y = departure.target.y,
+                        z = departure.target.z,
+                        movement = "walk",
+                        radius = 0.5,
+                        slowdownRadius = 2.0,
+                        timeout = departure.timeout,
+                    },
+                }, false)
+                if accepted ~= true then
+                    return reportFailure("refused", departure.actor)
+                end
+                scene.departureAccepted[departure.actor] = true
+                outputDebugString(("[drive-thru] %s return sequence accepted for %s"):format(phase, departure.actor))
+            end, function(details)
+                reportFailure("native_task_not_ready", departure.actor .. " " .. details)
+            end)
     end
     for _, departure in ipairs(profile.departures) do
         if departure.delay > 0 then
