@@ -1172,17 +1172,16 @@ void CMultiplayerSA::InitHooks()
     // This is used so we can circumvent the limit of ~21 different vehicles by managing the RwObject ourselves
     //*(BYTE *)0x4C9890 = 0xC3;
 
-    /*
-    004C021D   B0 00            MOV AL,0
-    004C021F   90               NOP
-    004C0220   90               NOP
-    004C0221   90               NOP
-    */
-    MemPut<BYTE>(0x4C01F0, 0xB0);
-    MemPut<BYTE>(0x4C01F1, 0x00);
-    MemPut<BYTE>(0x4C01F2, 0x90);
-    MemPut<BYTE>(0x4C01F3, 0x90);
-    MemPut<BYTE>(0x4C01F4, 0x90);
+    // Keep the existing forced-false IsSameEventForAI result, but also replace
+    // its __thiscall stack cleanup: the PUSH at 0x4C01ED passes one argument
+    // that the original callee removes with RET 4. Forwarded couple damage can
+    // reach this comparison; leaving the argument behind corrupts the SEH
+    // frame and makes ComputeDamageResponse return to its -1 scope sentinel.
+    MemPut<BYTE>(0x4C01F0, 0x83);  // add esp, 4
+    MemPut<BYTE>(0x4C01F1, 0xC4);
+    MemPut<BYTE>(0x4C01F2, 0x04);
+    MemPut<BYTE>(0x4C01F3, 0xB0);  // mov al, 0
+    MemPut<BYTE>(0x4C01F4, 0x00);
 
     // Disable MakePlayerSafe
     MemPut<BYTE>(0x56E870, 0xC2);
