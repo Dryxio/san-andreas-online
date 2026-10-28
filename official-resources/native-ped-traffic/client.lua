@@ -1412,9 +1412,8 @@ setTimer(function()
     -- participate in deterministic owner/observer tests.
     updateLocalPopulationModels()
 
-    -- The native API intentionally collapses unsupported runtime states to
-    -- false. Send bounded Lua-side context with the ordinary report so the
-    -- server can distinguish that case from a missing function or rejection.
+    -- Send the native failure code with bounded Lua-side context so a packaged
+    -- client regression remains distinguishable from resource/world state.
     local profileFunctionPresent = type(getAmbientPedPopulationProfile) == "function"
     local diagnostic = {
         profileFunctionPresent = profileFunctionPresent,
@@ -1430,8 +1429,9 @@ setTimer(function()
         return
     end
 
-    local profile = getAmbientPedPopulationProfile()
+    local profile, nativeReason = getAmbientPedPopulationProfile()
     diagnostic.profileType = type(profile)
+    diagnostic.nativeReason = type(nativeReason) == "string" and nativeReason or false
     if type(profile) == "table" then
         profile.worldRevision = populationWorldRevision
         profile.catalogRevision = populationCatalogRevision

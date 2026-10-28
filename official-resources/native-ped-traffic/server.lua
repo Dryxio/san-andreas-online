@@ -4183,6 +4183,16 @@ addEventHandler("pedTraffic:populationProfile", resourceRoot, function(profile, 
         local profileType = allowedProfileTypes[clientDiagnostic.profileType] and clientDiagnostic.profileType or type(profile)
         local profileFunctionPresent = clientDiagnostic.profileFunctionPresent == true
         local updateFunctionPresent = clientDiagnostic.updateFunctionPresent == true
+        local allowedNativeReasons = {
+            inactive = true, ["zone-unavailable"] = true, ["zone-info-unavailable"] = true,
+            ["zone-pointer-invalid"] = true, ["zone-info-pointer-invalid"] = true,
+            ["target-calculation-failed"] = true, ["ped-density-invalid"] = true,
+            ["maximum-peds-invalid"] = true, ["creation-distance-invalid"] = true,
+            ["generation-distance-invalid"] = true, ["zone-type-invalid"] = true,
+            ["time-index-invalid"] = true, ["weekend-invalid"] = true,
+            ["world-level-invalid"] = true, ["target-invalid"] = true,
+        }
+        local nativeReason = allowedNativeReasons[clientDiagnostic.nativeReason] and clientDiagnostic.nativeReason or "unavailable"
         local dimension = isIntegerInRange(clientDiagnostic.dimension, 0, 65535) and clientDiagnostic.dimension or "invalid"
         local interior = isIntegerInRange(clientDiagnostic.interior, 0, 255) and clientDiagnostic.interior or "invalid"
         local clientWorldRevision = isIntegerInRange(clientDiagnostic.worldRevision, 0, 2147483647) and
@@ -4191,12 +4201,12 @@ addEventHandler("pedTraffic:populationProfile", resourceRoot, function(profile, 
         local signature = table.concat({
             tostring(rejectionReason), profileType,
             tostring(profileFunctionPresent), tostring(updateFunctionPresent), tostring(dimension), tostring(interior),
-            tostring(clientWorldRevision), catalogStatus,
+            tostring(clientWorldRevision), catalogStatus, nativeReason,
         }, ":")
         local previousDiagnostic = populationProfileDiagnostics[client]
         if not previousDiagnostic or previousDiagnostic.signature ~= signature or now - previousDiagnostic.loggedAt >= 60000 then
-            log(("population-profile-rejected player=%s reason=%s profileType=%s profileFn=%s updateFn=%s dimension=%s interior=%s clientWorldRevision=%s serverWorldRevision=%s clientCatalogRevision=%s"):format(
-                    getPlayerName(client), tostring(rejectionReason), profileType,
+            log(("population-profile-rejected player=%s reason=%s nativeReason=%s profileType=%s profileFn=%s updateFn=%s dimension=%s interior=%s clientWorldRevision=%s serverWorldRevision=%s clientCatalogRevision=%s"):format(
+                    getPlayerName(client), tostring(rejectionReason), nativeReason, profileType,
                     tostring(profileFunctionPresent), tostring(updateFunctionPresent), tostring(dimension), tostring(interior),
                     tostring(clientWorldRevision), tostring(populationWorld.revision), catalogStatus), true)
             populationProfileDiagnostics[client] = {signature = signature, loggedAt = now}
