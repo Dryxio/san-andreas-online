@@ -2,6 +2,54 @@
   "schema": 1,
   "releases": [
     {
+      "build": 189,
+      "date": "2026-10-29",
+      "title": "MTA Neon is now San Andreas Online",
+      "summary": "A new name, a longer draw distance and traffic that reacts like single player.",
+      "highlights": [
+        "MTA Neon is now San Andreas Online. Your install, settings and servers carry over.",
+        "New Project2DFX draw-distance mode with distant vegetation.",
+        "Car-jacked drivers and passengers stay and react instead of vanishing."
+      ],
+      "sections": [
+        {
+          "label": "San Andreas Online",
+          "tone": "players",
+          "items": [
+            "New name and logo in the game, menus, installer and shortcuts.",
+            "Updates, servers, join links and SA:O accounts keep working as before."
+          ]
+        },
+        {
+          "label": "Graphics",
+          "tone": "players",
+          "items": [
+            "Project2DFX draw-distance mode, with distant vegetation and LOD preloading.",
+            "Distant lights cost less per frame.",
+            "Fixed GTA fog leaking into screen-space drawing."
+          ]
+        },
+        {
+          "label": "Traffic",
+          "tone": "players",
+          "items": [
+            "Drivers and passengers stay in the world after a car-jack and react like in single player.",
+            "Traffic picks vehicle models and passengers the way single player does."
+          ]
+        },
+        {
+          "label": "For creators",
+          "tone": "creators",
+          "items": [
+            "setOcclusionRegion and resetOcclusionRegion let resources own occlusion regions.",
+            "Resources can patch the native pedestrian path graph.",
+            "getPedNativeVehicleResponse and restorePedNativeVehicleResponse carry a ped's native vehicle reaction between clients.",
+            "Fixed a stack leak in a native AI event patch."
+          ]
+        }
+      ]
+    },
+    {
       "build": 188,
       "date": "2026-10-09",
       "title": "Public server domains and precise mouse controls",
