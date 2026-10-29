@@ -912,10 +912,17 @@ jobs:
             exit 1
           fi
 
+          # Installed clients only accept update URLs under Dryxio/mtasa-neon
+          # (Client/core/CVersionUpdater.cpp). The repo was renamed to
+          # Dryxio/san-andreas-online and GitHub redirects the old URLs, so the
+          # signed manifest must keep naming the old repo, not $GITHUB_REPOSITORY.
+          # Changing this would make every installed client reject the update.
+          updater_repository='Dryxio/mtasa-neon'
+
           python3 utils/neon-updater/manifest.py create \
             --private-key "$signing_key" \
             --expected-public-key-base64url 'oc55WO1PYJFiyipKMTAoDR-nVPLgUZ7bgyDfvl3WhsI' \
-            --repository "$GITHUB_REPOSITORY" \
+            --repository "$updater_repository" \
             --build "$NEON_BUILD_NUMBER" \
             --display-version "$DISPLAY_VERSION" \
             --technical-version "$TECHNICAL_VERSION" \
@@ -926,7 +933,7 @@ jobs:
 
           python3 utils/neon-updater/manifest.py verify \
             --public-key-base64url 'oc55WO1PYJFiyipKMTAoDR-nVPLgUZ7bgyDfvl3WhsI' \
-            --repository "$GITHUB_REPOSITORY" \
+            --repository "$updater_repository" \
             --manifest ReleaseAssets/MTA-Neon-Update.xml \
             --asset ReleaseAssets/MTA-Neon-Setup.exe
 
