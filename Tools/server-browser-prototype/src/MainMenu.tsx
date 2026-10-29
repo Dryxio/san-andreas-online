@@ -155,7 +155,7 @@ export function MainMenu(props: MainMenuProps) {
           {
             id: 'updates',
             label: 'What’s new',
-            caption: 'Read the latest Neon features, fixes and earlier release notes.',
+            caption: 'Read the latest San Andreas Online features, fixes and earlier release notes.',
             action: props.onUpdates,
           },
           {
@@ -274,8 +274,8 @@ export function MainMenu(props: MainMenuProps) {
       <section className="main-menu__content" aria-label={t('aria.mainMenu')}>
         <header className="main-menu__brand">
           <h1>
-            <span>MTA:SA</span>
-            <strong>Neon</strong>
+            <span>San Andreas</span>
+            <strong>Online</strong>
           </h1>
         </header>
 
@@ -367,7 +367,7 @@ export function MainMenu(props: MainMenuProps) {
         <div className="main-menu__update-overlay">
           <section className="main-menu__update-prompt" role="dialog" aria-modal="true" aria-labelledby="update-prompt-title">
             <header className="main-menu__update-prompt-header">
-              <span>What’s new in Neon</span>
+              <span>What’s new in San Andreas Online</span>
               <small>{formatReleaseVersion(updateRelease)}</small>
             </header>
             <h2 id="update-prompt-title">{updateRelease.title}</h2>

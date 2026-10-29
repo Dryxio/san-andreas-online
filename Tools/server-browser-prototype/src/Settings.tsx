@@ -10,7 +10,7 @@ interface SettingsProps {
   onClose(): void
 }
 
-const CATEGORIES = ['Game', 'Graphics', 'Audio', 'Controls', 'Interface', 'Neon', 'Advanced'] as const
+const CATEGORIES = ['Game', 'Graphics', 'Audio', 'Controls', 'Interface', 'SA:O', 'Advanced'] as const
 type SettingsCategory = typeof CATEGORIES[number]
 
 const CATEGORY_COPY: Record<SettingsCategory, { eyebrow: string; reset: 'game' | 'graphics' | 'audio' | 'controls' | 'interface' | 'neon' | 'advanced' }> = {
@@ -19,7 +19,7 @@ const CATEGORY_COPY: Record<SettingsCategory, { eyebrow: string; reset: 'game' |
   Audio: { eyebrow: 'Sound and user tracks', reset: 'audio' },
   Controls: { eyebrow: 'Input and key bindings', reset: 'controls' },
   Interface: { eyebrow: 'Chat, language and web privacy', reset: 'interface' },
-  Neon: { eyebrow: 'Neon-specific features', reset: 'neon' },
+  'SA:O': { eyebrow: 'San Andreas Online features', reset: 'neon' },
   Advanced: { eyebrow: 'Compatibility and diagnostics', reset: 'advanced' },
 }
 
@@ -68,7 +68,7 @@ export function Settings({ onClose }: SettingsProps) {
     if (id === 'graphics.dpiAware' && value === true && !values[id]) {
       setConfirmation({
         id, value, title: 'Experimental feature',
-        message: 'DPI awareness is intended for scaled Windows displays and may cause graphical issues. It also requires an MTA restart.',
+        message: 'DPI awareness is intended for scaled Windows displays and may cause graphical issues. It also requires a game restart.',
       })
       return
     }
@@ -80,7 +80,7 @@ export function Settings({ onClose }: SettingsProps) {
       return
     }
     if (id === 'game.allowScreenUpload' && value === false && values[id]) {
-      setConfirmation({ id, value, title: 'Screenshot compatibility', message: 'Some servers require screenshot uploads for anti-cheat. The chat box and MTA interface are excluded. Disable screenshot uploads anyway?' })
+      setConfirmation({ id, value, title: 'Screenshot compatibility', message: 'Some servers require screenshot uploads for anti-cheat. The chat box and game interface are excluded. Disable screenshot uploads anyway?' })
       return
     }
     if (id === 'game.allowExternalSounds' && value === false && values[id]) {
@@ -88,7 +88,7 @@ export function Settings({ onClose }: SettingsProps) {
       return
     }
     if (id === 'game.customizedSAFiles' && value !== values[id]) {
-      setConfirmation({ id, value, title: 'Restart required', message: 'Changing customized GTA file support requires an MTA restart and can affect server compatibility.' })
+      setConfirmation({ id, value, title: 'Restart required', message: 'Changing customized GTA file support requires a game restart and can affect server compatibility.' })
       return
     }
     if (id === 'game.discordShareData' && value === true && !values[id]) {
@@ -110,7 +110,7 @@ export function Settings({ onClose }: SettingsProps) {
       <div className="settings__wash" aria-hidden="true" />
       <header className="settings__header">
         <div>
-          <span className="settings__eyebrow">MTA Neon Control Center</span>
+          <span className="settings__eyebrow">San Andreas Online Control Center</span>
           <h1>Settings</h1>
         </div>
         <button className="settings__close" type="button" onClick={closeAndDiscard} title="Back to main menu"
@@ -157,7 +157,7 @@ export function Settings({ onClose }: SettingsProps) {
 
           {activeCategory === 'Interface' && <InterfaceSettings state={state} onChange={setValue} onAction={settings.action} />}
 
-          {activeCategory === 'Neon' && <><SettingsGroup title="Extended world">
+          {activeCategory === 'SA:O' && <><SettingsGroup title="Extended world">
             <ToggleRow id="extendedWorld.enabled" value={Boolean(values['extendedWorld.enabled'])} onChange={setValue} />
             <RangeRow id="extendedWorld.distance" value={Number(values['extendedWorld.distance'])} min={300} max={5000} step={100} suffix=" m"
               disabled={!values['extendedWorld.enabled']} onChange={setValue} />
@@ -212,7 +212,7 @@ export function Settings({ onClose }: SettingsProps) {
               options={[["GTA vanilla", 0], ["Definitive", 1]]} onChange={setValue} />
             <div className="settings__preset-row" aria-label="Radar size presets">
               <span>Size presets</span>
-              <button type="button" disabled={state.managed.radar} onClick={() => settings.action('radarPreset', 'neon')}>Neon</button>
+              <button type="button" disabled={state.managed.radar} onClick={() => settings.action('radarPreset', 'neon')}>SA:O</button>
               <button type="button" disabled={state.managed.radar} onClick={() => settings.action('radarPreset', 'vanilla')}>Vanilla</button>
             </div>
             <RangeRow id="radar.positionX" value={Number(values['radar.positionX'])} min={0} max={640} step={1} disabled={state.managed.radar} onChange={setValue} />
@@ -328,7 +328,7 @@ function ControlsSettings({ state, onChange, onAction }: SettingsSectionProps) {
       <PreciseMouseRow id="controls.verticalAimSensitivity" value={Number(values['controls.verticalAimSensitivity'])} min={0} max={100} step={0.0001}
         suffix="%" disabled={linkedAim} onChange={onChange} />
     </SettingsGroup>
-    <SettingsGroup title="Joypad" caption={state.joypad.connected ? `${state.joypad.name} · axis binding and defaults are immediate actions` : 'No joypad detected — connect one and restart MTA.'}>
+    <SettingsGroup title="Joypad" caption={state.joypad.connected ? `${state.joypad.name} · axis binding and defaults are immediate actions` : 'No joypad detected — connect one and restart the game.'}>
       <ToggleRow id="controls.classicControls" value={Boolean(values['controls.classicControls'])} onChange={onChange} />
       <RangeRow id="controls.joypadDeadZone" value={Number(values['controls.joypadDeadZone'])} min={0} max={49} step={1} suffix="%" onChange={onChange} />
       <RangeRow id="controls.joypadSaturation" value={Number(values['controls.joypadSaturation'])} min={0} max={100} step={1} suffix="%" onChange={onChange} />
@@ -339,7 +339,7 @@ function ControlsSettings({ state, onChange, onAction }: SettingsSectionProps) {
     </SettingsGroup>
     <SettingsGroup title="Key bindings" caption="Select any slot, then press a keyboard, mouse or joypad button. Escape clears that slot.">
       <BindEditor rows={state.binds} capture={state.capture} onCapture={(id, slot) => onAction('captureBind', `${id}|${slot}`)} />
-      <ActionRow label="Restore default bindings" description="Replaces user GTA and MTA bindings with the standard defaults."
+      <ActionRow label="Restore default bindings" description="Replaces user GTA and San Andreas Online bindings with the standard defaults."
         button="Load defaults" disabled={false} onAction={() => onAction('resetBinds')} />
     </SettingsGroup>
   </>
@@ -416,7 +416,7 @@ function AdvancedSettings({ state, onChange, onAction }: SettingsSectionProps) {
     <SettingsGroup title="Diagnostics">
       <SelectRow id="advanced.debugSetting" value={Number(values['advanced.debugSetting'])}
         options={[["Default", 0], ["#6734 Graphics", 1], ["#6732 D3D", 3], ["Log timing", 4], ["Joystick", 5], ["Lua trace", 6], ["Resize always", 7], ["Resize never", 8]]} onChange={onChange} />
-      <ActionRow label="Client resource files" description={`Opens the MTA client resource cache in Windows Explorer.${state.availability.resourceCachePath ? ` Current location: ${state.availability.resourceCachePath}` : ''}`}
+      <ActionRow label="Client resource files" description={`Opens the client resource cache in Windows Explorer.${state.availability.resourceCachePath ? ` Current location: ${state.availability.resourceCachePath}` : ''}`}
         button="Show in Explorer" disabled={false} onAction={() => onAction('openResourceFolder')} />
     </SettingsGroup>
     <SettingsGroup title="Updater">

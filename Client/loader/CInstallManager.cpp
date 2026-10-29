@@ -464,9 +464,10 @@ SString CInstallManager::_ChangeToAdmin()
 {
     if (!IsUserAdmin())
     {
-        MessageBoxUTF8(
-            NULL, SString(_("MTA:SA needs Administrator access for the following task:\n\n  '%s'\n\nPlease confirm in the next window."), *m_strAdminReason),
-            "Multi Theft Auto: San Andreas", MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+        MessageBoxUTF8(NULL,
+                       SString(_("San Andreas Online needs Administrator access for the following task:\n\n  '%s'\n\nPlease confirm in the next window."),
+                               *m_strAdminReason),
+                       "San Andreas Online", MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
         SetIsBlockingUserProcess();
         ReleaseSingleInstanceMutex();
         if (ShellExecuteBlocking("runas", GetLauncherPathFilename(), GetSequencerSnapshot()))
@@ -480,8 +481,8 @@ SString CInstallManager::_ChangeToAdmin()
         }
         CreateSingleInstanceMutex();
         ClearIsBlockingUserProcess();
-        MessageBoxUTF8(NULL, SString(_("MTA:SA could not complete the following task:\n\n  '%s'\n"), *m_strAdminReason),
-                       "Multi Theft Auto: San Andreas" + _E("CL01"), MB_OK | MB_ICONWARNING | MB_TOPMOST);
+        MessageBoxUTF8(NULL, SString(_("San Andreas Online could not complete the following task:\n\n  '%s'\n"), *m_strAdminReason),
+                       "San Andreas Online" + _E("CL01"), MB_OK | MB_ICONWARNING | MB_TOPMOST);
     }
     return "fail";
 }
@@ -1168,7 +1169,7 @@ SString CInstallManager::_InstallFiles()
         else
             AddReportLog(5049, SString("_InstallFiles: Couldn't install files %s", ""));
 
-        m_strAdminReason = _("Install updated MTA:SA files");
+        m_strAdminReason = _("Install updated San Andreas Online files");
         return "fail";
     }
     else
@@ -1198,7 +1199,7 @@ SString CInstallManager::_ShowCopyFailDialog()
 
 void ShowLayoutError(const SString& strExtraInfo)
 {
-    MessageBoxUTF8(0, SString(_("Multi Theft Auto has not been installed properly, please reinstall. %s"), *strExtraInfo), _("Error") + _E("CL03"),
+    MessageBoxUTF8(0, SString(_("San Andreas Online has not been installed properly, please reinstall. %s"), *strExtraInfo), _("Error") + _E("CL03"),
                    MB_OK | MB_ICONERROR | MB_TOPMOST);
     TerminateProcess(GetCurrentProcess(), 9);
 }
@@ -1278,13 +1279,13 @@ SString CInstallManager::_PrepareLaunchLocation()
             {
                 if (fs::is_regular_file(sourcePath, ec))
                 {
-                    SString strMessage(_("MTA:SA cannot launch because copying a file failed:"));
+                    SString strMessage(_("San Andreas Online cannot launch because copying a file failed:"));
                     strMessage += "\n\n" + UTF8FilePath(targetPath);
                     BrowseToSolution("copy-files", ASK_GO_ONLINE, strMessage);
                 }
                 else
                 {
-                    SString strMessage(_("MTA:SA cannot launch because an MTA:SA file is incorrect or missing:"));
+                    SString strMessage(_("San Andreas Online cannot launch because a San Andreas Online file is incorrect or missing:"));
                     strMessage += "\n\n" + UTF8FilePath(sourcePath);
                     BrowseToSolution("mta-datafiles-missing", ASK_GO_ONLINE, strMessage);
                 }
@@ -1293,7 +1294,7 @@ SString CInstallManager::_PrepareLaunchLocation()
             }
             else
             {
-                m_strAdminReason = _("Copy MTA:SA files");
+                m_strAdminReason = _("Copy San Andreas Online files");
                 return "fail";
             }
         }
@@ -1317,7 +1318,7 @@ SString CInstallManager::_ProcessGtaPatchCheck()
     if (!FileGenerator::IsPatchBase(patchBasePath))
     {
         AddReportLog(5053, SString("_ProcessGtaPatchCheck: patch base invalid '%ls'", patchBasePath.wstring().c_str()));
-        SString strMessage(_("MTA:SA cannot launch because a GTA:SA file is incorrect or missing:"));
+        SString strMessage(_("San Andreas Online cannot launch because a GTA:SA file is incorrect or missing:"));
         strMessage += "\n\n" + UTF8FilePath(patchBasePath);
         BrowseToSolution("gengta_pakfiles", ASK_GO_ONLINE, strMessage);
         return "quit";
@@ -1326,7 +1327,7 @@ SString CInstallManager::_ProcessGtaPatchCheck()
     if (!FileGenerator::IsPatchDiff(patchDiffPath))
     {
         AddReportLog(5053, SString("_ProcessGtaPatchCheck: patch diff invalid '%ls'", patchDiffPath.wstring().c_str()));
-        SString strMessage(_("MTA:SA cannot launch because an MTA:SA file is incorrect or missing:"));
+        SString strMessage(_("San Andreas Online cannot launch because a San Andreas Online file is incorrect or missing:"));
         strMessage += "\n\n" + UTF8FilePath(patchDiffPath);
         BrowseToSolution("mta-datafiles-missing", ASK_GO_ONLINE, strMessage);
         return "quit";
@@ -1401,7 +1402,7 @@ SString CInstallManager::_ProcessGtaDllCheck()
 
         if (isAdmin)
         {
-            SString strMessage(_("MTA:SA cannot launch because a GTA:SA file is incorrect or missing:"));
+            SString strMessage(_("San Andreas Online cannot launch because a GTA:SA file is incorrect or missing:"));
             strMessage += "\n\n" + UTF8FilePath(dependecyPath);
             BrowseToSolution(SString("gendep_error&name=%s", dependency.fileName), ASK_GO_ONLINE, strMessage);
             return "quit";
@@ -1461,11 +1462,10 @@ SString CInstallManager::_ProcessGtaVersionCheck()
 
             if (isAdmin)
             {
-                SString strMessage(_("MTA:SA cannot launch because the GTA:SA executable is incorrect or missing:"));
+                SString strMessage(_("San Andreas Online cannot launch because the GTA:SA executable is incorrect or missing:"));
                 strMessage += "\n\n" + UTF8FilePath(gtaExePath);
-                strMessage +=
-                    "\n\n" +
-                    _("Please check your anti-virus for a false-positive detection, try to add an exception for the GTA:SA executable and restart MTA:SA.");
+                strMessage += "\n\n" + _("Please check your anti-virus for a false-positive detection, try to add an exception for the GTA:SA executable and "
+                                         "restart San Andreas Online.");
                 BrowseToSolution(SString("gengta_error&code=%d", ec.value()), ASK_GO_ONLINE, strMessage);
                 return "quit";
             }
@@ -1486,7 +1486,7 @@ SString CInstallManager::_ProcessGtaVersionCheck()
 
             if (isAdmin)
             {
-                SString strMessage(_("MTA:SA cannot launch because the GTA:SA executable is not loadable:"));
+                SString strMessage(_("San Andreas Online cannot launch because the GTA:SA executable is not loadable:"));
                 strMessage += "\n\n" + UTF8FilePath(gtaExePath);
                 BrowseToSolution(SString("gengta_error&code=%d", ec.value()), ASK_GO_ONLINE, strMessage);
                 return "quit";
@@ -1509,7 +1509,7 @@ SString CInstallManager::_ProcessGtaVersionCheck()
 
         if (isAdmin)
         {
-            SString strMessage(_("MTA:SA cannot launch because patching GTA:SA has failed:"));
+            SString strMessage(_("San Andreas Online cannot launch because patching GTA:SA has failed:"));
             strMessage += "\n\n" + UTF8FilePath(gtaExePath);
             BrowseToSolution(SString("patchgta_error&code=%d", ec.value()), ASK_GO_ONLINE, strMessage);
             return "quit";
@@ -1690,7 +1690,7 @@ SString CInstallManager::_ProcessLayoutChecks()
     SString strDriveWithNoSpace = GetDriveNameWithNotEnoughSpace();
     if (!strDriveWithNoSpace.empty())
     {
-        SString strMessage(_("MTA:SA cannot continue because drive %s does not have enough space."), *strDriveWithNoSpace.Left(1));
+        SString strMessage(_("San Andreas Online cannot continue because drive %s does not have enough space."), *strDriveWithNoSpace.Left(1));
         BrowseToSolution(SString("low-disk-space&drive=%s", *strDriveWithNoSpace), ASK_GO_ONLINE | TERMINATE_PROCESS, strMessage);
     }
 
@@ -1750,8 +1750,8 @@ SString CInstallManager::_ProcessLangFileChecks()
         strMessage += "\n\n";
         strMessage += PathJoin(strTextFilePath, langFileNames[0]);
         strMessage += "\n\n";
-        strMessage += _("If MTA fails to load, please re-install GTA:SA");
-        MessageBoxUTF8(NULL, strMessage, "Multi Theft Auto: San Andreas", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+        strMessage += _("If San Andreas Online fails to load, please re-install GTA:SA");
+        MessageBoxUTF8(NULL, strMessage, "San Andreas Online", MB_OK | MB_ICONWARNING | MB_TOPMOST);
         return "ok";
     }
 

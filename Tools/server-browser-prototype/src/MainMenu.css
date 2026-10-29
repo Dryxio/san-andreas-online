@@ -107,13 +107,17 @@
   transform: rotate(-2deg);
 }
 
+/* "San Andreas Online" is about 1.7x wider than the old "MTA:SA Neon" mark, so it
+   stacks on two lines (like the game's own logo) and keeps a similar footprint
+   beside the menu items at every resolution. */
 .main-menu__brand h1 {
   display: flex;
-  align-items: baseline;
-  gap: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.06em;
   margin: 0;
   font-family: 'SA Pricedown', Impact, sans-serif;
-  font-size: clamp(74px, 8.8vw, 150px);
+  font-size: clamp(60px, 6.6vw, 118px);
   font-weight: 400;
   line-height: 0.75;
   letter-spacing: 0.018em;
@@ -129,7 +133,7 @@
 }
 
 .main-menu__brand h1 strong {
-  margin-left: 0.035em;
+  margin-left: 0.35em;
   color: var(--sa-blue);
   font-weight: 400;
 }
@@ -779,7 +783,7 @@
   }
 
   .main-menu__brand h1 {
-    font-size: clamp(65px, 10vh, 92px);
+    font-size: clamp(50px, 7.6vh, 72px);
   }
 
   .main-menu__item {

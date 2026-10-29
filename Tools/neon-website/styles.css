@@ -1,0 +1,594 @@
+/* The three typefaces the Neon client itself ships (Shared/data/.../cgui), so the
+   site reads exactly like the in-game menu. The shipped SA Gothic has no accented
+   letters, so this copy adds French accents built from its own glyphs. */
+@font-face { font-family: 'Pricedown'; src: url('/assets/fonts/pricedown.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'SA Gothic'; src: url('/assets/fonts/sagothic.ttf?v=2') format('truetype'); font-display: swap; }
+@font-face { font-family: 'SA Bank Gothic'; src: url('/assets/fonts/sabankgothic.ttf') format('truetype'); font-display: swap; }
+
+:root {
+  --ink: #0b0a09;
+  --ink-2: #13110f;
+  --ink-3: #1c1916;
+  --line: rgba(255, 255, 255, .09);
+  --text: #ece8de;
+  --text-dim: #a59f92;
+  --sa-white: #f0f0ea;
+  --sa-blue: #accbf1;
+  --sa-blue-muted: #6f8297;
+  --sa-cream: #e4d29f;
+  --paper: #efe5c9;
+  --paper-ink: #1d1a15;
+  --neon: #f28c18;
+  --gold: #e5a536;
+  --hud-green: #3f7d2e;
+  --wine: #4a0016;
+  --bar-h: 64px;
+  --gutter: clamp(16px, 4vw, 56px);
+  --outline: -.035em -.035em 0 #000, .035em -.035em 0 #000, -.035em .035em 0 #000, .035em .035em 0 #000,
+             0 .05em 0 #000, 0 -.05em 0 #000, .05em 0 0 #000, -.05em 0 0 #000;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: var(--bar-h); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--text);
+  font: 400 16px/1.6 Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+img { display: block; max-width: 100%; height: auto; }
+a { color: inherit; }
+h1, h2, h3 { margin: 0; font-weight: 400; }
+p { margin: 0; }
+b { font-weight: 600; }
+
+.wrap { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 var(--gutter); }
+.wrap--narrow { max-width: 860px; }
+
+/* ---------- Wordmark: identical treatment to the in-game main menu ---------- */
+.wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .12em;
+  font-family: 'Pricedown', Impact, sans-serif;
+  line-height: .8;
+  color: var(--sa-white);
+  letter-spacing: .02em;
+  white-space: nowrap;
+  transform: rotate(-2deg);
+  text-shadow: var(--outline), .07em .09em 0 rgba(0, 0, 0, .55);
+}
+.wordmark strong { font-weight: 400; color: var(--sa-blue); }
+.wordmark--sm { font-size: 30px; text-shadow: var(--outline); }
+/* "San Andreas Online" is about 1.6x wider than the old two-word mark, so the hero
+   stacks it on two lines (like the game's own logo) to keep the same footprint
+   beside the loading-screen art. */
+.wordmark--hero { flex-direction: column; align-items: flex-start; gap: .06em; font-size: clamp(56px, 8vw, 128px); }
+.bar__wm-short { display: none; gap: 0; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  --bg: var(--ink);
+  --fg: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 52px;
+  padding: 12px 24px;
+  border: 2px solid var(--bg);
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 15px/1.1 'SA Bank Gothic', 'Arial Narrow', sans-serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:focus-visible { outline: 3px solid var(--neon); outline-offset: 3px; }
+.btn--sm { min-height: 38px; padding: 8px 16px; font-size: 13px; --bg: var(--neon); --fg: #120a02; }
+.btn--primary { min-height: 68px; padding: 12px 28px 12px 22px; box-shadow: 6px 6px 0 rgba(0, 0, 0, .25); }
+.btn--primary:hover { box-shadow: 8px 10px 0 rgba(0, 0, 0, .28); }
+.btn--flat { --bg: var(--neon); --fg: #120a02; min-height: 56px; padding: 12px 26px; box-shadow: none; }
+.btn--dark { --bg: var(--paper-ink); min-height: 46px; margin-top: 18px; font-size: 13px; }
+.btn--ghost { --bg: transparent; --fg: var(--paper-ink); border-color: currentColor; }
+.btn--ghost:hover { --bg: rgba(0, 0, 0, .07); }
+.btn--ghost-light { --fg: var(--text); }
+.btn--ghost-light:hover { --bg: rgba(255, 255, 255, .07); }
+.btn__icon { width: 26px; height: 26px; fill: var(--neon); flex: none; }
+.btn__label { display: block; font-size: 17px; }
+.btn__meta {
+  display: block;
+  margin-top: 6px;
+  font: 500 12px/1 Inter, system-ui, sans-serif;
+  letter-spacing: .02em;
+  text-transform: none;
+  color: rgba(255, 255, 255, .62);
+}
+
+/* ---------- Top letterbox bar ---------- */
+.bar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 50;
+  height: var(--bar-h);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 var(--gutter);
+  background: #000;
+}
+.bar__brand { text-decoration: none; padding-top: 4px; }
+.bar__nav { display: flex; gap: 6px; margin: 0 auto; }
+.bar__nav a {
+  padding: 8px 12px;
+  color: var(--sa-blue-muted);
+  font: 400 21px/1 'SA Gothic', serif;
+  letter-spacing: .04em;
+  text-decoration: none;
+  transition: color .12s;
+}
+.bar__nav a:hover { color: var(--sa-blue); }
+.bar__end { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.bar__nav + .bar__end { margin-left: 0; }
+.lang {
+  height: 38px;
+  min-width: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-dim);
+  font: 400 13px/1 'SA Bank Gothic', sans-serif;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+.lang:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); }
+
+/* ---------- Hero: a San Andreas loading screen ---------- */
+.hero {
+  --top: #c9e7b2;
+  --bot: #9cbb94;
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: min(100svh, 940px);
+  padding-top: var(--bar-h);
+  background: linear-gradient(180deg, var(--top), var(--bot));
+  color: var(--paper-ink);
+  transition: background 1.2s ease;
+  overflow: hidden;
+  isolation: isolate;
+}
+/* Faint print grain so the flat fields feel like the original painted art. */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: .18;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+/* Each slide paints the artwork's own left-edge colours across the full width,
+   so the art blends into its background with no visible seam. */
+.hero__art {
+  position: absolute;
+  top: var(--bar-h);
+  left: 0;
+  right: 0;
+  bottom: 40px;
+  z-index: -1;
+}
+.slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+.slide.is-active { opacity: 1; }
+.slide img {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  width: auto;
+  max-width: none;
+  transform: scale(1.03);
+  transform-origin: 70% 100%;
+  transition: transform 7s ease-out;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 18%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 18%);
+}
+.slide.is-active img { transform: scale(1); }
+
+.hero__inner {
+  align-self: center;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(40px, 8vh, 96px) var(--gutter);
+}
+.hero__inner > * { max-width: 560px; }
+.hero__inner > .wordmark { max-width: none; }
+.hero__cta { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; margin-top: clamp(34px, 5vh, 52px); }
+.outro .hero__cta { margin-top: 30px; }
+
+.hero__letterbox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 var(--gutter);
+  background: #000;
+}
+.loadbar {
+  flex: 0 0 min(320px, 50vw);
+  height: 12px;
+  padding: 2px;
+  border: 2px solid #4b4434;
+}
+.loadbar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #b7a774, var(--sa-cream)); }
+.hero__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0 0 0 auto;
+  padding: 0;
+  list-style: none;
+  font: 400 12px/1.4 'SA Bank Gothic', sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.hero__facts li { display: flex; align-items: center; gap: 10px; }
+.hero__facts li::before { content: ''; width: 6px; height: 6px; background: var(--neon); transform: rotate(45deg); }
+
+/* ---------- Sections ---------- */
+.section { position: relative; padding: clamp(72px, 11vw, 140px) 0; }
+.section--dark { background: radial-gradient(1200px 500px at 50% -10%, #221c15, transparent 70%), var(--ink-2); }
+.section--ink { background: var(--ink); }
+.section--cream { background: var(--paper); color: var(--paper-ink); }
+.section--wine { background: radial-gradient(900px 600px at 85% 0%, #6a0a24, transparent 70%), linear-gradient(180deg, #3d0012, #22000a); }
+
+.head { max-width: 760px; margin-bottom: clamp(36px, 5vw, 56px); }
+.kicker {
+  font: 400 clamp(24px, 2.4vw, 32px)/1 'SA Gothic', serif;
+  letter-spacing: .03em;
+  color: var(--sa-blue);
+}
+.head--dark .kicker, .kicker--dark { color: var(--paper-ink); }
+.title {
+  margin-top: 14px;
+  font: 400 clamp(46px, 7vw, 92px)/.88 'Pricedown', Impact, sans-serif;
+  letter-spacing: .015em;
+  color: var(--sa-white);
+  text-shadow: var(--outline), .06em .08em 0 rgba(0, 0, 0, .45);
+}
+.sub { margin-top: 20px; max-width: 620px; font-size: 18px; color: var(--text-dim); }
+
+/* ---------- Compare slider ---------- */
+.tabs { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 20px; }
+.tab {
+  position: relative;
+  padding: 6px 14px 6px 30px;
+  border: 0;
+  background: none;
+  color: var(--sa-blue-muted);
+  font: 400 clamp(22px, 2.3vw, 30px)/1 'SA Gothic', serif;
+  letter-spacing: .03em;
+  text-shadow: 2px 2px 0 #000;
+  cursor: pointer;
+  transition: color .12s;
+}
+.tab::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  border: 6px solid transparent;
+  border-left: 8px solid var(--sa-cream);
+  transform: translateY(-50%);
+  opacity: 0;
+}
+.tab:hover { color: #9fb5ce; }
+.tab.is-active { color: var(--sa-blue); }
+.tab.is-active::before { opacity: 1; }
+.tab:focus-visible { outline: 2px solid var(--neon); }
+
+.compare {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 1280 / 628;
+  overflow: hidden;
+  background: #000;
+  border: 2px solid #000;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .5), 0 0 0 1px var(--line);
+  user-select: none;
+}
+.compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.compare__a { clip-path: inset(0 calc(100% - var(--pos)) 0 0); }
+.compare__handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--pos);
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--sa-white);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .4);
+  pointer-events: none;
+}
+.compare__handle::after {
+  content: '◂ ▸';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 3px solid var(--sa-white);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .7);
+  color: var(--sa-white);
+  font-size: 14px;
+  letter-spacing: 2px;
+  transform: translate(-50%, -50%);
+}
+.compare__tag {
+  position: absolute;
+  top: 16px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, .78);
+  font: 400 13px/1 'SA Bank Gothic', sans-serif;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.compare__tag--a { left: 16px; color: var(--sa-white); }
+.compare__tag--b { right: 16px; color: var(--neon); }
+.compare__range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: ew-resize;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.compare__range:focus-visible + * { outline: none; }
+.compare:focus-within { outline: 3px solid var(--neon); outline-offset: 4px; }
+.compare__caption { margin-top: 16px; color: var(--text-dim); font-size: 15px; }
+
+/* ---------- Player features ---------- */
+.features { display: grid; grid-template-columns: 1.05fr 1fr; gap: clamp(40px, 6vw, 96px); align-items: center; }
+.features__shots { position: relative; display: grid; gap: 0; }
+.shot { margin: 0; border: 2px solid #000; box-shadow: 0 24px 60px rgba(0, 0, 0, .6), 0 0 0 1px var(--line); background: #000; }
+.shot--tilt-l { transform: rotate(-1.5deg); width: 92%; }
+.shot--tilt-r { transform: rotate(1.2deg); width: 82%; margin: -14% 0 0 auto; }
+.features__list .title { margin-bottom: 34px; }
+.perks { margin: 0; padding: 0; list-style: none; counter-reset: perk; display: grid; gap: 26px; }
+.perks li { position: relative; padding-left: 74px; counter-increment: perk; }
+/* Numbers drawn like the green HUD money counter. */
+.perks li::before {
+  content: counter(perk, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: -6px;
+  font: 400 44px/1 'Pricedown', Impact, sans-serif;
+  color: var(--hud-green);
+  text-shadow: var(--outline);
+}
+.perks h3 { font: 400 17px/1.3 'SA Bank Gothic', sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--sa-white); }
+.perks p { margin-top: 6px; color: var(--text-dim); }
+
+/* ---------- Install ---------- */
+.steps { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.step {
+  position: relative;
+  padding: 30px 28px 32px;
+  background: #fbf6e8;
+  border: 2px solid var(--paper-ink);
+  box-shadow: 8px 8px 0 var(--paper-ink);
+}
+.step__n {
+  display: block;
+  font: 400 76px/.8 'Pricedown', Impact, sans-serif;
+  color: var(--gold);
+  text-shadow: var(--outline);
+}
+.step h3 { margin-top: 18px; font: 400 18px/1.25 'SA Bank Gothic', sans-serif; letter-spacing: .05em; text-transform: uppercase; }
+.step p { margin-top: 10px; color: rgba(29, 26, 21, .76); }
+
+.safe {
+  display: flex;
+  gap: 22px;
+  margin-top: 44px;
+  padding: 28px 30px;
+  background: var(--paper-ink);
+  color: var(--text);
+}
+.safe__icon { flex: none; width: 48px; height: 48px; display: grid; place-items: center; background: var(--hud-green); }
+.safe__icon svg { width: 28px; height: 28px; fill: #fff; }
+.safe h3 { font: 600 18px/1.35 Inter, sans-serif; color: #fff; }
+.safe p { margin-top: 8px; color: #bdb6a6; }
+.safe__link { display: inline-block; margin-top: 12px; color: var(--neon); font-weight: 600; text-decoration: none; }
+.safe__link:hover { text-decoration: underline; }
+
+/* ---------- Server makers ---------- */
+.section--wine .sub { color: #d4b9be; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.card {
+  display: block;
+  padding-bottom: 18px;
+  background: rgba(0, 0, 0, .35);
+  border: 1px solid rgba(255, 255, 255, .08);
+  text-decoration: none;
+  overflow: hidden;
+  transition: transform .2s ease, border-color .2s ease, background .2s ease;
+}
+.card img { aspect-ratio: 16 / 9; width: 100%; object-fit: cover; transition: transform .5s ease; }
+.card:hover { transform: translateY(-4px); border-color: rgba(242, 140, 24, .55); background: rgba(0, 0, 0, .5); }
+.card:hover img { transform: scale(1.05); }
+.card__t {
+  display: block;
+  margin: 16px 18px 0;
+  font: 400 15px/1.3 'SA Bank Gothic', sans-serif;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--sa-white);
+}
+.card__d { display: block; margin: 6px 18px 0; font-size: 14px; color: #c9aeb3; }
+.creators__cta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 44px; }
+
+/* ---------- FAQ ---------- */
+.faq { border-top: 1px solid var(--line); }
+.faq details { border-bottom: 1px solid var(--line); }
+.faq summary {
+  position: relative;
+  padding: 22px 48px 22px 0;
+  list-style: none;
+  font: 600 18px/1.4 Inter, sans-serif;
+  color: var(--sa-white);
+  cursor: pointer;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  border: 6px solid transparent;
+  border-left: 9px solid var(--sa-blue);
+  transform: translateY(-50%);
+  transition: transform .2s ease;
+}
+.faq details[open] summary::after { transform: translateY(-30%) rotate(90deg); }
+.faq summary:hover { color: var(--sa-blue); }
+.faq details p { padding: 0 48px 24px 0; color: var(--text-dim); }
+
+/* ---------- Outro ---------- */
+.outro {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 600px;
+  background: linear-gradient(180deg, #fff6db, #e9dab5);
+  color: var(--paper-ink);
+  overflow: hidden;
+  isolation: isolate;
+}
+.outro__art {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  width: auto;
+  max-width: none;
+  z-index: -1;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 30%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 30%);
+}
+.outro__inner { width: 100%; max-width: 1240px; margin: 0 auto; padding: 96px var(--gutter); }
+.outro__inner > * { max-width: 560px; }
+.title--outro { font-size: clamp(56px, 8vw, 112px); }
+
+/* ---------- Footer ---------- */
+.foot { padding: 48px 0 56px; background: #000; color: var(--text-dim); font-size: 14px; }
+.foot__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px; }
+.foot__links { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.foot__links a { text-decoration: none; }
+.foot__links a:hover { color: var(--text); }
+.foot__legal { margin-top: 28px; font-size: 12.5px; line-height: 1.6; color: #6f6a60; }
+
+/* ---------- Mission passed ---------- */
+.passed {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, .55), transparent);
+  animation: passed 2.8s ease forwards;
+}
+.passed[hidden] { display: none; }
+.passed__big {
+  font: 400 clamp(52px, 9vw, 120px)/1 'Pricedown', Impact, sans-serif;
+  color: var(--gold);
+  text-shadow: var(--outline), .05em .07em 0 rgba(0, 0, 0, .5);
+}
+.passed__small {
+  margin-top: 10px;
+  font: 400 clamp(20px, 2.6vw, 34px)/1 'Pricedown', Impact, sans-serif;
+  color: var(--sa-white);
+  text-shadow: var(--outline);
+}
+@keyframes passed {
+  0% { opacity: 0; transform: scale(1.08); }
+  10%, 78% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1080px) {
+  .bar__nav a { font-size: 18px; padding: 8px 8px; }
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 860px) {
+  .bar__nav { display: none; }
+  .bar__end, .bar__nav + .bar__end { margin-left: auto; }
+  .features { grid-template-columns: 1fr; }
+  .features__shots { order: 2; }
+  .steps { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  /* Phones: the art moves under the text, like a portrait loading card. */
+  .hero { min-height: 0; grid-template-rows: auto auto auto; }
+  .hero__inner { padding-top: 36px; padding-bottom: 8px; }
+  .hero__art { position: relative; inset: auto; width: 100%; height: 78vw; max-height: 420px; grid-row: 2; z-index: 0; }
+  .slide { background: none !important; }
+  .slide img {
+    right: 50%;
+    transform: translateX(50%) scale(1.03);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 24%);
+            mask-image: linear-gradient(180deg, transparent 0, #000 24%);
+  }
+  .slide.is-active img { transform: translateX(50%) scale(1); }
+  .hero__inner { grid-row: 1; }
+  .hero__letterbox { grid-row: 3; }
+  .hero__cta { align-items: stretch; width: 100%; }
+  .hero__cta .btn { justify-content: center; }
+  .hero__cta .btn--ghost { min-height: 52px; }
+  .grid { grid-template-columns: 1fr; }
+  .safe { flex-direction: column; padding: 24px 22px; }
+  .outro { flex-direction: column; align-items: stretch; min-height: 0; }
+  .outro__inner { padding: 64px var(--gutter) 24px; }
+  .outro__art { position: relative; height: auto; width: 100%; -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 30%); mask-image: linear-gradient(180deg, transparent 0, #000 30%); }
+  .compare__handle::after { width: 42px; height: 42px; font-size: 11px; }
+  .compare__tag { top: 10px; font-size: 11px; }
+  .compare__tag--a { left: 10px; }
+  .compare__tag--b { right: 10px; }
+  .wordmark--sm { font-size: 26px; }
+  .btn--sm { padding: 8px 12px; }
+}
+
+/* Phones: the full name no longer fits beside the language and download buttons. */
+@media (max-width: 560px) {
+  .bar__wm-full { display: none; }
+  .bar__wm-short { display: inline-flex; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

@@ -406,7 +406,7 @@ VOID OnGameLaunch()
     if (mtaRootDirectory.empty())
     {
         AddLaunchLog("MTA root directory is empty - cannot continue");
-        DisplayErrorMessageBox(MakeLauncherError(L"Unable to determine MTA installation directory."), L"CL55");
+        DisplayErrorMessageBox(MakeLauncherError(L"Unable to determine the San Andreas Online installation directory."), L"CL55");
         return;
     }
 
@@ -499,7 +499,7 @@ VOID OnGameLaunch()
         DisplayErrorMessageBox(
             L"Loading core has failed."
             L"\n\n"
-            L"Please ensure that your MTA:SA installation is complete "
+            L"Please ensure that your San Andreas Online installation is complete "
             L"and that the latest DirectX is correctly installed.",
             L"CL24");
 #endif
@@ -609,7 +609,7 @@ auto SetImportProcAddress(const char* moduleName, const char* procedureName, FAR
  */
 int DisplayMessageBox(const std::wstring& message, const std::wstring& errorCode, UINT flags)
 {
-    std::wstring caption = L"MTA: San Andreas  [" + errorCode + L"]   (CTRL+C to copy)";
+    std::wstring caption = L"San Andreas Online  [" + errorCode + L"]   (CTRL+C to copy)";
     std::wstring extended = message;
     extended +=
         L"\n\nIf you are unable to resolve this issue on your own, "
@@ -899,8 +899,8 @@ auto MakeLauncherError(std::wstring message) -> std::wstring
         message += L"\n\n";
 
     message +=
-        L"Please launch the game through the Multi Theft Auto launcher executable. "
-        L"You can find the launcher either on your desktop or in the MTA:SA installation directory.";
+        L"Please launch the game through the San Andreas Online launcher executable. "
+        L"You can find the launcher either on your desktop or in the San Andreas Online installation directory.";
 
     return message;
 }
@@ -915,7 +915,7 @@ auto MakeMissingFilesError(std::wstring message) -> std::wstring
         message += L"\n\n";
 
     message +=
-        L"Please ensure that both your MTA:SA and Windows installation are not missing files "
+        L"Please ensure that both your San Andreas Online and Windows installation are not missing files "
         L"and your user is not lacking any permission to access these directories";
 
     return message;

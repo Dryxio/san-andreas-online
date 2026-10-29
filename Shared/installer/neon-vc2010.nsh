@@ -26,7 +26,7 @@ Function InstallNeonVC2010
         ${ElseIf} $1 != 0
         ${AndIf} $1 != 1638
             ; Never report a successful Neon install with a broken audio runtime.
-            MessageBox MB_OK|MB_ICONSTOP "Visual C++ 2010 SP1 x86 installation failed (code $1). Install the Microsoft x86 redistributable, then run Neon Setup again." /SD IDOK
+            MessageBox MB_OK|MB_ICONSTOP "Visual C++ 2010 SP1 x86 installation failed (code $1). Install the Microsoft x86 redistributable, then run San Andreas Online Setup again." /SD IDOK
             SetErrorLevel 1603
             Abort
         ${EndIf}
@@ -34,7 +34,7 @@ Function InstallNeonVC2010
         ; rather than trusting an installed-products registry entry or exit code.
         System::Call 'kernel32::LoadLibraryW(w "$SYSDIR\msvcr100.dll") p.r0'
         ${If} $0 == 0
-            MessageBox MB_OK|MB_ICONSTOP "The 32-bit MSVCR100.dll runtime is still unavailable. Restart Windows if requested, repair Visual C++ 2010 SP1 x86, then run Neon Setup again." /SD IDOK
+            MessageBox MB_OK|MB_ICONSTOP "The 32-bit MSVCR100.dll runtime is still unavailable. Restart Windows if requested, repair Visual C++ 2010 SP1 x86, then run San Andreas Online Setup again." /SD IDOK
             SetErrorLevel 1603
             Abort
         ${EndIf}

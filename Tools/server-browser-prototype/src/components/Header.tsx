@@ -7,7 +7,7 @@ export function Header({ stats, onClose }: { stats: NetworkStats; onClose: () =>
   return (
     <header className="header">
       <div className="header__identity">
-        <span className="header__kicker">MTA Neon Network</span>
+        <span className="header__kicker">San Andreas Online Network</span>
         <h1 className="header__title">{t('browser.title')}</h1>
       </div>
       <div className="header__side">

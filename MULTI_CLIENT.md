@@ -21,7 +21,7 @@ Start-Process -FilePath 'C:\dev\mtasa-vm-custom\Bin\Multi Theft Auto.exe' `
 
 The secondary client uses its own loader mutex, window title, configuration,
 console and client-script logs, server-browser cache, and downloaded resource
-cache. Its visible game window is named `MTA: San Andreas [CL2]`.
+cache. Its visible game window is named `San Andreas Online [CL2]`.
 
 The local server must permit two connections that share a serial. Set the
 runtime server configuration to:
@@ -88,7 +88,7 @@ requirement.
 A successful local test has all of the following:
 
 - two `Multi Theft Auto.exe` and two `gta_sa.exe` processes;
-- window titles `MTA: San Andreas` and `MTA: San Andreas [CL2]`;
+- window titles `San Andreas Online` and `San Andreas Online [CL2]` (builds before the rename used `MTA: San Andreas`);
 - two different nicknames in the server log;
 - both joins accepted even though the serial is the same;
 - `coreconfig-cl2.xml`, `console-cl2.log`, and the secondary cache root created

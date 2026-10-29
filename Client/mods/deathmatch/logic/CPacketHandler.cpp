@@ -677,29 +677,39 @@ void CPacketHandler::Packet_ServerDisconnected(NetBitStreamInterface& bitStream)
             strReason = SString(strReason, strMessage.c_str());
         }
 
-        // Localize additional server messages
-        std::vector<const char*> snippetList = {
-            {_td("You were kicked from the game")},
-            {_td("This server requires a non-modifed gta_sa.exe")},
-            {_td("Please replace gta_sa.exe")},
-            {_td("This server does not allow custom D3D9.DLLs")},
-            {_td("Remove D3D9.DLL from your GTA install directory and restart MTA")},
-            {_td("This server does not allow virtual machines")},
-            {_td("This server requires driver signing to be enabled")},
-            {_td("Please restart your PC")},
-            {_td("This server has detected missing anti-cheat components")},
-            {_td("Try restarting MTA")},
-            {_td("This server requires a non-modifed gta3.img and gta_int.img")},
-            {_td("Please replace gta3.img or gta_int.img")},
-            {_td("This server requires a non-modifed gta_sa.exe")},
-            {_td("Please replace gta_sa.exe")},
-            {_td("This server does not allow Wine")},
-            {_td("Ensure no other program is modifying MTA:SA")},
-        };
-        for (auto szSnippet : snippetList)
+        // Localize additional server messages.
+        // szMatch is searched for in the reason text, which the prebuilt server net module
+        // writes in English and still names "MTA", so it must stay byte-identical to that
+        // text. szDisplay (when set) is what the player sees instead: the San Andreas Online
+        // wording, translated through its own msgid.
+        struct SReasonSnippet
         {
-            if (strReason.Contains(szSnippet))
-                strReason = strReason.Replace(szSnippet, g_pLocalization->Translate(szSnippet));
+            const char* szMatch;
+            const char* szDisplay;
+        };
+        const std::vector<SReasonSnippet> snippetList = {
+            {_td("You were kicked from the game"), nullptr},
+            {_td("This server requires a non-modifed gta_sa.exe"), nullptr},
+            {_td("Please replace gta_sa.exe"), nullptr},
+            {_td("This server does not allow custom D3D9.DLLs"), nullptr},
+            {"Remove D3D9.DLL from your GTA install directory and restart MTA",
+             _td("Remove D3D9.DLL from your GTA install directory and restart San Andreas Online")},
+            {_td("This server does not allow virtual machines"), nullptr},
+            {_td("This server requires driver signing to be enabled"), nullptr},
+            {_td("Please restart your PC"), nullptr},
+            {_td("This server has detected missing anti-cheat components"), nullptr},
+            {"Try restarting MTA", _td("Try restarting San Andreas Online")},
+            {_td("This server requires a non-modifed gta3.img and gta_int.img"), nullptr},
+            {_td("Please replace gta3.img or gta_int.img"), nullptr},
+            {_td("This server requires a non-modifed gta_sa.exe"), nullptr},
+            {_td("Please replace gta_sa.exe"), nullptr},
+            {_td("This server does not allow Wine"), nullptr},
+            {"Ensure no other program is modifying MTA:SA", _td("Ensure no other program is modifying San Andreas Online")},
+        };
+        for (const SReasonSnippet& snippet : snippetList)
+        {
+            if (strReason.Contains(snippet.szMatch))
+                strReason = strReason.Replace(snippet.szMatch, g_pLocalization->Translate(snippet.szDisplay ? snippet.szDisplay : snippet.szMatch));
         }
 
         // Append duration infomation if required

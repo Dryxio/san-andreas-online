@@ -1,52 +1,52 @@
 <p align="center">
-  <a href="https://mtasa-neon-wiki.vercel.app/neon"><img src="docs/media/neon-readme-banner.png" alt="MTA:SA Neon Engine: native AI, extended worlds, and new Lua APIs" width="100%"></a>
+  <a href="https://mtasa-neon-wiki.vercel.app/neon"><img src="docs/media/neon-readme-banner.png" alt="San Andreas Online: native AI, extended worlds, and new Lua APIs" width="100%"></a>
 </p>
 
 <p align="center">
-  <a href="https://mtasa-neon-wiki.vercel.app/neon"><img alt="Open the Neon documentation and Lua API" src="https://img.shields.io/badge/DOCUMENTATION_%26_LUA_API-OPEN_THE_NEON_WIKI-F28C18?style=for-the-badge&amp;labelColor=0A0908" height="40"></a>
+  <a href="https://mtasa-neon-wiki.vercel.app/neon"><img alt="Open the San Andreas Online documentation and Lua API" src="https://img.shields.io/badge/DOCUMENTATION_%26_LUA_API-OPEN_THE_SA%3AO_WIKI-F28C18?style=for-the-badge&amp;labelColor=0A0908" height="40"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Dryxio/mtasa-neon/releases/latest/download/MTA-Neon-Setup.exe"><img alt="Download the latest MTA Neon client for Windows" src="https://img.shields.io/badge/WINDOWS_CLIENT-DOWNLOAD_INSTALLER-F28C18?style=for-the-badge&amp;logo=windows&amp;logoColor=F28C18&amp;labelColor=0A0908" height="40"></a>
-  <a href="https://github.com/Dryxio/mtasa-neon/releases/latest/download/MTA-Neon-Server-Windows-x64.zip"><img alt="Download the latest MTA Neon server for Windows x64" src="https://img.shields.io/badge/WINDOWS_SERVER-DOWNLOAD_X64_ZIP-F28C18?style=for-the-badge&amp;logo=windows&amp;logoColor=F28C18&amp;labelColor=0A0908" height="40"></a>
+  <a href="https://github.com/Dryxio/mtasa-neon/releases/latest/download/MTA-Neon-Setup.exe"><img alt="Download the latest San Andreas Online client for Windows" src="https://img.shields.io/badge/WINDOWS_CLIENT-DOWNLOAD_INSTALLER-F28C18?style=for-the-badge&amp;logo=windows&amp;logoColor=F28C18&amp;labelColor=0A0908" height="40"></a>
+  <a href="https://github.com/Dryxio/mtasa-neon/releases/latest/download/MTA-Neon-Server-Windows-x64.zip"><img alt="Download the latest San Andreas Online server for Windows x64" src="https://img.shields.io/badge/WINDOWS_SERVER-DOWNLOAD_X64_ZIP-F28C18?style=for-the-badge&amp;logo=windows&amp;logoColor=F28C18&amp;labelColor=0A0908" height="40"></a>
 </p>
 
-<p align="center"><strong>Players only need the Windows client installer. Server owners should use the separate server package. Both links track the latest explicitly published Neon release.</strong></p>
+<p align="center"><strong>Players only need the Windows client installer. Server owners should use the separate server package. Both links track the latest explicitly published San Andreas Online release.</strong></p>
 
-<p align="center"><strong>New to Neon? Start with the documentation, feature guides, and complete Lua API.</strong></p>
+<p align="center"><strong>New to San Andreas Online? Start with the documentation, feature guides, and complete Lua API.</strong></p>
 
 <p align="center">
-  <a href="https://discord.com/invite/mgFRd2AzF8"><img alt="Join the Neon Discord" src="https://img.shields.io/badge/DISCORD-JOIN_NEON-F28C18?style=for-the-badge&amp;logo=discord&amp;logoColor=F28C18&amp;labelColor=0A0908"></a>
+  <a href="https://discord.com/invite/mgFRd2AzF8"><img alt="Join the San Andreas Online Discord" src="https://img.shields.io/badge/DISCORD-JOIN_SA%3AO-F28C18?style=for-the-badge&amp;logo=discord&amp;logoColor=F28C18&amp;labelColor=0A0908"></a>
   <a href="https://github.com/multitheftauto/mtasa-blue"><img alt="View the MTA:SA upstream project" src="https://img.shields.io/badge/UPSTREAM-MTA%3ABLUE-F28C18?style=for-the-badge&amp;logo=github&amp;logoColor=F28C18&amp;labelColor=0A0908"></a>
 </p>
 
 <p align="center"><strong>An independent MTA:BLUE-derived playground for deeper GTA:SA engine work.</strong></p>
 
-MTA:SA Neon is an experimental fork of [Multi Theft Auto: San Andreas](https://github.com/multitheftauto/mtasa-blue) that opens up parts of the GTA:SA engine that were never exposed to scripts: a bigger world, higher engine limits, and GTA's own native systems turned into Lua primitives.
+San Andreas Online (SA:O, formerly MTA:SA Neon) is an experimental fork of [Multi Theft Auto: San Andreas](https://github.com/multitheftauto/mtasa-blue) that opens up parts of the GTA:SA engine that were never exposed to scripts: a bigger world, higher engine limits, and GTA's own native systems turned into Lua primitives.
 
 Its flagship system brings **GTA:SA's single-player NPCs and traffic into a shared multiplayer world**, running the original AI on one authoritative client.
 
 ## See it
 
-Neon renders all of this itself. Nothing to install and no ASI files: every option is a toggle in the settings menu, and servers can drive them too.
+San Andreas Online renders all of this itself. Nothing to install and no ASI files: every option is a toggle in the settings menu, and servers can drive them too.
 
 **Draw distance**
 
-![Rooftop view over Los Santos: distant buildings are flat low-detail blobs in MTA:SA and resolve into detailed geometry in Neon](docs/media/compare-draw-distance.jpg)
+![Rooftop view over Los Santos: distant buildings are flat low-detail blobs in MTA:SA and resolve into detailed geometry in San Andreas Online](docs/media/compare-draw-distance.jpg)
 
 **Distant lights at night**
 
-![Night view over the city: fogged out beyond a short distance in MTA:SA, full skyline with hundreds of distant lights in Neon](docs/media/compare-project2dfx.jpg)
+![Night view over the city: fogged out beyond a short distance in MTA:SA, full skyline with hundreds of distant lights in San Andreas Online](docs/media/compare-project2dfx.jpg)
 
 **PS2-style color**
 
-![Street-level view in Ganton: neutral colors in MTA:SA, warmer and more saturated PS2-style grading in Neon](docs/media/compare-skygfx.jpg)
+![Street-level view in Ganton: neutral colors in MTA:SA, warmer and more saturated PS2-style grading in San Andreas Online](docs/media/compare-skygfx.jpg)
 
-Neon also ships its own GTA:SA-inspired menu and server browser, with an optional Discord identity.
+San Andreas Online also ships its own GTA:SA-inspired menu and server browser, with an optional Discord identity.
 
-![Neon main menu in the GTA:SA visual style, with browse servers, quick connect, map editor, settings, about and quit entries, and a Discord connected badge](docs/media/neon-main-menu.jpg)
+![San Andreas Online main menu in the GTA:SA visual style, with browse servers, quick connect, map editor, settings, about and quit entries, and a Discord connected badge](docs/media/neon-main-menu.jpg)
 
-![Neon server browser listing populated community servers with flags, ping and player counts, and a details panel with a copyable mtaneon:// server link](docs/media/neon-server-browser.jpg)
+![San Andreas Online server browser listing populated community servers with flags, ping and player counts, and a details panel with a copyable mtaneon:// server link](docs/media/neon-server-browser.jpg)
 
 ## GTA systems, now scriptable
 
@@ -63,20 +63,20 @@ A selection of systems that used to be locked inside the engine. Each clip is a 
 <p align="center">
   <a href="https://mtasa-neon-wiki.vercel.app/neon/vehicle-audio"><img src="docs/media/vehicle-audio-demo.jpg" alt="A custom-audio car firing backflames from both exhausts during a BUST race" width="360"></a><br>
   <strong><a href="https://mtasa-neon-wiki.vercel.app/neon/vehicle-audio">Custom vehicle audio and backfires</a></strong><br>
-  Copy an existing Assetto Corsa or Soundize <code>.bank</code>, assign it to a car, and Neon makes it follow the RPM, throttle and gears automatically.<br>
+  Copy an existing Assetto Corsa or Soundize <code>.bank</code>, assign it to a car, and San Andreas Online makes it follow the RPM, throttle and gears automatically.<br>
   Other players hear configured cars too, and Lua can trigger a backfire pop with matching exhaust flames.<br>
   <a href="https://mtasa-neon-wiki.vercel.app/neon-media/vehicle-audio-showcase.mp4">Watch the in-game recording with sound</a>
 </p>
 
-### More game modes built on Neon
+### More game modes built on San Andreas Online
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=PtjzS45Jl0w"><img src="https://i.ytimg.com/vi/PtjzS45Jl0w/hqdefault.jpg" alt="Rocket League on MTA:SA Neon" width="480"></a><br>
+  <a href="https://www.youtube.com/watch?v=PtjzS45Jl0w"><img src="https://i.ytimg.com/vi/PtjzS45Jl0w/hqdefault.jpg" alt="Rocket League on San Andreas Online" width="480"></a><br>
   <strong>Rocket League</strong> · <a href="https://www.youtube.com/watch?v=PtjzS45Jl0w">Watch the video</a>
 </p>
 
 <p align="center">
-  <a href="docs/media/haxball-demo.mp4"><img src="docs/media/haxball-demo.jpg" alt="HaxBall on MTA:SA Neon" width="480"></a><br>
+  <a href="docs/media/haxball-demo.mp4"><img src="docs/media/haxball-demo.jpg" alt="HaxBall on San Andreas Online" width="480"></a><br>
   <strong>HaxBall</strong> · <a href="docs/media/haxball-demo.mp4">Watch clip 1</a> · <a href="docs/media/haxball-demo-2.mp4">Watch clip 2</a>
 </p>
 
@@ -98,13 +98,13 @@ setFireTarget(fire, theVehicle)
 
 ## Play
 
-Download the Windows client installer, run it, and join a server from the Neon browser. Neon checks for newer signed releases on launch and offers them as optional updates.
+Download the Windows client installer, run it, and join a server from the in-game server browser. San Andreas Online checks for newer signed releases on launch and offers them as optional updates.
 
 Server owners use the separate server package. Both downloads are linked at the top of this page.
 
 ## What changes versus MTA:SA
 
-| Area | MTA:SA | MTA:SA Neon |
+| Area | MTA:SA | San Andreas Online |
 | --- | ---: | ---: |
 | Ambient NPCs and traffic | Local only, disabled by MTA | Server-owned peds running GTA's native AI, with one syncer and handoff |
 | World size | Approximately -3,000 to +3,000 | -10,000 to +9,999, with matching radar and F11 map |
@@ -119,14 +119,14 @@ Server owners use the separate server package. Both downloads are linked at the 
 | Breakable objects | Only models shipping the breakable plugin | Any streamed object, fractured from its own geometry |
 | Object physics | Static unless scripted frame by frame | Opt-in native rigid-body simulation, with velocities synchronized through syncer changes |
 | Ropes | Only the legacy `createSWATRope` call | All eight native rope types as synchronized elements, with cargo attachment and slot leasing |
-| Vehicle audio | GTA's sound assigned to each model | Import prepared engine banks from other car projects, assign them to models, and let Neon follow RPM, throttle and gears, with scriptable backfire sounds and exhaust flames |
+| Vehicle audio | GTA's sound assigned to each model | Import prepared engine banks from other car projects, assign them to models, and let the engine follow RPM, throttle and gears, with scriptable backfire sounds and exhaust flames |
 | Distant lights and draw distance | Not integrated | Built in, 300 to 5,000 units, off by default |
 
 That is the short list. The [full comparison table](https://mtasa-neon-wiki.vercel.app/neon/features) covers every pool, boundary and subsystem.
 
 ## For scripters
 
-Neon adds **302 documented Lua functions** on top of MTA's API, plus new elements and events. A few, to give the shape of it:
+San Andreas Online adds **302 documented Lua functions** on top of MTA's API, plus new elements and events. A few, to give the shape of it:
 
 ```lua
 engineSetRadarMapTile(column, row, txd)        -- resource-owned extended radar tiles
@@ -143,11 +143,11 @@ createRope(x, y, z, { type = "wreckingBall" }) -- GTA's own cranes and winches
 enginePlayVehicleAudioBackfire(car, 2)           -- a strong pop and flames from the exhaust
 ```
 
-The **[Neon Lua API](https://mtasa-neon-wiki.vercel.app/neon/functions)** is the complete reference, with signatures, lifecycle rules, source commits and test evidence for every entry.
+The **[SA:O Lua API](https://mtasa-neon-wiki.vercel.app/neon/functions)** is the complete reference, with signatures, lifecycle rules, source commits and test evidence for every entry.
 
 ## Build gamemodes with AI agents
 
-The **[Neon CLI](https://mtasa-neon-wiki.vercel.app/neon/cli/)** gives an AI coding agent the complete MTA + Neon API and the exact context for your gamemode. The agent can find the right functions, read their arguments and client/server side, check common project mistakes, and verify whether the server, client, and GTA actually joined a test—all locally, without an MCP server.
+The **[SA:O developer CLI](https://mtasa-neon-wiki.vercel.app/neon/cli/)** (the `neon` command) gives an AI coding agent the complete MTA + SA:O API and the exact context for your gamemode. The agent can find the right functions, read their arguments and client/server side, check common project mistakes, and verify whether the server, client, and GTA actually joined a test—all locally, without an MCP server.
 
 Start once from your gamemode folder:
 
@@ -161,7 +161,7 @@ Then point the agent to the generated `NEON_AGENT.md` and let it use the CLI whi
 
 ## Server resources
 
-[Official Neon resources](official-resources/README.md) are ready-to-use server
+[Official SA:O resources](official-resources/README.md) are ready-to-use server
 systems, including synchronized pedestrian and vehicle traffic. The directory
 includes installation instructions and links to each resource's scope and controls.
 
@@ -173,10 +173,10 @@ on a development server.
 
 | | |
 | --- | --- |
-| [Neon wiki](https://mtasa-neon-wiki.vercel.app/neon) | Everything: guides, Lua API, evidence |
+| [San Andreas Online wiki](https://mtasa-neon-wiki.vercel.app/neon) | Everything: guides, Lua API, evidence |
 | [Synchronized NPCs](https://mtasa-neon-wiki.vercel.app/neon/synchronized-ai) | How shared native AI works |
 | [Extended world](https://mtasa-neon-wiki.vercel.app/neon/extended-world) | Boundaries, radar, water, seabed |
-| [Neon CLI for AI agents](https://mtasa-neon-wiki.vercel.app/neon/cli/) | Give an agent the complete API, project context, checks, and runtime proof |
+| [SA:O CLI for AI agents](https://mtasa-neon-wiki.vercel.app/neon/cli/) | Give an agent the complete API, project context, checks, and runtime proof |
 | [Tooling and verification](https://mtasa-neon-wiki.vercel.app/neon/tooling-and-verification) | What is actually proven, and what is not |
 | [BUILDING.md](./BUILDING.md) | Compiling the client and server |
 
@@ -184,9 +184,9 @@ Deeper technical notes live in [LIMIT_PATCHING.md](./LIMIT_PATCHING.md), [EXTEND
 
 ## Upstream relationship
 
-Neon is built on [Multi Theft Auto: San Andreas](https://github.com/multitheftauto/mtasa-blue) and preserves its complete history and GPLv3 licensing. Neon-specific experiments and builds are maintained independently; use the upstream project for official MTA:SA downloads, documentation, and support.
+San Andreas Online is based on [Multi Theft Auto: San Andreas](https://github.com/multitheftauto/mtasa-blue) and preserves its complete history and GPLv3 licensing. Its own experiments and builds are maintained independently; use the upstream project for official MTA:SA downloads, documentation, and support.
 
-Neon is not affiliated with or endorsed by the Multi Theft Auto team.
+San Andreas Online is not affiliated with or endorsed by the Multi Theft Auto team, Rockstar Games or Take-Two Interactive.
 
 ## License
 

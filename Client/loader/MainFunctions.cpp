@@ -400,7 +400,7 @@ void CheckLibVersions()
             }
             else if (strReqFileVersion != strFileVersion)
             {
-                DisplayErrorMessageBox(SStringX(_("File version mismatch error. Reinstall MTA:SA if you experience problems.\n") +
+                DisplayErrorMessageBox(SStringX(_("File version mismatch error. Reinstall San Andreas Online if you experience problems.\n") +
                                                 SString("\n[%s %s/%s]\n", *strFilename, *strFileVersion, *strReqFileVersion)),
                                        _E("CL40"), "bad-file-version");
                 break;
@@ -408,8 +408,9 @@ void CheckLibVersions()
         }
         else
         {
-            DisplayErrorMessageBox(SStringX(_("Some files are missing. Reinstall MTA:SA if you experience problems.\n") + SString("\n[%s]\n", *strFilename)),
-                                   _E("CL41"), "missing-file");
+            DisplayErrorMessageBox(
+                SStringX(_("Some files are missing. Reinstall San Andreas Online if you experience problems.\n") + SString("\n[%s]\n", *strFilename)),
+                _E("CL41"), "missing-file");
             break;
         }
     }
@@ -418,7 +419,8 @@ void CheckLibVersions()
     // Check for Windows 'Safe Mode'
     if (GetSystemMetrics(SM_CLEANBOOT) != 0)
     {
-        DisplayErrorMessageBox(SStringX(_("MTA:SA is not compatible with Windows 'Safe Mode'.\n\nPlease restart your PC.\n")), _E("CL42"), "safe-mode");
+        DisplayErrorMessageBox(SStringX(_("San Andreas Online is not compatible with Windows 'Safe Mode'.\n\nPlease restart your PC.\n")), _E("CL42"),
+                               "safe-mode");
         ExitProcess(EXIT_ERROR);
     }
 }
@@ -606,8 +608,8 @@ void HandleTrouble()
         return;
 
 #if !defined(MTA_DEBUG) && MTASA_VERSION_TYPE != VERSION_TYPE_CUSTOM
-    int iResponse = MessageBoxUTF8(NULL, _("Are you having problems running MTA:SA?.\n\nDo you want to revert to an earlier version?"),
-                                   "MTA: San Andreas" + _E("CL07"), MB_YESNO | MB_ICONQUESTION | MB_TOPMOST);
+    int iResponse = MessageBoxUTF8(NULL, _("Are you having problems running San Andreas Online?.\n\nDo you want to revert to an earlier version?"),
+                                   "San Andreas Online" + _E("CL07"), MB_YESNO | MB_ICONQUESTION | MB_TOPMOST);
     if (iResponse == IDYES)
     {
         BrowseToSolution("crashing-before-gtagame", TERMINATE_PROCESS);
@@ -633,10 +635,11 @@ void HandleResetSettings()
 
     if (FileExists(strSettingsFilename))
     {
-        int iResponse = MessageBoxUTF8(NULL,
-                                       _("There seems to be a problem launching MTA:SA.\nResetting GTA settings can sometimes fix this problem.\n\nDo you want "
-                                         "to reset GTA settings now?"),
-                                       "MTA: San Andreas" + _E("CL08"), MB_YESNO | MB_ICONQUESTION | MB_TOPMOST);
+        int iResponse =
+            MessageBoxUTF8(NULL,
+                           _("There seems to be a problem launching San Andreas Online.\nResetting GTA settings can sometimes fix this problem.\n\nDo you want "
+                             "to reset GTA settings now?"),
+                           "San Andreas Online" + _E("CL08"), MB_YESNO | MB_ICONQUESTION | MB_TOPMOST);
         if (iResponse == IDYES)
         {
             FileDelete(strSettingsFilenameBak);
@@ -649,7 +652,8 @@ void HandleResetSettings()
             if (!FileExists(strSettingsFilename))
             {
                 AddReportLog(4053, "Deleted gta_sa.set");
-                MessageBoxUTF8(NULL, _("GTA settings have been reset.\n\nPress OK to continue."), "MTA: San Andreas", MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+                MessageBoxUTF8(NULL, _("GTA settings have been reset.\n\nPress OK to continue."), "San Andreas Online",
+                               MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
             }
             else
             {
@@ -662,8 +666,8 @@ void HandleResetSettings()
     else
     {
         // No settings to delete, or can't find them
-        int iResponse = MessageBoxUTF8(NULL, _("Are you having problems running MTA:SA?.\n\nDo you want to see some online help?"), "MTA: San Andreas",
-                                       MB_YESNO | MB_ICONQUESTION | MB_TOPMOST);
+        int iResponse = MessageBoxUTF8(NULL, _("Are you having problems running San Andreas Online?.\n\nDo you want to see some online help?"),
+                                       "San Andreas Online", MB_YESNO | MB_ICONQUESTION | MB_TOPMOST);
         if (iResponse == IDYES)
         {
             BrowseToSolution("crashing-before-gtalaunch", TERMINATE_PROCESS);
@@ -699,10 +703,10 @@ void HandleNotUsedMainMenu()
             if (strWindowed == "0" && strFullscreenStyle == "0")
             {
                 // Inform user
-                SString strMessage = _("Are you having problems running MTA:SA?.\n\nDo you want to change the following setting?");
+                SString strMessage = _("Are you having problems running San Andreas Online?.\n\nDo you want to change the following setting?");
                 strMessage += "\n" + _("Fullscreen mode:") + " -> " + _("Borderless window");
                 HideSplash();
-                int iResponse = MessageBoxUTF8(NULL, strMessage, "MTA: San Andreas", MB_YESNO | MB_ICONQUESTION | MB_TOPMOST);
+                int iResponse = MessageBoxUTF8(NULL, strMessage, "San Andreas Online", MB_YESNO | MB_ICONQUESTION | MB_TOPMOST);
                 if (iResponse == IDYES)
                 {
                     // Change to borderless window mode
@@ -769,7 +773,8 @@ void HandleNotUsedMainMenu()
                 {
                     if (strProcessFilename.ContainsI(strMatchText))
                     {
-                        SString strMessage = _("Are you having problems running MTA:SA?.\n\nTry disabling the following products for GTA and MTA:");
+                        SString strMessage =
+                            _("Are you having problems running San Andreas Online?.\n\nTry disabling the following products for GTA and San Andreas Online:");
                         strMessage += "\n\n";
                         strMessage += procItems[i].szProductName;
                         DisplayErrorMessageBox(strMessage, _E("CL43"), procItems[i].szTrouble);
@@ -805,7 +810,7 @@ void HandleCustomStartMessage()
         SString strFilename = strStartMessage.SplitRight("name=");
         strStartMessage =
             _("WARNING\n\n"
-              "MTA:SA has detected unusual activity.\n"
+              "San Andreas Online has detected unusual activity.\n"
               "Please run a virus scan to ensure your system is secure.\n\n");
         strStartMessage += SString(_("The detected file was:  %s\n"), *strFilename);
     }
@@ -1045,9 +1050,10 @@ void HandleIfGTAIsAlreadyRunning()
 
     if (IsGTARunning())
     {
-        if (MessageBoxUTF8(
-                0, _("An instance of GTA: San Andreas is already running. It needs to be terminated before MTA:SA can be started. Do you want to do that now?"),
-                _("Information") + _E("CL10"), MB_YESNO | MB_ICONQUESTION | MB_TOPMOST) == IDYES)
+        if (MessageBoxUTF8(0,
+                           _("An instance of GTA: San Andreas is already running. It needs to be terminated before San Andreas Online can be started. Do you "
+                             "want to do that now?"),
+                           _("Information") + _E("CL10"), MB_YESNO | MB_ICONQUESTION | MB_TOPMOST) == IDYES)
         {
             TerminateOtherMTAIfRunning();
             TerminateGTAIfRunning();
@@ -1132,8 +1138,17 @@ void HandleDuplicateLaunching()
         if (cmdLineLen > 0)
         {
             // Command line args present, so pass it on
-            HWND hwMTAWindow = FindWindow(NULL, IsSecondaryClient() ? "MTA: San Andreas [CL2]" : "MTA: San Andreas");
+            HWND hwMTAWindow = FindWindow(NULL, IsSecondaryClient() ? "San Andreas Online [CL2]" : "San Andreas Online");
+            // The single-instance mutex is shared with the official MTA:SA client, so the
+            // instance holding it may be official MTA, whose window is still titled
+            // "MTA: San Andreas". Before the San Andreas Online rename both clients had that
+            // title, so a join link was handed to whichever one was running. Keep that
+            // behaviour unchanged here; only the window title of this client was renamed.
+            if (!hwMTAWindow)
+                hwMTAWindow = FindWindow(NULL, IsSecondaryClient() ? "MTA: San Andreas [CL2]" : "MTA: San Andreas");
 #ifdef MTA_DEBUG
+            if (!hwMTAWindow)
+                hwMTAWindow = FindWindow(NULL, IsSecondaryClient() ? "San Andreas Online [CL2-DEBUG]" : "San Andreas Online [DEBUG]");
             if (!hwMTAWindow)
                 hwMTAWindow = FindWindow(NULL, IsSecondaryClient() ? "MTA: San Andreas [CL2-DEBUG]" : "MTA: San Andreas [DEBUG]");
 #endif
@@ -1193,10 +1208,10 @@ void HandleDuplicateLaunching()
             else
             {
                 const SString strMessage =
-                    _("Trouble restarting MTA:SA\n\n"
+                    _("Trouble restarting San Andreas Online\n\n"
                       "If the problem persists, open Task Manager and\n"
                       "stop the 'gta_sa.exe' and 'Multi Theft Auto.exe' processes\n\n\n"
-                      "Try to launch MTA:SA again?");
+                      "Try to launch San Andreas Online again?");
 
                 if (MessageBoxUTF8(0, strMessage, _("Error") + _E("CL04"), MB_ICONWARNING | MB_YESNO | MB_TOPMOST) == IDYES)
                 {
@@ -1218,12 +1233,12 @@ void HandleDuplicateLaunching()
             if (!IsGTARunning() && !IsOtherMTARunning())
             {
                 MessageBoxUTF8(0,
-                               _("Another instance of MTA is already running.\n\n"
+                               _("Another instance of San Andreas Online is already running.\n\n"
                                  "If this problem persists, please restart your computer"),
                                _("Error") + _E("CL05"), MB_ICONERROR | MB_TOPMOST);
             }
             else if (MessageBoxUTF8(0,
-                                    _("Another instance of MTA is already running.\n\n"
+                                    _("Another instance of San Andreas Online is already running.\n\n"
                                       "Do you want to terminate it?"),
                                     _("Error") + _E("CL06"), MB_ICONQUESTION | MB_YESNO | MB_TOPMOST) == IDYES)
             {
@@ -1260,14 +1275,14 @@ void ValidateGTAPath()
 
     if (result == GAME_PATH_MISSING)
     {
-        DisplayErrorMessageBox(_("Registry entries are missing. Please reinstall Multi Theft Auto: San Andreas."), _E("CL12"), "reg-entries-missing");
+        DisplayErrorMessageBox(_("Registry entries are missing. Please reinstall San Andreas Online."), _E("CL12"), "reg-entries-missing");
         ExitProcess(EXIT_ERROR);
     }
     else if (result == GAME_PATH_UNICODE_CHARS)
     {
         DisplayErrorMessageBox(_("The path to your installation of GTA: San Andreas contains unsupported (unicode) characters. "
                                  "Please move your Grand Theft Auto: San Andreas installation to a compatible path that contains "
-                                 "only standard ASCII characters and reinstall Multi Theft Auto: San Andreas."),
+                                 "only standard ASCII characters and reinstall San Andreas Online."),
                                _E("CL13"));
         ExitProcess(EXIT_ERROR);
     }
@@ -1278,9 +1293,9 @@ void ValidateGTAPath()
     // Check for semicolon in install path (causes problems)
     if (strGTAPath.Contains(";") || strMTASAPath.Contains(";"))
     {
-        DisplayErrorMessageBox(_("The path to your installation of 'MTA:SA' or 'GTA: San Andreas'\n"
+        DisplayErrorMessageBox(_("The path to your installation of 'San Andreas Online' or 'GTA: San Andreas'\n"
                                  "contains a ';' (semicolon).\n\n"
-                                 "If you experience problems when running MTA:SA,\n"
+                                 "If you experience problems when running San Andreas Online,\n"
                                  "move your installation(s) to a path that does not contain a semicolon."),
                                _E("CL15"), "path-semicolon");
     }
@@ -2132,10 +2147,10 @@ int LaunchGame(SString strCmdLine)
                             SetApplicationSetting("diagnostics", "last-wer-report-shown", acWerInfo.reportId);
                     }
                     MessageBoxUTF8(nullptr,
-                                   "MTA: San Andreas has been terminated due to an integrity violation.\n\n"
+                                   "San Andreas Online has been terminated due to an integrity violation.\n\n"
                                    "Make sure that no external program is modifying the game. Note that some unreliable "
                                    "AV's (such as Bitdefender) are known to interfere in a way that can lead to this problem.",
-                                   "MTA: San Andreas", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+                                   "San Andreas Online", MB_OK | MB_ICONWARNING | MB_TOPMOST);
                 }
                 else
                 {
@@ -2168,10 +2183,10 @@ int LaunchGame(SString strCmdLine)
                     if (!werInfo.reportId.empty())
                         SetApplicationSetting("diagnostics", "last-wer-report-shown", werInfo.reportId);
                     MessageBoxUTF8(nullptr,
-                                   "MTA: San Andreas has been terminated due to an AC integrity violation.\n\n"
+                                   "San Andreas Online has been terminated due to an AC integrity violation.\n\n"
                                    "Make sure that no external program is modifying the game. Note that some unreliable "
                                    "AV's (such as Bitdefender) are known to interfere in a way that can lead to this problem.",
-                                   "MTA: San Andreas", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+                                   "San Andreas Online", MB_OK | MB_ICONWARNING | MB_TOPMOST);
                 }
                 else if (werInfo.found)
                 {
@@ -2315,10 +2330,10 @@ int LaunchGame(SString strCmdLine)
                     isAcDefense = true;
                     AddReportLog(7210, SString("Loader - AC integrity exit detected via exit code (code=0x%08X)", static_cast<unsigned int>(rawExitCode)));
                     MessageBoxUTF8(nullptr,
-                                   "MTA: San Andreas has been terminated due to an integrity violation.\n\n"
+                                   "San Andreas Online has been terminated due to an integrity violation.\n\n"
                                    "Make sure that no external program is modifying the game. Note that some unreliable "
                                    "AV's (such as Bitdefender) are known to interfere in a way that can lead to this problem.",
-                                   "MTA: San Andreas", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+                                   "San Andreas Online", MB_OK | MB_ICONWARNING | MB_TOPMOST);
 
                     SetApplicationSetting("diagnostics", "debugger-crash-capture", "1");
                     WriteDebugEvent(SString("Loader - AC integrity exit via exit code, one-shot debugger flag SET (exit code 0x%08X)", rawExitCode));

@@ -122,7 +122,7 @@ export function installCefDevStub(): void {
               authenticated: true,
               signingIn: false,
               displayName: 'Dryxio',
-              status: 'Neon ID connected',
+              status: 'SA:O account connected',
             },
           }])
           break
@@ -165,7 +165,7 @@ export function installCefDevStub(): void {
             if (password && password !== 'neon') {
               connectTimers.push(setTimeout(() => emit([{ type: 'connect-failed', code: 'bad-password', message: 'Incorrect server password.' }]), 750))
             } else {
-              connectTimers.push(setTimeout(() => emit([{ type: 'connect-progress', stage: 'authorizing', message: 'Authorizing this server with Neon Identity...' }]), 650))
+              connectTimers.push(setTimeout(() => emit([{ type: 'connect-progress', stage: 'authorizing', message: 'Authorizing this server with your SA:O account...' }]), 650))
               connectTimers.push(setTimeout(() => emit([{ type: 'connect-progress', stage: 'joining', message: 'Connection accepted. Entering the game...' }]), 1350))
               connectTimers.push(setTimeout(() => emit([{ type: 'connect-succeeded' }]), 2050))
             }

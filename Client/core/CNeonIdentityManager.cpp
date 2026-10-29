@@ -103,7 +103,7 @@ CNeonIdentityManager::CNeonIdentityManager()
     if (LoadSession())
     {
         m_signInState = ESignInState::SignedIn;
-        m_statusText = "Neon account connected";
+        m_statusText = "SA:O account connected";
     }
 }
 
@@ -131,7 +131,7 @@ void CNeonIdentityManager::DoPulse()
     {
         const std::string body = JsonBody({{"flow_id", m_flowId}, {"poll_token", m_pollToken}});
         if (!QueueJsonRequest(ERequestType::AuthPoll, "/v1/auth/discord/poll", body, false))
-            FailSignIn("Could not poll the Neon Identity service");
+            FailSignIn("Could not reach the SA:O account service");
     }
 }
 
@@ -145,7 +145,7 @@ bool CNeonIdentityManager::StartDiscordSignIn()
     m_signInState = ESignInState::Starting;
     if (!QueueJsonRequest(ERequestType::AuthStart, "/v1/auth/discord/start", "{}", false))
     {
-        FailSignIn("Could not contact the Neon Identity service");
+        FailSignIn("Could not contact the SA:O account service");
         return false;
     }
     return true;
@@ -199,7 +199,7 @@ CNeonIdentityManager::EPrepareResult CNeonIdentityManager::PrepareConnectionTick
     const std::string body = JsonBody({{"server_id", audience}, {"server_endpoint", serverEndpoint}});
     if (!QueueJsonRequest(ERequestType::Ticket, "/v1/tickets", body, true))
     {
-        FinishTicketPreparation(false, "Could not contact the Neon Identity service");
+        FinishTicketPreparation(false, "Could not contact the SA:O account service");
         return EPrepareResult::Ready;
     }
     return EPrepareResult::Pending;
@@ -269,7 +269,7 @@ bool CNeonIdentityManager::QueueJsonRequest(ERequestType requestType, const char
     const std::string baseUrl = GetBaseUrl();
     if (!IsAcceptedUrl(baseUrl))
     {
-        m_lastError = "The Neon Identity URL must use HTTPS";
+        m_lastError = "The SA:O account service URL must use HTTPS";
         return false;
     }
 
@@ -307,7 +307,7 @@ void CNeonIdentityManager::HandleAuthStartResponse(const SHttpDownloadResult& re
         !ReadString(response.Get(), "poll_token", m_pollToken, 256) || !ReadString(response.Get(), "authorization_url", authorizationUrl, 4096) ||
         authorizationUrl.rfind(expectedAuthorizationPrefix, 0) != 0)
     {
-        FailSignIn("Neon Identity returned an invalid Discord authorization response");
+        FailSignIn("The SA:O account service returned an invalid Discord authorization response");
         return;
     }
 
@@ -343,14 +343,14 @@ void CNeonIdentityManager::HandleAuthPollResponse(const SHttpDownloadResult& res
     if (!SaveSession())
     {
         m_sessionToken.clear();
-        FailSignIn("Neon could not securely save your session");
+        FailSignIn("San Andreas Online could not securely save your session");
         return;
     }
 
     m_flowId.clear();
     m_pollToken.clear();
     m_signInState = ESignInState::SignedIn;
-    m_statusText = "Neon account connected";
+    m_statusText = "SA:O account connected";
     m_lastError.clear();
 }
 
@@ -361,13 +361,13 @@ void CNeonIdentityManager::HandleTicketResponse(const SHttpDownloadResult& resul
     if (result.iErrorCode == 401)
     {
         SignOut();
-        FinishTicketPreparation(false, "Your Neon session is no longer valid");
+        FinishTicketPreparation(false, "Your SA:O account session is no longer valid");
         return;
     }
 
     if (result.iErrorCode < 200 || result.iErrorCode >= 300 || !response.Get() || !ReadString(response.Get(), "ticket", ticket))
     {
-        FinishTicketPreparation(false, "Neon could not authorize this server connection");
+        FinishTicketPreparation(false, "San Andreas Online could not authorize this server connection");
         return;
     }
 
@@ -383,7 +383,7 @@ void CNeonIdentityManager::FailSignIn(const std::string& error)
     m_statusText = "Discord sign-in failed";
     m_lastError = error;
     if (g_pCore)
-        g_pCore->ShowMessageBox(_("Neon account"), error.c_str(), MB_BUTTON_OK | MB_ICON_ERROR);
+        g_pCore->ShowMessageBox(_("SA:O account"), error.c_str(), MB_BUTTON_OK | MB_ICON_ERROR);
 }
 
 void CNeonIdentityManager::FinishTicketPreparation(bool success, const std::string& error)

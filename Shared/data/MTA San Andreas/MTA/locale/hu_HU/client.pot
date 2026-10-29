@@ -41,10 +41,10 @@ msgstr "Válaszd ki a Grand Theft Auto: San Andreas főkönyvtárát"
 
 #: Client/loader/Utils.cpp:974 Client/loader/CInstallManager.cpp:376
 #, c-format
-msgid "MTA:SA needs Administrator access for the following task:\n\n"
+msgid "San Andreas Online needs Administrator access for the following task:\n\n"
 "  '%s'\n\n"
 "Please confirm in the next window."
-msgstr "MTA:SA-nak rendszergazda jogosultság kell a következő feladathoz:\n\n"
+msgstr "San Andreas Online-nak rendszergazda jogosultság kell a következő feladathoz:\n\n"
 "'%s'\n\n"
 "Kérlek fogadd el a következő ablakban."
 
@@ -105,8 +105,8 @@ msgid "GTA:SA found errors in the file '%s'"
 msgstr "GTA:SA hibákat talált a '%s' fájlban"
 
 #: Client/loader/Utils.cpp:1722
-msgid "Did your computer restart when playing MTA:SA?"
-msgstr "Újrainduljon a számítógép miközben játszik az MTA:SA-val?"
+msgid "Did your computer restart when playing San Andreas Online?"
+msgstr "Újrainduljon a számítógép miközben játszik a San Andreas Online-nal?"
 
 #: Client/loader/Utils.cpp:1787
 msgid "Please terminate the following programs before continuing:"
@@ -117,30 +117,30 @@ msgid "Invalid module path detected.\n"
 msgstr "Érvénytelen modulútvonal lett észlelve.\n"
 
 #: Client/loader/MainFunctions.cpp:348
-msgid "File version mismatch error. Reinstall MTA:SA if you experience problems.\n"
-msgstr "Fájl verzió hiba. Telepítse újra az MTA:SA-t, ha problémák merülnének fel.\n"
+msgid "File version mismatch error. Reinstall San Andreas Online if you experience problems.\n"
+msgstr "Fájl verzió hiba. Telepítse újra a San Andreas Online-t, ha problémák merülnének fel.\n"
 
 #: Client/loader/MainFunctions.cpp:356
-msgid "Some files are missing. Reinstall MTA:SA if you experience problems.\n"
-msgstr "Egyes fájlok hiányoznak. Telepítse újra az MTA: SA-t, ha problémák merülnek fel.\n"
+msgid "Some files are missing. Reinstall San Andreas Online if you experience problems.\n"
+msgstr "Egyes fájlok hiányoznak. Telepítse újra a San Andreas Online-t, ha problémák merülnek fel.\n"
 
 #: Client/loader/MainFunctions.cpp:367
-msgid "MTA:SA is not compatible with Windows 'Safe Mode'.\n\n"
+msgid "San Andreas Online is not compatible with Windows 'Safe Mode'.\n\n"
 "Please restart your PC.\n"
-msgstr "MTA:SA nem kompatibilis a Windows 'Csökkentett módjával'.\n\n"
+msgstr "San Andreas Online nem kompatibilis a Windows 'Csökkentett módjával'.\n\n"
 "Kérlek indítsd újra a számítógéped.\n"
 
 #: Client/loader/MainFunctions.cpp:546
-msgid "Are you having problems running MTA:SA?.\n\n"
+msgid "Are you having problems running San Andreas Online?.\n\n"
 "Do you want to revert to an earlier version?"
-msgstr "Problémád akadt az MTA:SA futtatásával?\n\n"
+msgstr "Problémád akadt a San Andreas Online futtatásával?\n\n"
 "Akarod hogy a játék egy régebbi verzióját telepítse?"
 
 #: Client/loader/MainFunctions.cpp:574
-msgid "There seems to be a problem launching MTA:SA.\n"
+msgid "There seems to be a problem launching San Andreas Online.\n"
 "Resetting GTA settings can sometimes fix this problem.\n\n"
 "Do you want to reset GTA settings now?"
-msgstr "Úgy tűnik, hogy probléma akadt az MTA:SA elindításával.\n"
+msgstr "Úgy tűnik, hogy probléma akadt a San Andreas Online elindításával.\n"
 "A GTA beállításainak resetelése megoldhatja ezt a problémát.\n\n"
 "Akarod resetelni a GTA beállításait most?"
 
@@ -157,16 +157,16 @@ msgstr "Fájl nem törölhető: '%s'"
 
 #. No settings to delete, or can't find them
 #: Client/loader/MainFunctions.cpp:602
-msgid "Are you having problems running MTA:SA?.\n\n"
+msgid "Are you having problems running San Andreas Online?.\n\n"
 "Do you want to see some online help?"
-msgstr "Problémád akadt az MTA:SA futtatásával?.\n\n"
+msgstr "Problémád akadt a San Andreas Online futtatásával?.\n\n"
 "Szeretnél online segítséget kapni?"
 
 #. Inform user
 #: Client/loader/MainFunctions.cpp:639
-msgid "Are you having problems running MTA:SA?.\n\n"
+msgid "Are you having problems running San Andreas Online?.\n\n"
 "Do you want to change the following setting?"
-msgstr "Problémáid vannak az MTA:SA futtatásával?.\n\n"
+msgstr "Problémáid vannak a San Andreas Online futtatásával?.\n\n"
 "Szeretnéd megváltoztatni a következő beállításokat?"
 
 #: Client/loader/MainFunctions.cpp:640 Client/core/CSettings.cpp:1161
@@ -180,18 +180,18 @@ msgid "Borderless window"
 msgstr "Keret nélküli ablak"
 
 #: Client/loader/MainFunctions.cpp:711
-msgid "Are you having problems running MTA:SA?.\n\n"
-"Try disabling the following products for GTA and MTA:"
-msgstr "Problémáid vannak az MTA:SA futtatásával?.\n\n"
-"Próbáld meg kikapcsolni a következő programokat a GTA és az MTA miatt:"
+msgid "Are you having problems running San Andreas Online?.\n\n"
+"Try disabling the following products for GTA and San Andreas Online:"
+msgstr "Problémáid vannak a San Andreas Online futtatásával?.\n\n"
+"Próbáld meg kikapcsolni a következő programokat a GTA és a San Andreas Online miatt:"
 
 #: Client/loader/MainFunctions.cpp:744
 msgid "WARNING\n\n"
-"MTA:SA has detected unusual activity.\n"
+"San Andreas Online has detected unusual activity.\n"
 "Please run a virus scan to ensure your system is secure.\n\n"
 msgstr "FIGYELEM\n"
 " \n"
-" MTA:SA szokatlan tevékenységet észlelt.\n"
+" San Andreas Online szokatlan tevékenységet észlelt.\n"
 " Kérjük, futtass egy víruskeresést, amely biztosítja, hogy a rendszer biztonságos.\n\n"
 
 #: Client/loader/MainFunctions.cpp:747
@@ -200,8 +200,8 @@ msgid "The detected file was:  %s\n"
 msgstr "Az észlelt fájl volt: %s\n"
 
 #: Client/loader/MainFunctions.cpp:995
-msgid "An instance of GTA: San Andreas is already running. It needs to be terminated before MTA:SA can be started. Do you want to do that now?"
-msgstr "Egy példánya a GTA: San Andreas-nak már fut. Le kell állítani, mielőtt az MTA:SA elindítható. Leakarja állítani most?"
+msgid "An instance of GTA: San Andreas is already running. It needs to be terminated before San Andreas Online can be started. Do you want to do that now?"
+msgstr "Egy példánya a GTA: San Andreas-nak már fut. Le kell állítani, mielőtt a San Andreas Online elindítható. Leakarja állítani most?"
 
 #: Client/loader/MainFunctions.cpp:996 Client/loader/MainFunctions.cpp:1003
 #: Client/loader/MainFunctions.cpp:1969
@@ -216,14 +216,14 @@ msgid "Unable to terminate GTA: San Andreas. If the problem persists, please res
 msgstr "Nem lehet leállítani a GTA: San Andreas-t. Ha a probléma továbbra is fennáll, indítsa újra a számítógépet."
 
 #: Client/loader/MainFunctions.cpp:1131
-msgid "Trouble restarting MTA:SA\n\n"
+msgid "Trouble restarting San Andreas Online\n\n"
 "If the problem persists, open Task Manager and\n"
 "stop the 'gta_sa.exe' and 'Multi Theft Auto.exe' processes\n\n\n"
-"Try to launch MTA:SA again?"
-msgstr "Probléma lépett fel az MTA:SA újraindításával\n\n"
+"Try to launch San Andreas Online again?"
+msgstr "Probléma lépett fel a San Andreas Online újraindításával\n\n"
 "Ha ez a probléma továbbra is fenn áll, nyisd meg a feladatkezelőt\n"
 "és zárd be a 'gta_sa.exe' és 'Multi Theft Auto.exe' folyamatokat.\n\n\n"
-"Megpróbálod újraindítani az MTA:SA-t?"
+"Megpróbálod újraindítani a San Andreas Online-t?"
 
 #. Show a message that the connection timed out and abort
 #. Show failed message and abort the attempt
@@ -263,33 +263,33 @@ msgid "Error"
 msgstr "Hiba"
 
 #: Client/loader/MainFunctions.cpp:1155
-msgid "Another instance of MTA is already running.\n\n"
+msgid "Another instance of San Andreas Online is already running.\n\n"
 "If this problem persists, please restart your computer"
-msgstr "Egy másik példánya az MTA-nak fut.\n\n"
+msgstr "Egy másik példánya a San Andreas Online-nak fut.\n\n"
 "Ha ez a probléma továbbra is fenn áll, indítsd újra a számítógéped."
 
 #: Client/loader/MainFunctions.cpp:1159
-msgid "Another instance of MTA is already running.\n\n"
+msgid "Another instance of San Andreas Online is already running.\n\n"
 "Do you want to terminate it?"
-msgstr "Egy másik példánya az MTA-nak már fut.\n\n"
+msgstr "Egy másik példánya a San Andreas Online-nak már fut.\n\n"
 "Leakarod állítani?"
 
 #: Client/loader/MainFunctions.cpp:1196
-msgid "Registry entries are missing. Please reinstall Multi Theft Auto: San Andreas."
-msgstr "Registry bejegyzések hiányoznak. Telepítse újra a Multi Theft Auto: San Andreas-t."
+msgid "Registry entries are missing. Please reinstall San Andreas Online."
+msgstr "Registry bejegyzések hiányoznak. Telepítse újra a San Andreas Online-t."
 
 #: Client/loader/MainFunctions.cpp:1202
-msgid "The path to your installation of GTA: San Andreas contains unsupported (unicode) characters. Please move your Grand Theft Auto: San Andreas installation to a compatible path that contains only standard ASCII characters and reinstall Multi Theft Auto: San Andreas."
-msgstr "A GTA: San Andreas útja nem támogatott (Unicode) karaktereket tartalmaz. Kérjük helyezze a Grand Theft Auto: San Andreas telepítését egy kompatibilis útra, amely csak szabványos ASCII karaktereket tartalmaz és telepítse újra a Multi Theft Auto: San Andreas-t."
+msgid "The path to your installation of GTA: San Andreas contains unsupported (unicode) characters. Please move your Grand Theft Auto: San Andreas installation to a compatible path that contains only standard ASCII characters and reinstall San Andreas Online."
+msgstr "A GTA: San Andreas útja nem támogatott (Unicode) karaktereket tartalmaz. Kérjük helyezze a Grand Theft Auto: San Andreas telepítését egy kompatibilis útra, amely csak szabványos ASCII karaktereket tartalmaz és telepítse újra a San Andreas Online-t."
 
 #: Client/loader/MainFunctions.cpp:1215
-msgid "The path to your installation of 'MTA:SA' or 'GTA: San Andreas'\n"
+msgid "The path to your installation of 'San Andreas Online' or 'GTA: San Andreas'\n"
 "contains a ';' (semicolon).\n\n"
-"If you experience problems when running MTA:SA,\n"
+"If you experience problems when running San Andreas Online,\n"
 "move your installation(s) to a path that does not contain a semicolon."
-msgstr "A telepítési útvonala 'MTA:SA' vagy 'GTA: San Andreas'\n"
+msgstr "A telepítési útvonala 'San Andreas Online' vagy 'GTA: San Andreas'\n"
 "tartalmaz ';' (pontosvessző).\n\n"
-"Ezzel problémák merülhetnek fel, ha fut az MTA:SA,\n"
+"Ezzel problémák merülhetnek fel, ha fut a San Andreas Online,\n"
 "Helyezze át egy pontosvesszőt nem tartalmazó útvonalra."
 
 #: Client/loader/MainFunctions.cpp:1398
@@ -363,13 +363,16 @@ msgstr "A '%s' fájl jelenleg %zu folyamat(ok) által zárolva van.\n\n"
 
 #: Client/loader/Install.cpp:479
 #, c-format
-msgid "Your installation may be corrupt now.\n\n"
-"%zu out of %zu files could not be restored from the backup.\n\n"
-"You should reinstall Multi Theft Auto from www.multitheftauto.com\n"
+msgid ""
+"Your installation may be corrupt now.\n"
+"\n"
+"%zu out of %zu files could not be restored from the backup.\n"
+"\n"
+"You should reinstall San Andreas Online\n"
 "or try running the update with administrator rights."
 msgstr "Lehet, hogy a telepítés most sérült.\n\n"
 "%zu fájlból %zu nem állítható vissza a biztonsági másolatból.\n\n"
-"Telepítsd újra a Multi Theft Auto-t a www.multitheftauto.com webhelyről\n"
+"Telepítsd újra a San Andreas Online-t\n"
 "vagy próbáld meg futtatni a frissítést rendszergazdai jogokkal."
 
 #: Client/loader/Install.cpp:852 Client/loader/Dialogs.cpp:1035
@@ -382,9 +385,9 @@ msgstr "Fájlok kicsomagolása..."
 
 #: Client/loader/CInstallManager.cpp:391
 #, c-format
-msgid "MTA:SA could not complete the following task:\n\n"
+msgid "San Andreas Online could not complete the following task:\n\n"
 "  '%s'\n"
-msgstr "MTA:SA nem tudta befejezni a feladatot:\n\n"
+msgstr "San Andreas Online nem tudta befejezni a feladatot:\n\n"
 "'%s'\n"
 
 #: Client/loader/CInstallManager.cpp:460
@@ -402,8 +405,8 @@ msgid "** Enhanced crash capture will be attempted on next launch. **"
 msgstr "** A program a következő indításkor részletesebb hibajelentést fog készíteni. **"
 
 #: Client/loader/CInstallManager.cpp:1059
-msgid "Install updated MTA:SA files"
-msgstr "Frissített MTA:SA fájlok telepítése"
+msgid "Install updated San Andreas Online files"
+msgstr "Frissített San Andreas Online fájlok telepítése"
 
 #: Client/loader/CInstallManager.cpp:1079
 msgid "Could not update due to file conflicts. Please close other applications and retry"
@@ -411,50 +414,50 @@ msgstr "Nem lehet frissíteni egy fájl ütközése miatt. Kérlek zárj be mind
 
 #: Client/loader/CInstallManager.cpp:1088
 #, c-format
-msgid "Multi Theft Auto has not been installed properly, please reinstall. %s"
-msgstr "Multi Theft Auto nem lett megfelelően telepítve, kérlek telepítsd újra. %s"
+msgid "San Andreas Online has not been installed properly, please reinstall. %s"
+msgstr "San Andreas Online nem lett megfelelően telepítve, kérlek telepítsd újra. %s"
 
 #: Client/loader/CInstallManager.cpp:1140
 msgid "Create GTA:SA junctions"
 msgstr "GTA:SA kapcsolatok létrehozása"
 
 #: Client/loader/CInstallManager.cpp:1184
-msgid "MTA:SA cannot launch because copying a file failed:"
-msgstr "MTA:SA nem tudott elindulni, mert egy fájl másolása nem sikerült:"
+msgid "San Andreas Online cannot launch because copying a file failed:"
+msgstr "San Andreas Online nem tudott elindulni, mert egy fájl másolása nem sikerült:"
 
 #: Client/loader/CInstallManager.cpp:1190
 #: Client/loader/CInstallManager.cpp:1230
-msgid "MTA:SA cannot launch because an MTA:SA file is incorrect or missing:"
-msgstr "MTA:SA nem tudott elindulni, mert egy MTA:SA fájl hibás vagy hiányzik:"
+msgid "San Andreas Online cannot launch because a San Andreas Online file is incorrect or missing:"
+msgstr "San Andreas Online nem tudott elindulni, mert egy San Andreas Online fájl hibás vagy hiányzik:"
 
 #: Client/loader/CInstallManager.cpp:1199
-msgid "Copy MTA:SA files"
-msgstr "MTA:SA fájlok másolása"
+msgid "Copy San Andreas Online files"
+msgstr "San Andreas Online fájlok másolása"
 
 #: Client/loader/CInstallManager.cpp:1222
 #: Client/loader/CInstallManager.cpp:1300
-msgid "MTA:SA cannot launch because a GTA:SA file is incorrect or missing:"
-msgstr "MTA:SA nem tudott elindulni, mert egy GTA:SA fájl hibás vagy hiányzik:"
+msgid "San Andreas Online cannot launch because a GTA:SA file is incorrect or missing:"
+msgstr "San Andreas Online nem tudott elindulni, mert egy GTA:SA fájl hibás vagy hiányzik:"
 
 #: Client/loader/CInstallManager.cpp:1307
 msgid "Patch GTA:SA dependency"
 msgstr "GTA:SA tartozékok frissítése"
 
 #: Client/loader/CInstallManager.cpp:1355
-msgid "MTA:SA cannot launch because the GTA:SA executable is incorrect or missing:"
-msgstr "Az MTA:SA nem indul el, mert a GTA:SA alkalmazás hibás vagy hiányzik:"
+msgid "San Andreas Online cannot launch because the GTA:SA executable is incorrect or missing:"
+msgstr "Az San Andreas Online nem indul el, mert a GTA:SA alkalmazás hibás vagy hiányzik:"
 
 #: Client/loader/CInstallManager.cpp:1359
-msgid "Please check your anti-virus for a false-positive detection, try to add an exception for the GTA:SA executable and restart MTA:SA."
-msgstr "Kérlek ellenőrizd az antivírus programod téves észlelésért, próbálj hozzáadni egy kivételt a GTA:SA alkalmazáshoz, majd indítsd újra az MTA:SA-t."
+msgid "Please check your anti-virus for a false-positive detection, try to add an exception for the GTA:SA executable and restart San Andreas Online."
+msgstr "Kérlek ellenőrizd az antivírus programod téves észlelésért, próbálj hozzáadni egy kivételt a GTA:SA alkalmazáshoz, majd indítsd újra a San Andreas Online-t."
 
 #: Client/loader/CInstallManager.cpp:1365
 msgid "Generate GTA:SA"
 msgstr "GTA:SA generálása"
 
 #: Client/loader/CInstallManager.cpp:1380
-msgid "MTA:SA cannot launch because the GTA:SA executable is not loadable:"
-msgstr "MTA:SA nem tudott elindulni, mert a GTA:SA alkalmazás nem tölthető be:"
+msgid "San Andreas Online cannot launch because the GTA:SA executable is not loadable:"
+msgstr "San Andreas Online nem tudott elindulni, mert a GTA:SA alkalmazás nem tölthető be:"
 
 #: Client/loader/CInstallManager.cpp:1387
 #: Client/loader/CInstallManager.cpp:1410
@@ -462,21 +465,21 @@ msgid "Patch GTA:SA"
 msgstr "GTA:SA frissítése"
 
 #: Client/loader/CInstallManager.cpp:1403
-msgid "MTA:SA cannot launch because patching GTA:SA has failed:"
-msgstr "MTA:SA nem tudott elindulni, mert a GTA:SA javítása nem sikerült:"
+msgid "San Andreas Online cannot launch because patching GTA:SA has failed:"
+msgstr "San Andreas Online nem tudott elindulni, mert a GTA:SA javítása nem sikerült:"
 
 #: Client/loader/CInstallManager.cpp:1584 Client/core/CCore.cpp:846
 #, c-format
-msgid "MTA:SA cannot continue because drive %s does not have enough space."
-msgstr "MTA:SA nem folytatható, mert a %s meghajtón nincs elég hely."
+msgid "San Andreas Online cannot continue because drive %s does not have enough space."
+msgstr "San Andreas Online nem folytatható, mert a %s meghajtón nincs elég hely."
 
 #: Client/loader/CInstallManager.cpp:1640
 msgid "Missing file:"
 msgstr "Hiányzó fájl:"
 
 #: Client/loader/CInstallManager.cpp:1644
-msgid "If MTA fails to load, please re-install GTA:SA"
-msgstr "Ha az MTA nem tud betölteni, telepítse újra a GTA:SA-t"
+msgid "If San Andreas Online fails to load, please re-install GTA:SA"
+msgstr "Ha a San Andreas Online nem tud betölteni, telepítse újra a GTA:SA-t"
 
 #: Client/loader/CInstallManager.cpp:1679
 msgid "Update install settings"
@@ -547,8 +550,8 @@ msgid "Cancel"
 msgstr "Mégse"
 
 #: Client/loader/Dialogs.cpp:83
-msgid "MTA: San Andreas has encountered a problem"
-msgstr "MTA: San Andreas hibát észlelt"
+msgid "San Andreas Online has encountered a problem"
+msgstr "San Andreas Online hibát észlelt"
 
 #: Client/loader/Dialogs.cpp:84
 msgid "Crash information"
@@ -563,21 +566,21 @@ msgid "Doing so will increase the chance of this crash being fixed."
 msgstr "Ha így tesz, növeli az esélyét a crash kijavításának."
 
 #: Client/loader/Dialogs.cpp:87
-msgid "Do you want to restart MTA: San Andreas ?"
-msgstr "Szeretné újraindítani az MTA: San Andreas-t ?"
+msgid "Do you want to restart San Andreas Online ?"
+msgstr "Szeretné újraindítani a San Andreas Online-t ?"
 
 #: Client/loader/Dialogs.cpp:94
-msgid "MTA: San Andreas - Warning"
-msgstr "MTA: San Andreas - Figyelmeztetés"
+msgid "San Andreas Online - Warning"
+msgstr "San Andreas Online - Figyelmeztetés"
 
 #: Client/loader/Dialogs.cpp:95
 msgid "Your Grand Theft Auto: San Andreas install directory contains these files:"
 msgstr "A Grand Theft Auto: San Andreas telepítési könyvtára a következő fájlokat tartalmazza:"
 
 #: Client/loader/Dialogs.cpp:97
-msgid "These files are not required and may interfere with the graphical features in this version of MTA:SA.\n\n"
+msgid "These files are not required and may interfere with the graphical features in this version of San Andreas Online.\n\n"
 "It is recommended that you remove or rename these files."
-msgstr "Ezek a fájlok nem szükségesek, és zavarhatják az MTA:SA jelen verziójának grafikus funkcióit.\n\n"
+msgstr "Ezek a fájlok nem szükségesek, és zavarhatják a San Andreas Online jelen verziójának grafikus funkcióit.\n\n"
 "Javasoljuk, hogy távolítsd el vagy nevezd át ezeket a fájlokat."
 
 #: Client/loader/Dialogs.cpp:99
@@ -597,12 +600,12 @@ msgid "Show me these files"
 msgstr "Mutasd meg ezeket a fájlokat"
 
 #: Client/loader/Dialogs.cpp:103
-msgid "Play MTA:SA"
-msgstr "MTA:SA elindítása"
+msgid "Play SA:O"
+msgstr "SA:O elindítása"
 
 #: Client/loader/Dialogs.cpp:109
-msgid "MTA: San Andreas - Confusing options"
-msgstr "MTA: San Andreas - Zavaros beállítások"
+msgid "San Andreas Online - Confusing options"
+msgstr "San Andreas Online - Zavaros beállítások"
 
 #: Client/loader/Dialogs.cpp:110
 msgid "NVidia Optimus detected!"
@@ -645,19 +648,19 @@ msgid "Don't show again"
 msgstr "Ne jelenjen meg többször"
 
 #: Client/loader/Dialogs.cpp:126 Client/game_sa/CSettingsSA.cpp:910
-msgid "MTA: San Andreas"
-msgstr "MTA: San Andreas"
+msgid "San Andreas Online"
+msgstr "San Andreas Online"
 
 #: Client/loader/Dialogs.cpp:127
 msgid "Warning: Could not detect anti-virus product"
 msgstr "Figyelem: Nem található anti-vírus termék"
 
 #: Client/loader/Dialogs.cpp:129
-msgid "MTA could not detect an anti-virus on your PC.\n\n"
-"Viruses interfere with MTA and degrade your gameplay experience.\n\n"
+msgid "San Andreas Online could not detect an anti-virus on your PC.\n\n"
+"Viruses interfere with San Andreas Online and degrade your gameplay experience.\n\n"
 "Press 'Help' for more information."
-msgstr "Az MTA nem talált anti-vírus terméket a számítógépen.\n\n"
-"A vírusok zavarják az MTA-t és rontják a játékélményt.\n\n"
+msgstr "Az San Andreas Online nem talált anti-vírus terméket a számítógépen.\n\n"
+"A vírusok zavarják a San Andreas Online-t és rontják a játékélményt.\n\n"
 "Nyomja meg a 'Segítség' gombot a további információkért."
 
 #: Client/loader/Dialogs.cpp:132
@@ -671,16 +674,19 @@ msgstr "Nem fogok telepíteni anti-vírus terméket.\n"
 "Azt akarom, hogy a PC laggoljon, és része legyen egy botnet hálózatnak."
 
 #: Client/loader/Dialogs.cpp:667
-msgid "The crash you experienced is due to memory abuse by servers.\n\n"
-"Even with plenty of RAM, this is a x86 game with address space limits up to 3.6GB and some highly unoptimized servers with a lot of mods (or just a few poorly written scripts) can make this happen, as well as lag your game.\n\n"
-"Contact the server owner or MTA support in the MTA official discord (https://discord.gg/mtasa) for more information."
+msgid ""
+"The crash you experienced is due to memory abuse by servers.\n"
+"\n"
+"Even with plenty of RAM, this is a x86 game with address space limits up to 3.6GB and some highly unoptimized servers with a lot of mods (or just a few poorly written scripts) can make this happen, as well as lag your game.\n"
+"\n"
+"Contact the server owner or San Andreas Online support on the San Andreas Online Discord (https://discord.com/invite/mgFRd2AzF8) for more information."
 msgstr "A tapasztalt összeomlást a szerverek túlzott memóriahasználata okozza.\n\n"
 "Még bőséges RAM esetén is ez egy x86-os játék, amelynek címtartomány-korlátja legfeljebb 3.6 GB. Néhány erősen optimalizálatlan szerver sok moddal (vagy akár pár rosszul megírt szkripttel) ezt előidézheti, valamint laggolást is okozhat a játékban.\n\n"
-"További információért lépj kapcsolatba a szerver tulajdonosával vagy az MTA támogatással az MTA hivatalos Discordján: (https://discord.gg/mtasa)."
+"További információért lépj kapcsolatba a szerver tulajdonosával vagy a San Andreas Online támogatással a San Andreas Online hivatalos Discordján: (https://discord.com/invite/mgFRd2AzF8)."
 
 #: Client/loader/Dialogs.cpp:673
-msgid "MTA: San Andreas - Out of Memory Information"
-msgstr "MTA: San Andreas – Memóriahiány információ"
+msgid "San Andreas Online - Out of Memory Information"
+msgstr "San Andreas Online – Memóriahiány információ"
 
 #: Client/loader/Dialogs.cpp:1024
 msgid "Searching for Grand Theft Auto San Andreas"
@@ -844,9 +850,9 @@ msgid "MANDATORY UPDATE"
 msgstr "KÖTELEZŐ FRISSÍTÉS"
 
 #: Client/core/CVersionUpdater.cpp:1920
-msgid "To join this server, you must update MTA.\n\n"
+msgid "To join this server, you must update San Andreas Online.\n\n"
 " Do you want to update now ?"
-msgstr "Hogy csatlakozhass erre a szerverre, frissítened kell az MTA-t.\n\n"
+msgstr "Hogy csatlakozhass erre a szerverre, frissítened kell a San Andreas Online-t.\n\n"
 "Szeretnéd frissíteni most?"
 
 #: Client/core/CVersionUpdater.cpp:1938
@@ -907,10 +913,10 @@ msgid "ERROR"
 msgstr "HIBA"
 
 #: Client/core/CVersionUpdater.cpp:2160
-msgid "Some MTA:SA data files are missing.\n\n\n"
-"Please reinstall MTA:SA"
-msgstr "Néhány MTA:SA data fájl elveszett.\n\n\n"
-"Kérlek telepítsd újra az MTA:SA-t"
+msgid "Some San Andreas Online data files are missing.\n\n\n"
+"Please reinstall San Andreas Online"
+msgstr "Néhány San Andreas Online data fájl elveszett.\n\n\n"
+"Kérlek telepítsd újra a San Andreas Online-t"
 
 #: Client/core/CVersionUpdater.cpp:2837
 #, c-format
@@ -1200,8 +1206,8 @@ msgid "SFX volume:"
 msgstr "SFX hangerő:"
 
 #: Client/core/CSettings.cpp:926 Client/core/CSettings.cpp:1001
-msgid "MTA volume:"
-msgstr "MTA hangerő:"
+msgid "SA:O volume:"
+msgstr "SA:O hangerő:"
 
 #: Client/core/CSettings.cpp:927 Client/core/CSettings.cpp:1023
 msgid "Voice volume:"
@@ -1266,8 +1272,8 @@ msgid "Mute SFX sounds when minimized"
 msgstr "Némítsa az SFX hangokat amikor minimalizálva van"
 
 #: Client/core/CSettings.cpp:1108
-msgid "Mute MTA sounds when minimized"
-msgstr "Némítsa az MTA hangokat amikor minimalizálva van"
+msgid "Mute SA:O sounds when minimized"
+msgstr "Némítsa az SA:O hangokat amikor minimalizálva van"
 
 #: Client/core/CSettings.cpp:1113
 msgid "Mute Voice sounds when minimized"
@@ -1646,8 +1652,8 @@ msgid "Check for update now"
 msgstr "Frissítés keresése most"
 
 #: Client/core/CSettings.cpp:2102
-msgid "Some settings will be changed when you next start MTA"
-msgstr "Néhány beállítás megváltozik, amikor legközelebb elindítod a MTA-t"
+msgid "Some settings will be changed when you next start San Andreas Online"
+msgstr "Néhány beállítás megváltozik, amikor legközelebb elindítod a San Andreas Online-t"
 
 #: Client/core/CSettings.cpp:2103
 msgid "\n\n"
@@ -1958,21 +1964,21 @@ msgstr "HOZZÁJÁRULÁS AZ ADATMEGOSZTÁSHOZ"
 
 #: Client/core/CSettings.cpp:5725
 msgid "Some files in your GTA:SA data directory are customized.\n"
-"MTA will only use these modified files if this check box is ticked.\n\n"
+"San Andreas Online will only use these modified files if this check box is ticked.\n\n"
 "However, CUSTOMIZED GTA:SA FILES ARE BLOCKED BY MANY SERVERS\n\n"
 "Are you sure you want to use them?"
 msgstr "Néhány fájl a GTA:SA mappádban átlett alakítva.\n"
-"Az MTA csak akkor fogja ezeket használni, ha engedélyt adsz rá.\n\n"
+"Az San Andreas Online csak akkor fogja ezeket használni, ha engedélyt adsz rá.\n\n"
 "Mindenesetre, az átalakított GTA:SA fájlok tiltva vannak rengeteg szerver által\n\n"
 "Biztos vagy benne hogy használatba veszed őket?"
 
 #: Client/core/CSettings.cpp:5774
 msgid "Enabling DPI awareness is an experimental feature and\n"
-"we only recommend it when you play MTA:SA on a scaled monitor.\n"
+"we only recommend it when you play San Andreas Online on a scaled monitor.\n"
 "You may experience graphical issues if you enable this option.\n\n"
 "Are you sure you want to enable this option?"
 msgstr "A DPI-felismerés engedélyezése egy kísérleti szolgáltatás és\n"
-"csak akkor javasoljuk, ha az MTA:SA-t egy arányos monitoron játssza.\n"
+"csak akkor javasoljuk, ha a San Andreas Online-t egy arányos monitoron játssza.\n"
 "Grafikus problémákat tapasztalhat, ha engedélyezi ezt az opciót.\n\n"
 "Biztos benne, hogy engedélyezni kívánja ezt az opciót?"
 
@@ -2398,8 +2404,8 @@ msgstr "Csoportos irányítás hátra"
 
 #. Even the default skin doesn't work, so give up
 #: Client/core/CGUI.cpp:93
-msgid "The skin you selected could not be loaded, and the default skin also could not be loaded, please reinstall MTA."
-msgstr "A kinézet amit választottál nem betölthető, és az alap kinézet sem tölthető be, kérlek telepítsd újra az MTA-t."
+msgid "The skin you selected could not be loaded, and the default skin also could not be loaded, please reinstall San Andreas Online."
+msgstr "A kinézet amit választottál nem betölthető, és az alap kinézet sem tölthető be, kérlek telepítsd újra a San Andreas Online-t."
 
 #: Client/core/CQuestionBox.cpp:192 Shared/sdk/SharedUtil.Misc.hpp:1462
 msgid "Do you want to see some on-line help about this problem ?"
@@ -3134,8 +3140,8 @@ msgid "This server does not allow custom D3D9.DLLs"
 msgstr "Ez a szerver nem engedélyezi az egyedi D3D9.DLL fájlokat"
 
 #: Client/mods/deathmatch/logic/CPacketHandler.cpp:626
-msgid "Remove D3D9.DLL from your GTA install directory and restart MTA"
-msgstr "Távolítsd el a D3D9.DLL fájlt a GTA telepítési könyvtárából és indítsd újra az MTA-t"
+msgid "Remove D3D9.DLL from your GTA install directory and restart San Andreas Online"
+msgstr "Távolítsd el a D3D9.DLL fájlt a GTA telepítési könyvtárából és indítsd újra a San Andreas Online-t"
 
 #: Client/mods/deathmatch/logic/CPacketHandler.cpp:627
 msgid "This server does not allow virtual machines"
@@ -3154,8 +3160,8 @@ msgid "This server has detected missing anti-cheat components"
 msgstr "A szerver hiányzó anti-cheat összetevőket észlelt"
 
 #: Client/mods/deathmatch/logic/CPacketHandler.cpp:631
-msgid "Try restarting MTA"
-msgstr "Próbáld meg újraindítani az MTA-t"
+msgid "Try restarting San Andreas Online"
+msgstr "Próbáld meg újraindítani a San Andreas Online-t"
 
 #: Client/mods/deathmatch/logic/CPacketHandler.cpp:632
 msgid "This server requires a non-modifed gta3.img and gta_int.img"
@@ -3170,8 +3176,8 @@ msgid "This server does not allow Wine"
 msgstr "Ez a szerver nem engedélyezi a Wine használatát"
 
 #: Client/mods/deathmatch/logic/CPacketHandler.cpp:637
-msgid "Ensure no other program is modifying MTA:SA"
-msgstr "Győződj meg arról, hogy más program nem módosítja az MTA:SA-t"
+msgid "Ensure no other program is modifying San Andreas Online"
+msgstr "Győződj meg arról, hogy más program nem módosítja a San Andreas Online-t"
 
 #: Client/mods/deathmatch/logic/CPacketHandler.cpp:651
 msgid "Time Remaining: "
@@ -3378,8 +3384,8 @@ msgid "Disconnected: invalid password specified"
 msgstr "Lecsatlakozva: helytelen jelszó"
 
 #: Client/mods/deathmatch/logic/CClientGame.cpp:1456
-msgid "MTA Client verification failed!"
-msgstr "MTA kliens ellenőrzése nem sikerült!"
+msgid "San Andreas Online client verification failed!"
+msgstr "San Andreas Online kliens ellenőrzése nem sikerült!"
 
 #: Client/mods/deathmatch/logic/CClientGame.cpp:5691
 msgid "In a ditch"
@@ -3427,8 +3433,8 @@ msgid "Connection error"
 msgstr "Csatlakozási hiba"
 
 #: Shared/sdk/SharedUtil.Misc.hpp:381
-msgid "Multi Theft Auto has not been installed properly, please reinstall."
-msgstr "Multi Theft Auto nincs megfelelően feltelepítve, kérlek telepítsd újra."
+msgid "San Andreas Online has not been installed properly, please reinstall."
+msgstr "San Andreas Online nincs megfelelően feltelepítve, kérlek telepítsd újra."
 
 #: Shared/sdk/SharedUtil.Misc.hpp:1476
 msgid "Your browser will now display a web page with some help infomation.\n\n"

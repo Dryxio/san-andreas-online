@@ -80,7 +80,7 @@ function authorizationBridgeHtml(): string {
   history.replaceState(null, "", window.location.pathname);
   const flow_id = values.get("flow_id");
   const browser_token = values.get("browser_token");
-  if (!flow_id || !browser_token) { output.textContent = "This Neon sign-in link is invalid."; return; }
+  if (!flow_id || !browser_token) { output.textContent = "This San Andreas Online sign-in link is invalid."; return; }
   fetch(window.location.pathname, {
     method: "POST",
     credentials: "same-origin",
@@ -90,19 +90,19 @@ function authorizationBridgeHtml(): string {
     if (!response.ok) throw new Error("invalid");
     const body = await response.json();
     window.location.replace(body.authorization_url);
-  }).catch(() => { output.textContent = "This Neon sign-in link is invalid or expired."; });
+  }).catch(() => { output.textContent = "This San Andreas Online sign-in link is invalid or expired."; });
 })();`;
     return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>Neon Identity</title></head><body><main><h1>Neon Identity</h1>
+<title>San Andreas Online account</title></head><body><main><h1>San Andreas Online account</h1>
 <p id="status">Opening Discord…</p></main><script nonce="${nonce}">${script}</script></body></html>`;
 }
 
 function resultHtml(success: boolean): string {
     const title = success ? "Discord linked" : "Sign-in failed";
     const message = success
-        ? "Authentication succeeded. You can close this tab and return to Neon."
-        : "Authentication could not be completed. Return to Neon and try again.";
+        ? "Authentication succeeded. You can close this tab and return to San Andreas Online."
+        : "Authentication could not be completed. Return to San Andreas Online and try again.";
     return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>${title}</title></head><body><main><h1>${title}</h1><p>${message}</p></main></body></html>`;
 }
@@ -325,8 +325,8 @@ export async function buildApp(dependencies: AppDependencies) {
                 httpPort: parsed.data.http_port,
                 serverVersion: parsed.data.server_version,
                 name: parsed.data.name,
-                tagline: parsed.data.tagline || "A Neon community server.",
-                description: parsed.data.description || `${parsed.data.name} is powered by MTA:SA Neon.`,
+                tagline: parsed.data.tagline || "A San Andreas Online community server.",
+                description: parsed.data.description || `${parsed.data.name} is powered by San Andreas Online.`,
                 countries: parsed.data.countries,
                 languages: parsed.data.languages,
                 links: parsed.data.links,

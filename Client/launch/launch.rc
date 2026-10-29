@@ -88,10 +88,10 @@ BEGIN
         BLOCK "080904b0"
         BEGIN
             VALUE "CompanyName", "Multi Theft Auto"
-            VALUE "FileDescription", "Multi Theft Auto Launcher"
+            VALUE "FileDescription", "San Andreas Online"
             VALUE "FileVersion", "1.7.0.0"
             VALUE "LegalCopyright", "(C) 2003 - 2025 Multi Theft Auto"
-            VALUE "ProductName", "MTA San Andreas"
+            VALUE "ProductName", "San Andreas Online"
             VALUE "ProductVersion", "1.7.0.0"
         END
     END

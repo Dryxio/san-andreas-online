@@ -1527,7 +1527,7 @@ void CClientGame::DoPulses()
             // Time out the verification if it takes too long
             if (m_ulVerifyTimeStart != 0 && ulCurrentTime >= m_ulVerifyTimeStart + CLIENT_VERIFICATION_TIMEOUT)
             {
-                g_pCore->ShowNetErrorMessageBox(_("Error") + _E("CD19"), _("MTA Client verification failed!"));
+                g_pCore->ShowNetErrorMessageBox(_("Error") + _E("CD19"), _("San Andreas Online client verification failed!"));
                 g_pCore->GetModManager()->RequestUnload();
             }
         }

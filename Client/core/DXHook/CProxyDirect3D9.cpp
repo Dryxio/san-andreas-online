@@ -360,9 +360,9 @@ HRESULT CProxyDirect3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND 
 
     // Distinct titles let URI launches target the matching client mutex/window.
 #ifdef MTA_DEBUG
-    SetWindowTextW(hFocusWindow, MbUTF8ToUTF16(g_pCore->IsSecondaryClient() ? "MTA: San Andreas [CL2-DEBUG]" : "MTA: San Andreas [DEBUG]").c_str());
+    SetWindowTextW(hFocusWindow, MbUTF8ToUTF16(g_pCore->IsSecondaryClient() ? "San Andreas Online [CL2-DEBUG]" : "San Andreas Online [DEBUG]").c_str());
 #else
-    SetWindowTextW(hFocusWindow, MbUTF8ToUTF16(g_pCore->IsSecondaryClient() ? "MTA: San Andreas [CL2]" : "MTA: San Andreas").c_str());
+    SetWindowTextW(hFocusWindow, MbUTF8ToUTF16(g_pCore->IsSecondaryClient() ? "San Andreas Online [CL2]" : "San Andreas Online").c_str());
 #endif
 
     // Set dark titlebar if needed
@@ -1211,7 +1211,7 @@ HRESULT HandleCreateDeviceResult(HRESULT hResult, IDirect3D9* pDirect3D, UINT Ad
     {
         // Handle fatal error
         SString strMessage;
-        strMessage += "There was a problem starting MTA:SA\n\n";
+        strMessage += "There was a problem starting San Andreas Online\n\n";
         strMessage += SString("Direct3D CreateDevice error: %08x", hResult);
         BrowseToSolution("d3dcreatedevice-fail", EXIT_GAME_FIRST | ASK_GO_ONLINE, strMessage);
     }
@@ -1388,9 +1388,9 @@ HRESULT CCore::OnPostCreateDevice(HRESULT hResult, IDirect3D9* pDirect3D, UINT A
 
     // Preserve the client identity if Direct3D recreates the device.
 #ifdef MTA_DEBUG
-    SetWindowTextW(hFocusWindow, MbUTF8ToUTF16(g_pCore->IsSecondaryClient() ? "MTA: San Andreas [CL2-DEBUG]" : "MTA: San Andreas [DEBUG]").c_str());
+    SetWindowTextW(hFocusWindow, MbUTF8ToUTF16(g_pCore->IsSecondaryClient() ? "San Andreas Online [CL2-DEBUG]" : "San Andreas Online [DEBUG]").c_str());
 #else
-    SetWindowTextW(hFocusWindow, MbUTF8ToUTF16(g_pCore->IsSecondaryClient() ? "MTA: San Andreas [CL2]" : "MTA: San Andreas").c_str());
+    SetWindowTextW(hFocusWindow, MbUTF8ToUTF16(g_pCore->IsSecondaryClient() ? "San Andreas Online [CL2]" : "San Andreas Online").c_str());
 #endif
 
     // Log graphic card name
@@ -1471,7 +1471,7 @@ HRESULT CCore::OnPostCreateDevice(HRESULT hResult, IDirect3D9* pDirect3D, UINT A
     {
         // Inform user
         SString strMessage;
-        strMessage += "There was a problem starting MTA:SA\n\n";
+        strMessage += "There was a problem starting San Andreas Online\n\n";
         strMessage += SString("Direct3D CreateDevice error: %08x", hResult);
         BrowseToSolution("d3dcreatedevice-fail", EXIT_GAME_FIRST | ASK_GO_ONLINE, strMessage);
     }

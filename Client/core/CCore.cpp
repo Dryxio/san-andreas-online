@@ -1137,7 +1137,7 @@ void CCore::HandleNativeWorldConnectionTargetRefusal(const std::string& reason)
                                 selection.serverPort);
     ShowMessageBox(
         _("Connection blocked"),
-        SString(_("A native world pack for %s is active. Close and restart Multi Theft Auto before connecting to another server."), ownerEndpoint.c_str()),
+        SString(_("A native world pack for %s is active. Close and restart San Andreas Online before connecting to another server."), ownerEndpoint.c_str()),
         MB_BUTTON_OK | MB_ICON_INFO);
 }
 
@@ -2248,7 +2248,7 @@ bool CCore::CheckDiskSpace(uint uiResourcesPathMinMB, uint uiDataPathMinMB)
     SString strDriveWithNoSpace = GetDriveNameWithNotEnoughSpace(uiResourcesPathMinMB, uiDataPathMinMB);
     if (!strDriveWithNoSpace.empty())
     {
-        SString strMessage(_("MTA:SA cannot continue because drive %s does not have enough space."), *strDriveWithNoSpace);
+        SString strMessage(_("San Andreas Online cannot continue because drive %s does not have enough space."), *strDriveWithNoSpace);
         SString strTroubleLink(SString("low-disk-space&drive=%s", *strDriveWithNoSpace.Left(1)));
         g_pCore->ShowErrorMessageBox(_("Fatal error") + _E("CC43"), strMessage, strTroubleLink);
         return false;

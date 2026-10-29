@@ -706,7 +706,7 @@ void CSettings::CreateGUI()
 
     pTabMultiplayer = m_pTabMultiplayer = m_pTabs->CreateTab(_("Multiplayer"));
     pTabVideo = m_pTabVideo = m_pTabs->CreateTab(_("Video"));
-    CGUITab* pTabNeon = m_pTabNeon = m_pTabs->CreateTab("Neon");
+    CGUITab* pTabNeon = m_pTabNeon = m_pTabs->CreateTab("SA:O");
     m_pTabSkyGfx = m_pTabs->CreateTab("SkyGfx");
     pTabPostFX = m_pTabPostFX = m_pTabs->CreateTab(_("PostFX"));
     pTabAudio = m_pTabAudio = m_pTabs->CreateTab(_("Audio"));
@@ -1113,7 +1113,7 @@ void CSettings::CreateGUI()
     /**
      *  Audio tab
      **/
-    fIndentX = pManager->CGUI_GetMaxTextExtent("default-normal", _("Master volume:"), _("Radio volume:"), _("SFX volume:"), _("MTA volume:"),
+    fIndentX = pManager->CGUI_GetMaxTextExtent("default-normal", _("Master volume:"), _("Radio volume:"), _("SFX volume:"), _("SA:O volume:"),
                                                _("Voice volume:"), _("Play mode:"));
 
     m_pAudioGeneralLabel = reinterpret_cast<CGUILabel*>(pManager->CreateLabel(pTabAudio, _("General")));
@@ -1188,7 +1188,7 @@ void CSettings::CreateGUI()
     FinalizeSliderRow(tabPanelSize.fX, m_pAudioSFXVolume, m_pLabelSFXVolumeValue, 160.0f, kSliderLabelSpacing, m_pLabelSFXVolume);
 
     vecTemp.fX = 11;
-    m_pLabelMTAVolume = reinterpret_cast<CGUILabel*>(pManager->CreateLabel(pTabAudio, _("MTA volume:")));
+    m_pLabelMTAVolume = reinterpret_cast<CGUILabel*>(pManager->CreateLabel(pTabAudio, _("SA:O volume:")));
     m_pLabelMTAVolume->SetPosition(CVector2D(vecTemp.fX, vecTemp.fY + 29.0f));
     m_pLabelMTAVolume->GetPosition(vecTemp, false);
     m_pLabelMTAVolume->AutoSize();
@@ -1295,7 +1295,7 @@ void CSettings::CreateGUI()
     m_pCheckBoxMuteSFX->GetPosition(vecTemp, false);
     m_pCheckBoxMuteSFX->AutoSize(NULL, 20.0f);
 
-    m_pCheckBoxMuteMTA = reinterpret_cast<CGUICheckBox*>(pManager->CreateCheckBox(pTabAudio, _("Mute MTA sounds when minimized"), true));
+    m_pCheckBoxMuteMTA = reinterpret_cast<CGUICheckBox*>(pManager->CreateCheckBox(pTabAudio, _("Mute SA:O sounds when minimized"), true));
     m_pCheckBoxMuteMTA->SetPosition(CVector2D(vecTemp.fX, vecTemp.fY + 20.0f));
     m_pCheckBoxMuteMTA->GetPosition(vecTemp, false);
     m_pCheckBoxMuteMTA->AutoSize(NULL, 20.0f);
@@ -1673,7 +1673,7 @@ void CSettings::CreateGUI()
     m_pDrawDistanceMode->SetSize(CVector2D(280.0f, 120.0f));
     m_pDrawDistanceMode->AddItem(_("Project2DFX (advanced policy)"));
     m_pDrawDistanceMode->AddItem(_("Native LOD only"));
-    m_pDrawDistanceMode->AddItem(_("Legacy Neon"));
+    m_pDrawDistanceMode->AddItem(_("Legacy extended"));
     m_pDrawDistanceMode->SetReadOnly(true);
     m_pDrawDistanceMode->SetSelectionHandler(GUI_CALLBACK(&CSettings::OnExtendedDrawDistanceEnabledClick, this));
     neonPosition.fY += 32.0f;
@@ -1763,7 +1763,7 @@ void CSettings::CreateGUI()
 
     neonPosition.fY += 38.0f;
     m_pDistantLightsDescriptionLabel = reinterpret_cast<CGUILabel*>(pManager->CreateLabel(
-        pTabNeon, _("Adds Project2DFX static coronas and timed traffic lights at night. 50% uses its current radius scale; lower values shrink Neon's "
+        pTabNeon, _("Adds Project2DFX static coronas and timed traffic lights at night. 50% uses its current radius scale; lower values shrink SA:O's "
                     "buffered corona sprites.")));
     m_pDistantLightsDescriptionLabel->SetPosition(neonPosition);
     m_pDistantLightsDescriptionLabel->SetSize(CVector2D(std::max(0.0f, neonContentSize.fX - 32.0f), 44.0f));
@@ -2501,7 +2501,7 @@ void RestartCallBack(void* ptr, unsigned int uiButton)
 
 void CSettings::ShowRestartQuestion()
 {
-    SString strMessage = _("Some settings will be changed when you next start MTA");
+    SString strMessage = _("Some settings will be changed when you next start San Andreas Online");
     strMessage += _("\n\nDo you want to restart now?");
     CQuestionBox* pQuestionBox = CCore::GetSingleton().GetLocalGUI()->GetMainMenu()->GetQuestionWindow();
     pQuestionBox->Reset();
@@ -2930,8 +2930,9 @@ void CSettings::CreateSkyGfxTabGUI(const CVector2D& tabPanelSize)
     position.fX -= 18.0f;
     position.fY += 38.0f;
     m_pSkyGfxDescriptionLabel = reinterpret_cast<CGUILabel*>(manager->CreateLabel(
-        m_pTabSkyGfx, _("Only effects already integrated with MTA are exposed here. Changes apply immediately after pressing OK; future rendering "
-                        "features will appear as their MTA-compatible ports become available.")));
+        m_pTabSkyGfx,
+        _("Only effects already integrated with San Andreas Online are exposed here. Changes apply immediately after pressing OK; future rendering "
+          "features will appear as their San Andreas Online-compatible ports become available.")));
     m_pSkyGfxDescriptionLabel->SetPosition(position);
     m_pSkyGfxDescriptionLabel->SetSize(CVector2D(std::max(0.0f, tabPanelSize.fX - 32.0f), 60.0f));
     m_pSkyGfxDescriptionLabel->SetHorizontalAlign(CGUI_ALIGN_LEFT_WORDWRAP);
@@ -3646,7 +3647,7 @@ void CSettings::CreateRadarTabGUI(const CVector2D& tabPanelSize)
     m_pRadarWidescreenSafe->SetPosition(CVector2D(marginX, firstRowY + rowHeight * 2.0f));
     m_pRadarWidescreenSafe->AutoSize(nullptr, 20.0f);
 
-    m_pRadarDefaultButton = reinterpret_cast<CGUIButton*>(pManager->CreateButton(m_pTabRadar, _("NEON default")));
+    m_pRadarDefaultButton = reinterpret_cast<CGUIButton*>(pManager->CreateButton(m_pTabRadar, _("SA:O default")));
     m_pRadarDefaultButton->AutoSize(NULL, 20.0f, 8.0f);
     CVector2D buttonSize;
     m_pRadarDefaultButton->GetSize(buttonSize);
@@ -6924,7 +6925,7 @@ bool CSettings::OnCustomizedSAFilesClick(CGUIElement* pElement)
         SString strMessage;
         strMessage +=
             _("Some files in your GTA:SA data directory are customized."
-              "\nMTA will only use these modified files if this check box is ticked."
+              "\nSan Andreas Online will only use these modified files if this check box is ticked."
               "\n\nHowever, CUSTOMIZED GTA:SA FILES ARE BLOCKED BY MANY SERVERS"
               "\n\nAre you sure you want to use them?");
         CQuestionBox* pQuestionBox = CCore::GetSingleton().GetLocalGUI()->GetMainMenu()->GetQuestionWindow();
@@ -6973,7 +6974,7 @@ bool CSettings::OnDPIAwareClick(CGUIElement* pElement)
 
         SStringX strMessage(
             _("Enabling DPI awareness is an experimental feature and\n"
-              "we only recommend it when you play MTA:SA on a scaled monitor.\n"
+              "we only recommend it when you play San Andreas Online on a scaled monitor.\n"
               "You may experience graphical issues if you enable this option."
               "\n\nAre you sure you want to enable this option?"));
         CQuestionBox* pQuestionBox = CCore::GetSingleton().GetLocalGUI()->GetMainMenu()->GetQuestionWindow();

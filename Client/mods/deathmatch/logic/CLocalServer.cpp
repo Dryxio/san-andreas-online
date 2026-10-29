@@ -56,7 +56,7 @@ CLocalServer::CLocalServer(const char* szConfig)
     m_pLabelName->SetPosition(CVector2D(0.03f, 0.07f), true);
     m_pLabelName->AutoSize(_("Server name:"));
 
-    m_pEditName = reinterpret_cast<CGUIEdit*>(m_pGUI->CreateEdit(m_pTabGeneral, "Default MTA Server"));
+    m_pEditName = reinterpret_cast<CGUIEdit*>(m_pGUI->CreateEdit(m_pTabGeneral, "Default San Andreas Online Server"));
     m_pEditName->SetPosition(CVector2D(0.4f, 0.06f), true);
     m_pEditName->SetSize(CVector2D(0.57f, 0.06f), true);
     m_pEditName->SetMaxLength(64);
@@ -338,7 +338,7 @@ bool CLocalServer::Save()
 {
     if (m_pConfig && m_pConfig->GetRootNode())
     {
-        StoreConfigValue("servername", (m_pEditName->GetText().length() > 0) ? m_pEditName->GetText().c_str() : "MTA Local Server");
+        StoreConfigValue("servername", (m_pEditName->GetText().length() > 0) ? m_pEditName->GetText().c_str() : "San Andreas Online Local Server");
         StoreConfigValue("maxplayers", (atoi(m_pEditPlayers->GetText().c_str())) ? m_pEditPlayers->GetText().c_str() : "32");
         StoreConfigValue("donotbroadcastlan", (m_pBroadcastLan->IsActive()) ? "0" : "1");
         StoreConfigValue("ase", (m_pBroadcastInternet->IsActive()) ? "1" : "0");

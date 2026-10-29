@@ -218,7 +218,7 @@ def main() -> int:
                 "display-version": release.display_version,
                 "technical-version": f"1.7.0-5.{release.build:05d}",
                 "tag": f"neon-{release.display_version}",
-                "title": f"MTA:SA Neon — {release.display_version}",
+                "title": f"San Andreas Online — {release.display_version}",
             }
             print(fields[arguments.field])
     except (OSError, ReleaseCatalogError) as error:

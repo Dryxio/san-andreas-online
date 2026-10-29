@@ -82,7 +82,8 @@ void CLocalGUI::SetSkin(const char* szName)
         {
             pGUI->SetSkin(DEFAULT_SKIN_NAME);
 
-            error = "The skin '" + std::string(szName) + "' that you have selected could not be loaded. MTA is now using the default skin instead.";
+            error =
+                "The skin '" + std::string(szName) + "' that you have selected could not be loaded. San Andreas Online is now using the default skin instead.";
 
             CVARS_SET("current_skin", std::string(DEFAULT_SKIN_NAME));
             m_LastSkinName = DEFAULT_SKIN_NAME;
@@ -90,7 +91,8 @@ void CLocalGUI::SetSkin(const char* szName)
         catch (...)
         {
             // Even the default skin doesn't work, so give up
-            MessageBoxUTF8(0, _("The skin you selected could not be loaded, and the default skin also could not be loaded, please reinstall MTA."),
+            MessageBoxUTF8(0,
+                           _("The skin you selected could not be loaded, and the default skin also could not be loaded, please reinstall San Andreas Online."),
                            _("Error") + _E("CC51"), MB_OK | MB_ICONERROR | MB_TOPMOST);
             TerminateProcess(GetCurrentProcess(), 9);
         }
@@ -162,7 +164,7 @@ void CLocalGUI::CreateWindows(bool bGameIsAlreadyLoaded)
     CVector2D ScreenSize = pGUI->GetResolution();
     // Public releases assign MTASA_VERSION_BUILD from Neon's sequential release
     // identity, so this label matches the signed update manifest and web shell.
-    SString strText = SString("MTA:SA Neon - Build %u", MTASA_VERSION_BUILD);
+    SString strText = SString("San Andreas Online - Build %u", MTASA_VERSION_BUILD);
     if (_NETCODE_VERSION_BRANCH_ID != 0x04)
         strText += SString(" (%X)", _NETCODE_VERSION_BRANCH_ID);
     m_pLabelVersionTag = reinterpret_cast<CGUILabel*>(pGUI->CreateLabel(strText));

@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>San Andreas Online — GTA: San Andreas Multiplayer</title>
+  <meta name="description" content="Play GTA: San Andreas online with San Andreas Online, built on Multi Theft Auto. Further draw distance, distant city lights, PS2-style colours, single-player traffic and pedestrians, and a San Andreas-style menu. Free for Windows.">
+  <meta name="theme-color" content="#0b0a09">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="San Andreas Online">
+  <meta property="og:title" content="San Andreas Online — GTA: San Andreas Multiplayer">
+  <meta property="og:description" content="GTA: San Andreas online, the way you remember it. Free download for Windows.">
+  <meta property="og:url" content="https://mtasa-neon.vercel.app/">
+  <meta property="og:image" content="https://mtasa-neon.vercel.app/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preload" href="/assets/fonts/pricedown.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="/assets/img/sa-14.webp" as="image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<!-- Top letterbox bar: SA cutscenes frame the action with black bars, so the nav lives in one. -->
+<header class="bar" id="top">
+  <!-- The full name doesn't fit next to the buttons on phones, so the bar swaps to the short SA:O form there. -->
+  <a class="bar__brand" href="#top" aria-label="San Andreas Online home">
+    <span class="wordmark wordmark--sm bar__wm-full"><span>San Andreas</span><strong>Online</strong></span>
+    <span class="wordmark wordmark--sm bar__wm-short" aria-hidden="true"><span>SA:</span><strong>O</strong></span>
+  </a>
+  <nav class="bar__nav" aria-label="Main">
+    <a href="#compare" data-i18n="nav.graphics">Graphics</a>
+    <a href="#features" data-i18n="nav.features">Features</a>
+    <a href="#install" data-i18n="nav.install">Install</a>
+    <a href="#creators" data-i18n="nav.creators">Server makers</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+  <div class="bar__end">
+    <button class="lang" type="button" id="lang" aria-label="Switch language">FR</button>
+    <a class="btn btn--sm js-download" href="/download" data-i18n="nav.download">Download</a>
+  </div>
+</header>
+
+<main>
+
+  <!-- HERO — built like a San Andreas loading screen: flat pastel field, character art, loading bar. -->
+  <section class="hero" id="hero">
+    <div class="hero__art" aria-hidden="true">
+      <div class="slide is-active" data-top="#f2efc9" data-bot="#938064" style="background: linear-gradient(180deg, #f2efc9 0%, #f2efc9 6%, #f0ecc7 12%, #c6b79c 18%, #c6b89d 24%, #c6b89d 29%, #c6b89d 35%, #c6b89d 41%, #c6b89d 47%, #c6b89d 53%, #c6b89d 59%, #c6b89d 65%, #c6b89d 71%, #c6b89d 76%, #cec2a5 82%, #b1a186 88%, #948165 94%, #938064 100%)">
+        <img src="/assets/img/sa-14.webp" alt="">
+      </div>
+      <div class="slide" data-top="#e4d9ba" data-bot="#e4d9ba" style="background: linear-gradient(180deg, #e4d9ba 0%, #e4d9ba 6%, #e4d9ba 12%, #e4d9ba 18%, #e4d9ba 24%, #e4d9ba 29%, #e4d9ba 35%, #e4d9ba 41%, #e4d9ba 47%, #e4d9ba 53%, #e4d9ba 59%, #e4d9ba 65%, #e4d9ba 71%, #e4d9ba 76%, #e4d9ba 82%, #e4d9ba 88%, #e4d9ba 94%, #e4d9ba 100%)">
+        <img src="/assets/img/sa-11.webp" alt="" loading="lazy">
+      </div>
+      <div class="slide" data-top="#e6e1d5" data-bot="#c8bca3" style="background: linear-gradient(180deg, #e6e1d5 0%, #e6e1d5 6%, #e6e1d5 12%, #e6e1d5 18%, #e2dacd 24%, #e6e1d5 29%, #e2dbcc 35%, #e0d8c9 41%, #ddd4c3 47%, #d5cbb7 53%, #c8bca2 59%, #c8bca2 65%, #c8bca2 71%, #c8bca2 76%, #c8bca2 82%, #c8bca2 88%, #c8bca2 94%, #c8bca3 100%)">
+        <img src="/assets/img/sa-1.webp" alt="" loading="lazy">
+      </div>
+      <div class="slide" data-top="#88c5dd" data-bot="#87c5de" style="background: linear-gradient(180deg, #88c5dd 0%, #87c5de 6%, #87c6df 12%, #87c5de 18%, #73bcd5 24%, #5fb1ce 29%, #4d7f8e 35%, #e1d5af 41%, #dacfa9 47%, #538ea2 53%, #5fb1ce 59%, #5fb2d0 65%, #5fb2ce 71%, #60b2cf 76%, #6ab8d3 82%, #87c5de 88%, #88c5de 94%, #87c5de 100%)">
+        <img src="/assets/img/sa-8.webp" alt="" loading="lazy">
+      </div>
+      <div class="slide" data-top="#f7e5a8" data-bot="#f6e5a9" style="background: linear-gradient(180deg, #f7e5a8 0%, #f6e5a9 6%, #f6e5a9 12%, #f6e5a9 18%, #f6e5a9 24%, #f6e5a9 29%, #f6e5a9 35%, #f6e5a9 41%, #f6e5a9 47%, #f6e5a9 53%, #f6e5a9 59%, #f6e5a9 65%, #f6e5a9 71%, #f6e5a9 76%, #f6e5a9 82%, #f6e5a9 88%, #f6e5a9 94%, #f6e5a9 100%)">
+        <img src="/assets/img/sa-4.webp" alt="" loading="lazy">
+      </div>
+      <div class="slide" data-top="#d0d3a5" data-bot="#969177" style="background: linear-gradient(180deg, #d0d3a5 0%, #d0d3a5 6%, #d0d3a5 12%, #d0d3a5 18%, #d0d3a5 24%, #d0d3a5 29%, #d0d3a5 35%, #d0d3a5 41%, #cdd0a3 47%, #b7b28f 53%, #b4ae8e 59%, #b4ae8e 65%, #a09b80 71%, #969177 76%, #969177 82%, #969177 88%, #969177 94%, #969177 100%)">
+        <img src="/assets/img/sa-3.webp" alt="" loading="lazy">
+      </div>
+      <div class="slide" data-top="#d5ebc7" data-bot="#b7c7ad" style="background: linear-gradient(180deg, #d5ebc7 0%, #d6ebc9 6%, #d3e8c5 12%, #b9cbaf 18%, #b7c7ad 24%, #b7c7ad 29%, #b7c7ad 35%, #b7c7ad 41%, #b7c7ad 47%, #b7c7ad 53%, #b7c7ad 59%, #b7c7ad 65%, #b7c7ad 71%, #b7c7ad 76%, #b7c7ad 82%, #b7c7ad 88%, #b7c7ad 94%, #b7c7ad 100%)">
+        <img src="/assets/img/sa-6.webp" alt="" loading="lazy">
+      </div>
+    </div>
+
+    <div class="hero__inner">
+      <h1 class="wordmark wordmark--hero"><span>San Andreas</span><strong>Online</strong></h1>
+
+      <div class="hero__cta">
+        <a class="btn btn--primary js-download" href="/download">
+          <span>
+            <span class="btn__label" data-i18n="hero.cta">Download for Windows</span>
+            <span class="btn__meta" id="release-meta">Free · v2026.10.09 · 159 MB</span>
+          </span>
+        </a>
+        <a class="btn btn--ghost" href="#install" data-i18n="hero.how">How to install</a>
+      </div>
+    </div>
+
+    <!-- Bottom letterbox: the SA loading bar doubles as the slideshow timer. -->
+    <div class="hero__letterbox">
+      <div class="loadbar" aria-hidden="true"><span id="loadbar-fill"></span></div>
+    </div>
+  </section>
+
+  <!-- BEFORE / AFTER -->
+  <section class="section section--dark" id="compare">
+    <div class="wrap">
+      <header class="head">
+        <p class="kicker" data-i18n="cmp.kicker">Built in. Nothing to install.</p>
+        <h2 class="title" data-i18n="cmp.title">See San Andreas properly</h2>
+        <p class="sub" data-i18n="cmp.sub">Every upgrade is a switch in the settings menu. Drag the slider to compare with classic MTA:SA.</p>
+      </header>
+
+      <div class="tabs" role="tablist" aria-label="Comparisons">
+        <button role="tab" class="tab is-active" aria-selected="true" data-cmp="draw-distance" data-i18n="cmp.t1">Draw distance</button>
+        <button role="tab" class="tab" aria-selected="false" data-cmp="project2dfx" data-i18n="cmp.t2">City lights at night</button>
+        <button role="tab" class="tab" aria-selected="false" data-cmp="skygfx" data-i18n="cmp.t3">PS2 colours</button>
+      </div>
+
+      <figure class="compare" id="compare-box" style="--pos: 50%">
+        <img class="compare__b" id="cmp-b" src="/assets/img/cmp-draw-distance-b.webp" alt="Rooftop view over Los Santos in San Andreas Online with detailed distant buildings" width="1280" height="628" loading="lazy">
+        <img class="compare__a" id="cmp-a" src="/assets/img/cmp-draw-distance-a.webp" alt="The same view in classic MTA:SA with low-detail distant buildings" width="1280" height="628" loading="lazy">
+        <span class="compare__tag compare__tag--a">MTA:SA</span>
+        <span class="compare__tag compare__tag--b">SA:O</span>
+        <span class="compare__handle" aria-hidden="true"></span>
+        <input class="compare__range" type="range" min="0" max="100" value="50" aria-label="Comparison position">
+      </figure>
+      <p class="compare__caption" id="cmp-caption" data-i18n="cmp.c1">Distant buildings stay detailed instead of melting into low-poly blobs.</p>
+    </div>
+  </section>
+
+  <!-- PLAYER FEATURES -->
+  <section class="section section--ink" id="features">
+    <div class="wrap features">
+      <div class="features__shots">
+        <figure class="shot shot--tilt-l">
+          <img src="/assets/img/menu.webp" alt="The San Andreas Online main menu in San Andreas style" width="1600" height="900" loading="lazy">
+        </figure>
+        <figure class="shot shot--tilt-r">
+          <img src="/assets/img/browser.webp" alt="The San Andreas Online server browser" width="1600" height="832" loading="lazy">
+        </figure>
+      </div>
+
+      <div class="features__list">
+        <p class="kicker" data-i18n="feat.kicker">Respect +</p>
+        <h2 class="title" data-i18n="feat.title">What you get</h2>
+        <ol class="perks">
+          <li>
+            <h3 data-i18n="feat.1t">Single-player life, online</h3>
+            <p data-i18n="feat.1d">GTA's own pedestrians and traffic, running in a shared multiplayer world. The streets finally feel alive.</p>
+          </li>
+          <li>
+            <h3 data-i18n="feat.2t">Graphics upgrades, built in</h3>
+            <p data-i18n="feat.2d">Long draw distance, distant city lights and PS2-style colour. No ASI loader, no modloader, no copying files around.</p>
+          </li>
+          <li>
+            <h3 data-i18n="feat.3t">A menu that feels like San Andreas</h3>
+            <p data-i18n="feat.3d">A new main menu and server browser in the game's own style, with an optional Discord identity.</p>
+          </li>
+          <li>
+            <h3 data-i18n="feat.4t">Always up to date</h3>
+            <p data-i18n="feat.4d">San Andreas Online updates itself. Every update is checked against a signed manifest before it installs.</p>
+          </li>
+          <li>
+            <h3 data-i18n="feat.5t">Keeps your MTA:SA</h3>
+            <p data-i18n="feat.5d">San Andreas Online installs into its own folder. Your existing MTA:SA install stays exactly as it is.</p>
+          </li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTALL -->
+  <section class="section section--cream" id="install">
+    <div class="wrap">
+      <header class="head head--dark">
+        <p class="kicker" data-i18n="inst.kicker">New mission</p>
+        <h2 class="title" data-i18n="inst.title">On the streets in 3 steps</h2>
+      </header>
+
+      <ol class="steps">
+        <li class="step">
+          <span class="step__n">1</span>
+          <h3 data-i18n="inst.1t">Have GTA: San Andreas</h3>
+          <p data-i18n="inst.1d">Your own copy of the original PC game. The Definitive Edition is not supported.</p>
+        </li>
+        <li class="step">
+          <span class="step__n">2</span>
+          <h3 data-i18n="inst.2t">Download San Andreas Online</h3>
+          <p data-i18n="inst.2d">One file: <b>MTA-Neon-Setup.exe</b>. That's the only thing a player needs.</p>
+          <a class="btn btn--dark js-download" href="/download" data-i18n="inst.2b">Download installer</a>
+        </li>
+        <li class="step">
+          <span class="step__n">3</span>
+          <h3 data-i18n="inst.3t">Install and play</h3>
+          <p data-i18n="inst.3d">Run it, point it to your GTA: San Andreas folder, launch San Andreas Online and pick a server.</p>
+        </li>
+      </ol>
+
+      <aside class="safe">
+        <div class="safe__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Zm-1.2 14.2-3.5-3.5 1.4-1.4 2.1 2.1 4.6-4.6 1.4 1.4-6 6Z"/></svg>
+        </div>
+        <div>
+          <h3 data-i18n="safe.t">Windows shows "Windows protected your PC"?</h3>
+          <p data-i18n="safe.d">The installer is new and not code-signed yet, so SmartScreen may warn you. Click <b>More info</b>, then <b>Run anyway</b>. Every release is compiled automatically from the public source code, and SHA-256 checksums are published with it.</p>
+          <a class="safe__link" href="https://github.com/Dryxio/mtasa-neon/releases/latest/download/SHA256SUMS.txt" data-i18n="safe.l">View checksums →</a>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- SERVER MAKERS -->
+  <section class="section section--wine" id="creators">
+    <div class="wrap">
+      <header class="head">
+        <p class="kicker" data-i18n="cr.kicker">For server makers</p>
+        <h2 class="title" data-i18n="cr.title">The engine, opened up</h2>
+        <p class="sub" data-i18n="cr.sub">GTA systems that were locked inside the engine, now Lua primitives. Every picture is a real in-game capture.</p>
+      </header>
+
+      <div class="grid">
+        <a class="card" href="https://mtasa-neon-wiki.vercel.app/neon/rendering-and-limits">
+          <img src="/assets/img/native-cull-zone.webp" alt="" width="1280" height="720" loading="lazy">
+          <span class="card__t" data-i18n="cr.1t">Native CULL zones</span>
+          <span class="card__d" data-i18n="cr.1d">Edit GTA's culling from Lua</span>
+        </a>
+        <a class="card" href="https://mtasa-neon-wiki.vercel.app/neon/world-objects">
+          <img src="/assets/img/world-object-scripting.webp" alt="" width="1280" height="720" loading="lazy">
+          <span class="card__t" data-i18n="cr.2t">World objects</span>
+          <span class="card__d" data-i18n="cr.2d">Track, move and break SA's own props</span>
+        </a>
+        <a class="card" href="https://mtasa-neon-wiki.vercel.app/neon/runtime-collision">
+          <img src="/assets/img/runtime-collision.webp" alt="" width="1280" height="720" loading="lazy">
+          <span class="card__t" data-i18n="cr.3t">Runtime collision</span>
+          <span class="card__d" data-i18n="cr.3d">Build collision shapes, no .col file</span>
+        </a>
+        <a class="card" href="https://mtasa-neon-wiki.vercel.app/neon/samp-maps">
+          <img src="/assets/img/samp-map.webp" alt="" width="1280" height="720" loading="lazy">
+          <span class="card__t" data-i18n="cr.4t">SA-MP maps</span>
+          <span class="card__d" data-i18n="cr.4d">Load Pawn exports directly</span>
+        </a>
+        <a class="card" href="https://mtasa-neon-wiki.vercel.app/neon/fire">
+          <img src="/assets/img/fire.webp" alt="" width="1280" height="720" loading="lazy">
+          <span class="card__t" data-i18n="cr.5t">Managed fire</span>
+          <span class="card__d" data-i18n="cr.5d">Synced fires that follow a target</span>
+        </a>
+        <a class="card" href="https://mtasa-neon-wiki.vercel.app/neon/foliage">
+          <img src="/assets/img/foliage.webp" alt="" width="1280" height="720" loading="lazy">
+          <span class="card__t" data-i18n="cr.6t">Custom foliage</span>
+          <span class="card__d" data-i18n="cr.6d">Grow GTA's own vegetation anywhere</span>
+        </a>
+        <a class="card" href="https://mtasa-neon-wiki.vercel.app/neon/birds">
+          <img src="/assets/img/bird.webp" alt="" width="1280" height="720" loading="lazy">
+          <span class="card__t" data-i18n="cr.7t">Scriptable birds</span>
+          <span class="card__d" data-i18n="cr.7d">Steerable flocks past GTA's limits</span>
+        </a>
+        <a class="card" href="https://mtasa-neon-wiki.vercel.app/neon/model-2dfx">
+          <img src="/assets/img/2dfx.webp" alt="" width="1280" height="720" loading="lazy">
+          <span class="card__t" data-i18n="cr.8t">Model 2DFX</span>
+          <span class="card__d" data-i18n="cr.8d">Drive the lights baked into models</span>
+        </a>
+      </div>
+
+      <div class="creators__cta">
+        <a class="btn btn--primary btn--flat" href="https://mtasa-neon-wiki.vercel.app/neon" data-i18n="cr.docs">Read the docs &amp; Lua API</a>
+        <a class="btn btn--ghost btn--ghost-light" href="https://github.com/Dryxio/mtasa-neon/releases/latest" data-i18n="cr.server">Download a server (Windows / Linux)</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section section--ink" id="faq">
+    <div class="wrap wrap--narrow">
+      <header class="head">
+        <p class="kicker" data-i18n="faq.kicker">Before you ask</p>
+        <h2 class="title">FAQ</h2>
+      </header>
+      <div class="faq">
+        <details>
+          <summary data-i18n="faq.1q">Is it free?</summary>
+          <p data-i18n="faq.1a">Yes. San Andreas Online is free and open source under the GPL-3.0 licence, like Multi Theft Auto itself.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.2q">Do I need GTA: San Andreas?</summary>
+          <p data-i18n="faq.2a">Yes. San Andreas Online doesn't include the game. You need your own copy of the original PC version. The Definitive Edition won't work.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.3q">Will it replace my MTA:SA?</summary>
+          <p data-i18n="faq.3a">No. San Andreas Online installs into its own folder, separate from MTA:SA, so both can live side by side.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.4q">Is this the official MTA?</summary>
+          <p data-i18n="faq.4a">No. San Andreas Online is an independent project based on the open-source code of Multi Theft Auto: San Andreas. It is not run by, affiliated with or endorsed by the MTA team.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.5q">Why is the download on GitHub?</summary>
+          <p data-i18n="faq.5a">GitHub is where the code lives and where each release is built and published. The download button gives you the installer directly; you never have to browse the code.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.6q">Can I host my own server?</summary>
+          <p data-i18n="faq.6a">Yes. Every release ships server packages for Windows x64, Linux x64 and Linux ARM64.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.7q">Where can I get help?</summary>
+          <p data-i18n="faq.7a">Join the San Andreas Online Discord. Players, server owners and developers hang out there.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="outro">
+    <img class="outro__art" src="/assets/img/sa-7.webp" alt="" loading="lazy">
+    <div class="outro__inner">
+      <p class="kicker kicker--dark" data-i18n="out.kicker">Grove Street. Home.</p>
+      <h2 class="title title--outro" data-i18n="out.title">Here we go again.</h2>
+      <div class="hero__cta">
+        <a class="btn btn--primary js-download" href="/download">
+          <span>
+            <span class="btn__label" data-i18n="hero.cta">Download for Windows</span>
+            <span class="btn__meta js-meta">Free · v2026.10.09 · 159 MB</span>
+          </span>
+        </a>
+        <a class="btn btn--ghost" href="https://discord.com/invite/mgFRd2AzF8" data-i18n="out.discord">Join the Discord</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__row">
+    <span class="wordmark wordmark--sm"><span>San Andreas</span><strong>Online</strong></span>
+    <nav class="foot__links" aria-label="Footer">
+      <a href="https://discord.com/invite/mgFRd2AzF8">Discord</a>
+      <a href="https://mtasa-neon-wiki.vercel.app/neon" data-i18n="foot.docs">Documentation</a>
+      <a href="https://github.com/Dryxio/mtasa-neon">GitHub</a>
+      <a href="https://github.com/Dryxio/mtasa-neon/releases" data-i18n="foot.releases">All releases</a>
+      <a href="https://multitheftauto.com">Multi Theft Auto</a>
+    </nav>
+  </div>
+  <p class="wrap foot__legal" data-i18n="foot.legal">San Andreas Online is an independent, open-source project based on Multi Theft Auto: San Andreas and released under the GPL-3.0 licence. It is not affiliated with or endorsed by the MTA team, Rockstar Games or Take-Two Interactive. Grand Theft Auto and San Andreas are trademarks of Take-Two Interactive. A legal copy of GTA: San Andreas for PC is required.</p>
+</footer>
+
+<!-- Shown when a download starts: the SA mission-complete banner. -->
+<div class="passed" id="passed" aria-live="polite" hidden>
+  <p class="passed__big" data-i18n="passed.big">Mission passed!</p>
+  <p class="passed__small" data-i18n="passed.small">Download started · Respect +</p>
+</div>
+
+<script src="/main.js" defer></script>
+</body>
+</html>

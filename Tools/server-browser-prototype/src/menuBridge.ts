@@ -96,7 +96,7 @@ const INITIAL_STATE: MenuState = {
     authenticated: true,
     signingIn: false,
     displayName: 'Dryxio',
-    status: 'Neon ID connected',
+    status: 'SA:O account connected',
   },
   featuredServer: null,
   translations: {},

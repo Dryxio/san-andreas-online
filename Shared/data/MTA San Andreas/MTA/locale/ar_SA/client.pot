@@ -41,10 +41,10 @@ msgstr "اختر مسار تثبيت Grand Theft Auto: San Andreas"
 
 #: Client/loader/Utils.cpp:974 Client/loader/CInstallManager.cpp:376
 #, c-format
-msgid "MTA:SA needs Administrator access for the following task:\n\n"
+msgid "San Andreas Online needs Administrator access for the following task:\n\n"
 "  '%s'\n\n"
 "Please confirm in the next window."
-msgstr "MTA:SA تحتاج إلى صلاحيات المسؤول للوظيفة التالية:\n\n"
+msgstr "San Andreas Online تحتاج إلى صلاحيات المسؤول للوظيفة التالية:\n\n"
 "  '%s'\n\n"
 "الرجاء التأكيد في النافذة التالية."
 
@@ -104,8 +104,8 @@ msgid "GTA:SA found errors in the file '%s'"
 msgstr "GTA:SA وجدت أخطاء في الملف '%s'"
 
 #: Client/loader/Utils.cpp:1722
-msgid "Did your computer restart when playing MTA:SA?"
-msgstr "هل أعاد جهازك التشغيل أثناء لعب MTA:SA؟"
+msgid "Did your computer restart when playing San Andreas Online?"
+msgstr "هل أعاد جهازك التشغيل أثناء لعب San Andreas Online؟"
 
 #: Client/loader/Utils.cpp:1787
 msgid "Please terminate the following programs before continuing:"
@@ -116,30 +116,30 @@ msgid "Invalid module path detected.\n"
 msgstr "تم اكتشاف مسار وحدة غير صالح.\n"
 
 #: Client/loader/MainFunctions.cpp:348
-msgid "File version mismatch error. Reinstall MTA:SA if you experience problems.\n"
-msgstr "إصدار الملف لا يتطابق. أعد تثبيت MTA:SA إن كنت تواجه مشاكل.\n"
+msgid "File version mismatch error. Reinstall San Andreas Online if you experience problems.\n"
+msgstr "إصدار الملف لا يتطابق. أعد تثبيت San Andreas Online إن كنت تواجه مشاكل.\n"
 
 #: Client/loader/MainFunctions.cpp:356
-msgid "Some files are missing. Reinstall MTA:SA if you experience problems.\n"
-msgstr "بعض الملفات مفقودة. أعد تثبيت MTA:SA إذا واجهت مشاكل.\n"
+msgid "Some files are missing. Reinstall San Andreas Online if you experience problems.\n"
+msgstr "بعض الملفات مفقودة. أعد تثبيت San Andreas Online إذا واجهت مشاكل.\n"
 
 #: Client/loader/MainFunctions.cpp:367
-msgid "MTA:SA is not compatible with Windows 'Safe Mode'.\n\n"
+msgid "San Andreas Online is not compatible with Windows 'Safe Mode'.\n\n"
 "Please restart your PC.\n"
-msgstr "MTA:SA غير متوافقة مع \"وضع الأمان\" في الويندوز.\n\n"
+msgstr "San Andreas Online غير متوافقة مع \"وضع الأمان\" في الويندوز.\n\n"
 "الرجاء إعادة تشغيل جهازك.\n"
 
 #: Client/loader/MainFunctions.cpp:546
-msgid "Are you having problems running MTA:SA?.\n\n"
+msgid "Are you having problems running San Andreas Online?.\n\n"
 "Do you want to revert to an earlier version?"
-msgstr "هل تواجه مشاكل في تشغيل MTA؟ \n\n"
+msgstr "هل تواجه مشاكل في تشغيل San Andreas Online؟ \n\n"
 "هل تريد العودة إلى إصدار سابق؟"
 
 #: Client/loader/MainFunctions.cpp:574
-msgid "There seems to be a problem launching MTA:SA.\n"
+msgid "There seems to be a problem launching San Andreas Online.\n"
 "Resetting GTA settings can sometimes fix this problem.\n\n"
 "Do you want to reset GTA settings now?"
-msgstr "يبدو أن هناك مشكلة في تشغيل MTA:SA.\n"
+msgstr "يبدو أن هناك مشكلة في تشغيل San Andreas Online.\n"
 "إعادة ضبط إعدادات GTA قد تحل هذه المشكلة أحيانًا.\n\n"
 "هل ترغب في إعادة ضبط إعدادات GTA الآن؟"
 
@@ -156,16 +156,16 @@ msgstr "لم يتم حذف الملف '%s' تعذر ذلك."
 
 #. No settings to delete, or can't find them
 #: Client/loader/MainFunctions.cpp:602
-msgid "Are you having problems running MTA:SA?.\n\n"
+msgid "Are you having problems running San Andreas Online?.\n\n"
 "Do you want to see some online help?"
-msgstr "هل لديك مشاكل في تشغيل MTA:SA؟.\n\n"
+msgstr "هل لديك مشاكل في تشغيل San Andreas Online؟.\n\n"
 "هل تريد رؤية بعض المعلومات المساعدة على الإنترنت؟"
 
 #. Inform user
 #: Client/loader/MainFunctions.cpp:639
-msgid "Are you having problems running MTA:SA?.\n\n"
+msgid "Are you having problems running San Andreas Online?.\n\n"
 "Do you want to change the following setting?"
-msgstr "هل تواجه مشاكل في تشغيل MTA:SA؟.\n\n"
+msgstr "هل تواجه مشاكل في تشغيل San Andreas Online؟.\n\n"
 "هل تود تغيير الإعداد التالي؟"
 
 #: Client/loader/MainFunctions.cpp:640 Client/core/CSettings.cpp:1161
@@ -179,17 +179,17 @@ msgid "Borderless window"
 msgstr "نافذة بلا إطار"
 
 #: Client/loader/MainFunctions.cpp:711
-msgid "Are you having problems running MTA:SA?.\n\n"
-"Try disabling the following products for GTA and MTA:"
-msgstr "هل تواجه مشاكل في تشغيل MTA:SA؟\n\n"
-"جرب تعطيل جميع منتجات GTA و MTA التالية:"
+msgid "Are you having problems running San Andreas Online?.\n\n"
+"Try disabling the following products for GTA and San Andreas Online:"
+msgstr "هل تواجه مشاكل في تشغيل San Andreas Online؟\n\n"
+"جرب تعطيل جميع منتجات GTA و San Andreas Online التالية:"
 
 #: Client/loader/MainFunctions.cpp:744
 msgid "WARNING\n\n"
-"MTA:SA has detected unusual activity.\n"
+"San Andreas Online has detected unusual activity.\n"
 "Please run a virus scan to ensure your system is secure.\n\n"
 msgstr "تحذير\n\n"
-"MTA:SA كشفت عن نشاطات غير اعتيادية.\n"
+"San Andreas Online كشفت عن نشاطات غير اعتيادية.\n"
 "الرجاء تشغيل فحص مكافحة الفيروسات للتأكد من أمان جهازك.\n\n"
 
 #: Client/loader/MainFunctions.cpp:747
@@ -198,8 +198,8 @@ msgid "The detected file was:  %s\n"
 msgstr "الملف المكتشف هو: %s\n"
 
 #: Client/loader/MainFunctions.cpp:995
-msgid "An instance of GTA: San Andreas is already running. It needs to be terminated before MTA:SA can be started. Do you want to do that now?"
-msgstr "يوجد نسخة تعمل من جراند تيڤت أوتو: سان أندرياس بالفعل قيد العمل. يجب أن يتم إنهاؤها قبل تشغيل MTA:SA. هل تريد فعل ذلك الآن؟"
+msgid "An instance of GTA: San Andreas is already running. It needs to be terminated before San Andreas Online can be started. Do you want to do that now?"
+msgstr "يوجد نسخة تعمل من جراند تيڤت أوتو: سان أندرياس بالفعل قيد العمل. يجب أن يتم إنهاؤها قبل تشغيل San Andreas Online. هل تريد فعل ذلك الآن؟"
 
 #: Client/loader/MainFunctions.cpp:996 Client/loader/MainFunctions.cpp:1003
 #: Client/loader/MainFunctions.cpp:1969
@@ -214,14 +214,14 @@ msgid "Unable to terminate GTA: San Andreas. If the problem persists, please res
 msgstr "هناك مشكلة في إيقاف GTA: San Andreas. إذا تكررت المشكلة، الرجاء إعادة تشغيل جهاز الكمبيوتر."
 
 #: Client/loader/MainFunctions.cpp:1131
-msgid "Trouble restarting MTA:SA\n\n"
+msgid "Trouble restarting San Andreas Online\n\n"
 "If the problem persists, open Task Manager and\n"
 "stop the 'gta_sa.exe' and 'Multi Theft Auto.exe' processes\n\n\n"
-"Try to launch MTA:SA again?"
-msgstr "توجد مشاكل في أثناء إعادة تشغيل MTA:SA\n\n"
+"Try to launch San Andreas Online again?"
+msgstr "توجد مشاكل في أثناء إعادة تشغيل San Andreas Online\n\n"
 "إذا استمرت المشكلة قم بفتح مدير المهام و\n"
 "أوقف عملية 'gta_sa.exe' و 'Multi Theft Auto.exe'\n\n\n"
-"إعادة محاولة تشغيل MTA:SA؟"
+"إعادة محاولة تشغيل San Andreas Online؟"
 
 #. Show a message that the connection timed out and abort
 #. Show failed message and abort the attempt
@@ -261,32 +261,32 @@ msgid "Error"
 msgstr "خطأ"
 
 #: Client/loader/MainFunctions.cpp:1155
-msgid "Another instance of MTA is already running.\n\n"
+msgid "Another instance of San Andreas Online is already running.\n\n"
 "If this problem persists, please restart your computer"
-msgstr "هناك نسخة أخرى من MTA قيد التشغيل بالفعل.\n\n"
+msgstr "هناك نسخة أخرى من San Andreas Online قيد التشغيل بالفعل.\n\n"
 "إذا استمرت هذه المشكلة، يرجى إعادة تشغيل جهاز الكمبيوتر الخاص بك"
 
 #: Client/loader/MainFunctions.cpp:1159
-msgid "Another instance of MTA is already running.\n\n"
+msgid "Another instance of San Andreas Online is already running.\n\n"
 "Do you want to terminate it?"
-msgstr "هناك نسخة أخرى من MTA قيد التشغيل بالفعل.\n\n"
+msgstr "هناك نسخة أخرى من San Andreas Online قيد التشغيل بالفعل.\n\n"
 "هل تريد إنهاؤها؟"
 
 #: Client/loader/MainFunctions.cpp:1196
-msgid "Registry entries are missing. Please reinstall Multi Theft Auto: San Andreas."
+msgid "Registry entries are missing. Please reinstall San Andreas Online."
 msgstr "مدخلات الرجستري (محرر التسجيل) مفقودة. يرجى إعادة تثبيت ملتي تيڤت أوتو: سان أندرياس."
 
 #: Client/loader/MainFunctions.cpp:1202
-msgid "The path to your installation of GTA: San Andreas contains unsupported (unicode) characters. Please move your Grand Theft Auto: San Andreas installation to a compatible path that contains only standard ASCII characters and reinstall Multi Theft Auto: San Andreas."
-msgstr "المسار المثبت فيه لعبة GTA: San Andreas يحتوي على حروف غير مدعومة (Unicode). الرجاء نقل تثبيت GTA: San Andreas لمسار متوافق يحتوي على حروف (ASCII) فقط وإعادة تثبيت Multi Theft Auto: San Andreas من جديد."
+msgid "The path to your installation of GTA: San Andreas contains unsupported (unicode) characters. Please move your Grand Theft Auto: San Andreas installation to a compatible path that contains only standard ASCII characters and reinstall San Andreas Online."
+msgstr "المسار المثبت فيه لعبة GTA: San Andreas يحتوي على حروف غير مدعومة (Unicode). الرجاء نقل تثبيت GTA: San Andreas لمسار متوافق يحتوي على حروف (ASCII) فقط وإعادة تثبيت San Andreas Online من جديد."
 
 #: Client/loader/MainFunctions.cpp:1215
-msgid "The path to your installation of 'MTA:SA' or 'GTA: San Andreas'\n"
+msgid "The path to your installation of 'San Andreas Online' or 'GTA: San Andreas'\n"
 "contains a ';' (semicolon).\n\n"
-"If you experience problems when running MTA:SA,\n"
+"If you experience problems when running San Andreas Online,\n"
 "move your installation(s) to a path that does not contain a semicolon."
-msgstr "يحتوي مسار تثبيت 'MTA:SA' أو 'GTA: San Andreas' على ';' (فاصلة منقوطة).\n\n"
-"إذا واجهت مشاكل عند تشغيل MTA:SA،\n"
+msgstr "يحتوي مسار تثبيت 'San Andreas Online' أو 'GTA: San Andreas' على ';' (فاصلة منقوطة).\n\n"
+"إذا واجهت مشاكل عند تشغيل San Andreas Online،\n"
 "قم بنقل تثبيت اللعبة إلى مسار لا يحتوي على فاصلة منقوطة."
 
 #: Client/loader/MainFunctions.cpp:1398
@@ -360,13 +360,16 @@ msgstr "الملف '%s' مغلق حاليًا من قبل عمليات %zu.\n\n"
 
 #: Client/loader/Install.cpp:479
 #, c-format
-msgid "Your installation may be corrupt now.\n\n"
-"%zu out of %zu files could not be restored from the backup.\n\n"
-"You should reinstall Multi Theft Auto from www.multitheftauto.com\n"
+msgid ""
+"Your installation may be corrupt now.\n"
+"\n"
+"%zu out of %zu files could not be restored from the backup.\n"
+"\n"
+"You should reinstall San Andreas Online\n"
 "or try running the update with administrator rights."
 msgstr "قد يكون تثبيتك تالفًا الآن.\n\n"
 "تعذر استرجاع %zu من %zu ملف من النسخة الاحتياطية.\n\n"
-"يجب عليك إعادة تثبيت Multi Theft Auto من www.multitheftauto.com أو إعادة تشغيل التحديث مع صلاحية المسؤول."
+"يجب عليك إعادة تثبيت San Andreas Online أو إعادة تشغيل التحديث مع صلاحية المسؤول."
 
 #: Client/loader/Install.cpp:852 Client/loader/Dialogs.cpp:1035
 msgid "Installing update..."
@@ -378,9 +381,9 @@ msgstr "جاري استخراج الملفات..."
 
 #: Client/loader/CInstallManager.cpp:391
 #, c-format
-msgid "MTA:SA could not complete the following task:\n\n"
+msgid "San Andreas Online could not complete the following task:\n\n"
 "  '%s'\n"
-msgstr "لعبة MTA:SA لا يمكنها إكمال المهمة التالية:\n\n"
+msgstr "لعبة San Andreas Online لا يمكنها إكمال المهمة التالية:\n\n"
 "  '%s'\n"
 
 #: Client/loader/CInstallManager.cpp:460
@@ -398,8 +401,8 @@ msgid "** Enhanced crash capture will be attempted on next launch. **"
 msgstr ""
 
 #: Client/loader/CInstallManager.cpp:1059
-msgid "Install updated MTA:SA files"
-msgstr "تثبيت ملفات MTA:SA محدثة"
+msgid "Install updated San Andreas Online files"
+msgstr "تثبيت ملفات San Andreas Online محدثة"
 
 #: Client/loader/CInstallManager.cpp:1079
 msgid "Could not update due to file conflicts. Please close other applications and retry"
@@ -407,7 +410,7 @@ msgstr "تعذر تحديث بسبب تعارض الملفات. الرجاء إ�
 
 #: Client/loader/CInstallManager.cpp:1088
 #, c-format
-msgid "Multi Theft Auto has not been installed properly, please reinstall. %s"
+msgid "San Andreas Online has not been installed properly, please reinstall. %s"
 msgstr "لم يتم تثبيت ملتي تيڤت أوتو بشكل صحيح، الرجاء إعادة تثبيتها مرة أخرى. %s"
 
 #: Client/loader/CInstallManager.cpp:1140
@@ -415,42 +418,42 @@ msgid "Create GTA:SA junctions"
 msgstr "إنشاء روابط لـ GTA:SA"
 
 #: Client/loader/CInstallManager.cpp:1184
-msgid "MTA:SA cannot launch because copying a file failed:"
-msgstr "لا يمكن بدء تشغيل MTA:SA بسبب فشل نسخ ملف:"
+msgid "San Andreas Online cannot launch because copying a file failed:"
+msgstr "لا يمكن بدء تشغيل San Andreas Online بسبب فشل نسخ ملف:"
 
 #: Client/loader/CInstallManager.cpp:1190
 #: Client/loader/CInstallManager.cpp:1230
-msgid "MTA:SA cannot launch because an MTA:SA file is incorrect or missing:"
-msgstr "لا يمكن بدء MTA:SA لأن ملف MTA:SA غير صحيح أو مفقود:"
+msgid "San Andreas Online cannot launch because a San Andreas Online file is incorrect or missing:"
+msgstr "لا يمكن بدء San Andreas Online لأن ملف San Andreas Online غير صحيح أو مفقود:"
 
 #: Client/loader/CInstallManager.cpp:1199
-msgid "Copy MTA:SA files"
-msgstr "نسخ ملفات MTA:SA"
+msgid "Copy San Andreas Online files"
+msgstr "نسخ ملفات San Andreas Online"
 
 #: Client/loader/CInstallManager.cpp:1222
 #: Client/loader/CInstallManager.cpp:1300
-msgid "MTA:SA cannot launch because a GTA:SA file is incorrect or missing:"
-msgstr "لا يمكن تشغيل MTA:SA لأن ملف MTA:SA غير صحيح أو مفقود:"
+msgid "San Andreas Online cannot launch because a GTA:SA file is incorrect or missing:"
+msgstr "لا يمكن تشغيل San Andreas Online لأن ملف San Andreas Online غير صحيح أو مفقود:"
 
 #: Client/loader/CInstallManager.cpp:1307
 msgid "Patch GTA:SA dependency"
 msgstr "تصحيح GTA:SA"
 
 #: Client/loader/CInstallManager.cpp:1355
-msgid "MTA:SA cannot launch because the GTA:SA executable is incorrect or missing:"
-msgstr "لا يمكن تشغيل MTA:SA لأن الملف التنفيذي GTA:SA غير صحيح أو مفقود:"
+msgid "San Andreas Online cannot launch because the GTA:SA executable is incorrect or missing:"
+msgstr "لا يمكن تشغيل San Andreas Online لأن الملف التنفيذي GTA:SA غير صحيح أو مفقود:"
 
 #: Client/loader/CInstallManager.cpp:1359
-msgid "Please check your anti-virus for a false-positive detection, try to add an exception for the GTA:SA executable and restart MTA:SA."
-msgstr "الرجاء التحقق من مكافح الفيروسات الخاص بك من النتائج الخاطئة، جرب إضافة استثناء للملف التنفيذي ل GTA:SA وأعد تشغيل MTA:SA."
+msgid "Please check your anti-virus for a false-positive detection, try to add an exception for the GTA:SA executable and restart San Andreas Online."
+msgstr "الرجاء التحقق من مكافح الفيروسات الخاص بك من النتائج الخاطئة، جرب إضافة استثناء للملف التنفيذي ل GTA:SA وأعد تشغيل San Andreas Online."
 
 #: Client/loader/CInstallManager.cpp:1365
 msgid "Generate GTA:SA"
 msgstr "توليد GTA:SA"
 
 #: Client/loader/CInstallManager.cpp:1380
-msgid "MTA:SA cannot launch because the GTA:SA executable is not loadable:"
-msgstr "لا يمكن تشغيل MTA:SA لأن الملف التنفيذي GTA:SA غير صحيح أو مفقود:"
+msgid "San Andreas Online cannot launch because the GTA:SA executable is not loadable:"
+msgstr "لا يمكن تشغيل San Andreas Online لأن الملف التنفيذي GTA:SA غير صحيح أو مفقود:"
 
 #: Client/loader/CInstallManager.cpp:1387
 #: Client/loader/CInstallManager.cpp:1410
@@ -458,21 +461,21 @@ msgid "Patch GTA:SA"
 msgstr "تصحيح GTA:SA"
 
 #: Client/loader/CInstallManager.cpp:1403
-msgid "MTA:SA cannot launch because patching GTA:SA has failed:"
-msgstr "لا يمكن تشغيل MTA:SA بسبب فشل تصحيح GTA:SA:"
+msgid "San Andreas Online cannot launch because patching GTA:SA has failed:"
+msgstr "لا يمكن تشغيل San Andreas Online بسبب فشل تصحيح GTA:SA:"
 
 #: Client/loader/CInstallManager.cpp:1584 Client/core/CCore.cpp:846
 #, c-format
-msgid "MTA:SA cannot continue because drive %s does not have enough space."
-msgstr "MTA:SA لا يمكن أن يستمر لأن القرص %s ليس به مساحة كافية"
+msgid "San Andreas Online cannot continue because drive %s does not have enough space."
+msgstr "San Andreas Online لا يمكن أن يستمر لأن القرص %s ليس به مساحة كافية"
 
 #: Client/loader/CInstallManager.cpp:1640
 msgid "Missing file:"
 msgstr "ملف مفقود:"
 
 #: Client/loader/CInstallManager.cpp:1644
-msgid "If MTA fails to load, please re-install GTA:SA"
-msgstr "إذا فشل تشغيل MTA، أعد تثبيت GTA:SA"
+msgid "If San Andreas Online fails to load, please re-install GTA:SA"
+msgstr "إذا فشل تشغيل San Andreas Online، أعد تثبيت GTA:SA"
 
 #: Client/loader/CInstallManager.cpp:1679
 msgid "Update install settings"
@@ -543,8 +546,8 @@ msgid "Cancel"
 msgstr "إلغاء"
 
 #: Client/loader/Dialogs.cpp:83
-msgid "MTA: San Andreas has encountered a problem"
-msgstr "MTA:SA واجهت مشكلة ما"
+msgid "San Andreas Online has encountered a problem"
+msgstr "San Andreas Online واجهت مشكلة ما"
 
 #: Client/loader/Dialogs.cpp:84
 msgid "Crash information"
@@ -559,21 +562,21 @@ msgid "Doing so will increase the chance of this crash being fixed."
 msgstr "هذا الفعل سيزيد من فرصة تصليح فشل التشغيل"
 
 #: Client/loader/Dialogs.cpp:87
-msgid "Do you want to restart MTA: San Andreas ?"
-msgstr "MTA: San Andreas؟ هل تريد إعادة تشغيل"
+msgid "Do you want to restart San Andreas Online ?"
+msgstr "San Andreas Online؟ هل تريد إعادة تشغيل"
 
 #: Client/loader/Dialogs.cpp:94
-msgid "MTA: San Andreas - Warning"
-msgstr "MTA: San Andreas - تحذير"
+msgid "San Andreas Online - Warning"
+msgstr "San Andreas Online - تحذير"
 
 #: Client/loader/Dialogs.cpp:95
 msgid "Your Grand Theft Auto: San Andreas install directory contains these files:"
 msgstr "مسار تثبيت Grand Theft Auto: San Andreas الخاص بك يحتوي هذه الملفات:"
 
 #: Client/loader/Dialogs.cpp:97
-msgid "These files are not required and may interfere with the graphical features in this version of MTA:SA.\n\n"
+msgid "These files are not required and may interfere with the graphical features in this version of San Andreas Online.\n\n"
 "It is recommended that you remove or rename these files."
-msgstr "هذه الملفات غير مطلوبة وقد تتداخل مع الميزات الرسومية في هذه النسخة من MTA:SA.\n\n"
+msgstr "هذه الملفات غير مطلوبة وقد تتداخل مع الميزات الرسومية في هذه النسخة من San Andreas Online.\n\n"
 "يُنصح بإزالة أو إعادة تسمية هذه الملفات."
 
 #: Client/loader/Dialogs.cpp:99
@@ -593,12 +596,12 @@ msgid "Show me these files"
 msgstr "أظهر لي هذه الملفات"
 
 #: Client/loader/Dialogs.cpp:103
-msgid "Play MTA:SA"
-msgstr "ألعب MTA:SA"
+msgid "Play SA:O"
+msgstr "ألعب SA:O"
 
 #: Client/loader/Dialogs.cpp:109
-msgid "MTA: San Andreas - Confusing options"
-msgstr "MTA: San Andreas - خيارات مربكة"
+msgid "San Andreas Online - Confusing options"
+msgstr "San Andreas Online - خيارات مربكة"
 
 #: Client/loader/Dialogs.cpp:110
 msgid "NVidia Optimus detected!"
@@ -641,19 +644,19 @@ msgid "Don't show again"
 msgstr "لا تظهر ذلك مرة أخرى"
 
 #: Client/loader/Dialogs.cpp:126 Client/game_sa/CSettingsSA.cpp:910
-msgid "MTA: San Andreas"
-msgstr "MTA: San Andreas"
+msgid "San Andreas Online"
+msgstr "San Andreas Online"
 
 #: Client/loader/Dialogs.cpp:127
 msgid "Warning: Could not detect anti-virus product"
 msgstr "تحذير: تعذر الكشف عن منتج لمكافحة الفيروسات"
 
 #: Client/loader/Dialogs.cpp:129
-msgid "MTA could not detect an anti-virus on your PC.\n\n"
-"Viruses interfere with MTA and degrade your gameplay experience.\n\n"
+msgid "San Andreas Online could not detect an anti-virus on your PC.\n\n"
+"Viruses interfere with San Andreas Online and degrade your gameplay experience.\n\n"
 "Press 'Help' for more information."
-msgstr "MTA تعذرت الكشف عن مكافح فيروسات في هذا الجهاز.\n\n"
-"الفيروسات تتداخل مع MTA وتحط من تجربة اللعب الخاصة بك.\n\n"
+msgstr "San Andreas Online تعذرت الكشف عن مكافح فيروسات في هذا الجهاز.\n\n"
+"الفيروسات تتداخل مع San Andreas Online وتحط من تجربة اللعب الخاصة بك.\n\n"
 "أضغط 'مساعدة' للمزيد من المعلومات."
 
 #: Client/loader/Dialogs.cpp:132
@@ -667,16 +670,19 @@ msgstr "لن أثبت مكافح فيروسات.\n"
 "أريد أن يصاب جهازي بالبطء."
 
 #: Client/loader/Dialogs.cpp:667
-msgid "The crash you experienced is due to memory abuse by servers.\n\n"
-"Even with plenty of RAM, this is a x86 game with address space limits up to 3.6GB and some highly unoptimized servers with a lot of mods (or just a few poorly written scripts) can make this happen, as well as lag your game.\n\n"
-"Contact the server owner or MTA support in the MTA official discord (https://discord.gg/mtasa) for more information."
+msgid ""
+"The crash you experienced is due to memory abuse by servers.\n"
+"\n"
+"Even with plenty of RAM, this is a x86 game with address space limits up to 3.6GB and some highly unoptimized servers with a lot of mods (or just a few poorly written scripts) can make this happen, as well as lag your game.\n"
+"\n"
+"Contact the server owner or San Andreas Online support on the San Andreas Online Discord (https://discord.com/invite/mgFRd2AzF8) for more information."
 msgstr "العطل الذي واجهته ناتج عن إساءة استخدام الذاكرة من قبل الخوادم.\n\n"
 "حتى مع توافر قدر كبير من ذاكرة الوصول العشوائي (RAM)، فإن هذه اللعبة تعمل بنظام 32 بت (x86) ولها حد أقصى لمساحة العناوين يصل إلى 3.6 جيجابايت. بعض الخوادم الغير محسنة بشكل جيد وتحتوي على العديد من التعديلات (أو حتى بعض السكربتات المكتوبة بطريقة سيئة) تؤدي إلى حدوث هذا العطل وإلى بطء اللعبة أيضًا.\n\n"
-"لمزيد من المعلومات، يرجى التواصل مع مالك الخادم أو دعم MTA عبر منصة Discord الرسمية: https://discord.gg/mtasa"
+"لمزيد من المعلومات، يرجى التواصل مع مالك الخادم أو دعم San Andreas Online عبر منصة Discord الرسمية: https://discord.com/invite/mgFRd2AzF8"
 
 #: Client/loader/Dialogs.cpp:673
-msgid "MTA: San Andreas - Out of Memory Information"
-msgstr "معلومات عن نفاذ الذاكرة - MTA: San Andreas"
+msgid "San Andreas Online - Out of Memory Information"
+msgstr "معلومات عن نفاذ الذاكرة - San Andreas Online"
 
 #: Client/loader/Dialogs.cpp:1024
 msgid "Searching for Grand Theft Auto San Andreas"
@@ -840,9 +846,9 @@ msgid "MANDATORY UPDATE"
 msgstr "تحديث الزامي"
 
 #: Client/core/CVersionUpdater.cpp:1920
-msgid "To join this server, you must update MTA.\n\n"
+msgid "To join this server, you must update San Andreas Online.\n\n"
 " Do you want to update now ?"
-msgstr "للدخول إلى هذا الخادم، يجب عليك تحديث MTA.\n\n"
+msgstr "للدخول إلى هذا الخادم، يجب عليك تحديث San Andreas Online.\n\n"
 "هل تريد التحديث الآن؟"
 
 #: Client/core/CVersionUpdater.cpp:1938
@@ -903,10 +909,10 @@ msgid "ERROR"
 msgstr "خطأ"
 
 #: Client/core/CVersionUpdater.cpp:2160
-msgid "Some MTA:SA data files are missing.\n\n\n"
-"Please reinstall MTA:SA"
-msgstr "بعض ملفات MTA:SA مفقودة. \n\n\n"
-"يرجى إعادة تثبيت MTA:SA"
+msgid "Some San Andreas Online data files are missing.\n\n\n"
+"Please reinstall San Andreas Online"
+msgstr "بعض ملفات San Andreas Online مفقودة. \n\n\n"
+"يرجى إعادة تثبيت San Andreas Online"
 
 #: Client/core/CVersionUpdater.cpp:2837
 #, c-format
@@ -1196,8 +1202,8 @@ msgid "SFX volume:"
 msgstr "مستوى أصوات التأثيرات:"
 
 #: Client/core/CSettings.cpp:926 Client/core/CSettings.cpp:1001
-msgid "MTA volume:"
-msgstr "مستوى أصوات MTA:"
+msgid "SA:O volume:"
+msgstr "مستوى أصوات SA:O:"
 
 #: Client/core/CSettings.cpp:927 Client/core/CSettings.cpp:1023
 msgid "Voice volume:"
@@ -1262,8 +1268,8 @@ msgid "Mute SFX sounds when minimized"
 msgstr "كتم جميع المؤثرات الصوتية عند تصغير اللعبة"
 
 #: Client/core/CSettings.cpp:1108
-msgid "Mute MTA sounds when minimized"
-msgstr "كتم أصوات MTA عند تصغير اللعبة"
+msgid "Mute SA:O sounds when minimized"
+msgstr "كتم أصوات SA:O عند تصغير اللعبة"
 
 #: Client/core/CSettings.cpp:1113
 msgid "Mute Voice sounds when minimized"
@@ -1642,8 +1648,8 @@ msgid "Check for update now"
 msgstr "التحقق من وجود تحديث الآن"
 
 #: Client/core/CSettings.cpp:2102
-msgid "Some settings will be changed when you next start MTA"
-msgstr "ستتغير بعض الإعدادات عند إعادة تشغيل MTA في المرة القادمة"
+msgid "Some settings will be changed when you next start San Andreas Online"
+msgstr "ستتغير بعض الإعدادات عند إعادة تشغيل San Andreas Online في المرة القادمة"
 
 #: Client/core/CSettings.cpp:2103
 msgid "\n\n"
@@ -1951,17 +1957,17 @@ msgstr "الموافقة على السماح بمشاركة بياناتك"
 
 #: Client/core/CSettings.cpp:5725
 msgid "Some files in your GTA:SA data directory are customized.\n"
-"MTA will only use these modified files if this check box is ticked.\n\n"
+"San Andreas Online will only use these modified files if this check box is ticked.\n\n"
 "However, CUSTOMIZED GTA:SA FILES ARE BLOCKED BY MANY SERVERS\n\n"
 "Are you sure you want to use them?"
 msgstr "بعض الملفات في مسار لعبة GTA:SA معدل عليها مسبقًا.\n"
-"MTA ستقوم بإستخدامها فقط إذا قمت بتفعيل الخيار.\n\n"
+"San Andreas Online ستقوم بإستخدامها فقط إذا قمت بتفعيل الخيار.\n\n"
 "ولكن، الملفات المعدل عليها مسبقًا محظورة من قبل الكثير من الخوادم.\n\n"
 "هل أنت متأكد بأنك تريد استخدامهم؟"
 
 #: Client/core/CSettings.cpp:5774
 msgid "Enabling DPI awareness is an experimental feature and\n"
-"we only recommend it when you play MTA:SA on a scaled monitor.\n"
+"we only recommend it when you play San Andreas Online on a scaled monitor.\n"
 "You may experience graphical issues if you enable this option.\n\n"
 "Are you sure you want to enable this option?"
 msgstr "ميزة معرف الـDPI هي حالياً تجريبية و\n"
@@ -2391,8 +2397,8 @@ msgstr "زر تحكم المجموعة للخلف"
 
 #. Even the default skin doesn't work, so give up
 #: Client/core/CGUI.cpp:93
-msgid "The skin you selected could not be loaded, and the default skin also could not be loaded, please reinstall MTA."
-msgstr "الشخصية التي قمت بإختيارها لا يمكن تحميلها, والشخصية الأساسية لا يمكن تحميلها أيضاً, الرجاء إعادة تثبيت MTA."
+msgid "The skin you selected could not be loaded, and the default skin also could not be loaded, please reinstall San Andreas Online."
+msgstr "الشخصية التي قمت بإختيارها لا يمكن تحميلها, والشخصية الأساسية لا يمكن تحميلها أيضاً, الرجاء إعادة تثبيت San Andreas Online."
 
 #: Client/core/CQuestionBox.cpp:192 Shared/sdk/SharedUtil.Misc.hpp:1462
 msgid "Do you want to see some on-line help about this problem ?"
@@ -3135,8 +3141,8 @@ msgid "This server does not allow custom D3D9.DLLs"
 msgstr "هذا الخادم لا يسمح بملفات D3D9.DLL معدلة مسبقًا"
 
 #: Client/mods/deathmatch/logic/CPacketHandler.cpp:626
-msgid "Remove D3D9.DLL from your GTA install directory and restart MTA"
-msgstr "قم بإزالة ملف D3D9.DLL من مجلد GTA ثم قم أعيد تشغيل MTA"
+msgid "Remove D3D9.DLL from your GTA install directory and restart San Andreas Online"
+msgstr "قم بإزالة ملف D3D9.DLL من مجلد GTA ثم قم أعيد تشغيل San Andreas Online"
 
 #: Client/mods/deathmatch/logic/CPacketHandler.cpp:627
 msgid "This server does not allow virtual machines"
@@ -3155,8 +3161,8 @@ msgid "This server has detected missing anti-cheat components"
 msgstr "اكتشف هذا الخادم أن بعض مكونات مكافحة الغش مفقودة"
 
 #: Client/mods/deathmatch/logic/CPacketHandler.cpp:631
-msgid "Try restarting MTA"
-msgstr "حاول إعادة تشغيل MTA"
+msgid "Try restarting San Andreas Online"
+msgstr "حاول إعادة تشغيل San Andreas Online"
 
 #: Client/mods/deathmatch/logic/CPacketHandler.cpp:632
 msgid "This server requires a non-modifed gta3.img and gta_int.img"
@@ -3171,8 +3177,8 @@ msgid "This server does not allow Wine"
 msgstr "هذا الخادم لا يسمح بالمشغل الإفتراضي Wine"
 
 #: Client/mods/deathmatch/logic/CPacketHandler.cpp:637
-msgid "Ensure no other program is modifying MTA:SA"
-msgstr "الرجاء التأكد من عدم وجود أي برامج أخرى تقوم بتعديل MTA:SA"
+msgid "Ensure no other program is modifying San Andreas Online"
+msgstr "الرجاء التأكد من عدم وجود أي برامج أخرى تقوم بتعديل San Andreas Online"
 
 #: Client/mods/deathmatch/logic/CPacketHandler.cpp:651
 msgid "Time Remaining: "
@@ -3395,8 +3401,8 @@ msgid "Disconnected: invalid password specified"
 msgstr "قطع الاتصال: كلمة المرور المدخلة غير صحيحة"
 
 #: Client/mods/deathmatch/logic/CClientGame.cpp:1456
-msgid "MTA Client verification failed!"
-msgstr "فشل التحقق من العميل MTA!"
+msgid "San Andreas Online client verification failed!"
+msgstr "فشل التحقق من العميل San Andreas Online!"
 
 #: Client/mods/deathmatch/logic/CClientGame.cpp:5691
 msgid "In a ditch"
@@ -3444,8 +3450,8 @@ msgid "Connection error"
 msgstr "خطأ في الاتصال."
 
 #: Shared/sdk/SharedUtil.Misc.hpp:381
-msgid "Multi Theft Auto has not been installed properly, please reinstall."
-msgstr "لم يتم تثبيت Multi Theft Auto بشكل صحيح، الرجاء إعادة التثبيت."
+msgid "San Andreas Online has not been installed properly, please reinstall."
+msgstr "لم يتم تثبيت San Andreas Online بشكل صحيح، الرجاء إعادة التثبيت."
 
 #: Shared/sdk/SharedUtil.Misc.hpp:1476
 msgid "Your browser will now display a web page with some help infomation.\n\n"

@@ -24,7 +24,7 @@
           "label": "For server owners",
           "tone": "servers",
           "items": [
-            "Optional neon_registry_public_host setting requires automatic Neon Identity and a single public IPv4 DNS answer.",
+            "Optional neon_registry_public_host setting requires automatic SA:O account sign-in and a single public IPv4 DNS answer.",
             "The registry verifies the server identity at the relay endpoint before publishing it. Invalid domain configurations are rejected instead of falling back to the origin address.",
             "Relay hosting, firewall rules and DDoS protection remain the server owner's responsibility."
           ]
@@ -64,7 +64,7 @@
       "build": 186,
       "date": "2026-09-07",
       "title": "Smoother startup and gameplay",
-      "summary": "Fixed repeated “Fix configuration” prompts when starting Neon on Windows.",
+      "summary": "Fixed repeated “Fix configuration” prompts when starting San Andreas Online on Windows.",
       "highlights": [
         "More natural traffic and smoother movement for other players.",
         "Improved pause menu responsiveness.",
@@ -129,7 +129,7 @@
           "items": [
             "Servers can now encrypt downloadable DFF, TXD and COL files.",
             "The new engineReplaceEncryptedModel function securely loads these protected models.",
-            "Clients and servers must both use build 184 because this update changes the Neon network protocol."
+            "Clients and servers must both use build 184 because this update changes the San Andreas Online network protocol."
           ]
         }
       ]
@@ -137,10 +137,10 @@
     {
       "build": 183,
       "date": "2026-08-26",
-      "title": "Neon Identity, DevTools and native-world improvements",
-      "summary": "Build 183 makes Neon Identity simple to enable on community servers, adds structured DebugScript 4 diagnostics, expands native AI and story tooling, and fixes traffic, shadows, dialogs and native-world transitions.",
+      "title": "SA:O accounts, DevTools and native-world improvements",
+      "summary": "Build 183 makes SA:O account sign-in simple to enable on community servers, adds structured DebugScript 4 diagnostics, expands native AI and story tooling, and fixes traffic, shadows, dialogs and native-world transitions.",
       "highlights": [
-        "Enable Neon Identity with a single neon_auth setting, without manually creating a server ID or retrieving keys",
+        "Enable SA:O account sign-in with a single neon_auth setting, without manually creating a server ID or retrieving keys",
         "Use DebugScript 4, native ped navigation and new task primitives to diagnose and create synchronized experiences",
         "More reliable native-world switching, plus fixes for invisible shadows, system dialogs and synchronized traffic"
       ],
@@ -156,14 +156,14 @@
           ]
         },
         {
-          "label": "Server owners and Neon Identity",
+          "label": "Server owners and SA:O accounts",
           "tone": "servers",
           "items": [
-            "Enable Neon authentication with a single neon_auth setting: disabled, optional or required. No server ID or public key needs to be provisioned manually for the official service.",
+            "Enable SA:O account authentication with a single neon_auth setting: disabled, optional or required. No server ID or public key needs to be provisioned manually for the official service.",
             "The server creates a persistent cryptographic identity, proves control of its public ASE endpoint and renews its Identity registration automatically.",
             "Existing mtaserver.conf files receive the new setting in disabled mode automatically, while complete legacy and custom Identity configurations remain supported.",
             "Required mode fails closed while registration is unavailable; optional mode keeps ordinary connections available without exposing an unverified identity.",
-            "The cancellable onPlayerConnect event now appends the verified Neon account ID and Discord ID when available, allowing resources to apply account policy before the player joins."
+            "The cancellable onPlayerConnect event now appends the verified SA:O account ID and Discord ID when available, allowing resources to apply account policy before the player joins."
           ]
         },
         {
@@ -182,7 +182,7 @@
           "label": "Development tooling",
           "tone": "creators",
           "items": [
-            "The new Neon CLI provides a deterministic catalogue of inherited MTA APIs and Neon additions, project-local contracts, focused context packs and side-specific LuaLS metadata.",
+            "The new SA:O developer CLI (neon) provides a deterministic catalogue of inherited MTA APIs and SA:O additions, project-local contracts, focused context packs and side-specific LuaLS metadata.",
             "Closed scenario evidence, project verification and tamper checks make automated development results reproducible without granting arbitrary shell access.",
             "An authenticated loopback runtime supervisor supports read-only comparison by default and explicitly bounded resource or scenario mutations when enabled.",
             "Vehicle-audio documentation now explains the prepared Assetto Corsa or Soundize bank workflow and synchronized RPM, throttle, gear and backfire behavior."
@@ -255,7 +255,7 @@
           "tone": "players",
           "items": [
             "The main menu, server browser and settings menu have been rebuilt.",
-            "Settings now covers gameplay, graphics, audio, controls, interface, Neon features and advanced options.",
+            "Settings now covers gameplay, graphics, audio, controls, interface, SA:O features and advanced options.",
             "Paste an IP address, hostname, mtasa:// link or mtaneon:// link into the server browser to connect directly.",
             "Use Copy link on a selected server to share its mtaneon:// address.",
             "Connection errors, password requests and update prompts now appear over the new menu instead of being hidden behind it.",
@@ -314,12 +314,12 @@
     {
       "build": 177,
       "date": "2026-08-08",
-      "title": "Neon server registry",
-      "summary": "Build 177 added a dedicated list for compatible servers published on the Neon network.",
+      "title": "SA:O server list",
+      "summary": "Build 177 added a dedicated list for compatible servers published on the San Andreas Online network.",
       "highlights": [
         "Richer server profiles",
         "Community links and languages",
-        "Secure Neon registry publication"
+        "Secure SA:O server list publication"
       ],
       "sections": [
         {
@@ -327,7 +327,7 @@
           "tone": "players",
           "items": [
             "Server profiles can include descriptions, languages and community links.",
-            "The Neon registry provides a dedicated list of published compatible servers."
+            "The SA:O server list provides a dedicated list of published compatible servers."
           ]
         }
       ]
@@ -335,19 +335,19 @@
     {
       "build": 174,
       "date": "2026-08-07",
-      "title": "Discord-backed Neon Identity",
-      "summary": "Build 174 added Discord account linking and authenticated Neon sessions.",
+      "title": "Discord-backed SA:O accounts",
+      "summary": "Build 174 added Discord account linking and authenticated SA:O sessions.",
       "highlights": [
         "Discord identity linking",
         "Visible account status",
-        "Authenticated Neon sessions"
+        "Authenticated SA:O sessions"
       ],
       "sections": [
         {
           "label": "Identity",
           "tone": "players",
           "items": [
-            "Discord identity can be linked from Neon.",
+            "Discord identity can be linked from San Andreas Online.",
             "Authentication and session status remain visible during the client flow."
           ]
         }

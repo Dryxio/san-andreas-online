@@ -80,7 +80,7 @@ namespace
     // forcing its English art direction to copy old CEGUI wording verbatim.
     constexpr SWebTranslation WEB_TRANSLATIONS[] = {
         {"route.loadingServerBrowser", _td("Loading server browser"), _td("Loading server browser"), EWebTranslationDomain::Client},
-        {"aria.mainMenu", _td("MTA Neon main menu"), _td("MTA Neon main menu"), EWebTranslationDomain::Client},
+        {"aria.mainMenu", _td("San Andreas Online main menu"), _td("San Andreas Online main menu"), EWebTranslationDomain::Client},
         {"aria.mainNavigation", _td("Main navigation"), _td("Main navigation"), EWebTranslationDomain::Client},
         {"aria.chooseLanguage", _td("Choose language"), _td("Choose language"), EWebTranslationDomain::Client},
         {"aria.serverList", _td("Server list"), _td("Server list"), EWebTranslationDomain::Client},
@@ -88,7 +88,7 @@ namespace
         {"main.discordConnected", _td("Discord connected"), _td("Discord connected"), EWebTranslationDomain::Client},
         {"main.discordLink", _td("Link your Discord"), _td("Link your Discord"), EWebTranslationDomain::Client},
         {"main.discordSignOut", _td("Sign out"), _td("Sign out"), EWebTranslationDomain::Client},
-        {"main.featuredServer", _td("Neon featured"), _td("Neon featured"), EWebTranslationDomain::Client},
+        {"main.featuredServer", _td("SA:O featured"), _td("SA:O featured"), EWebTranslationDomain::Client},
         {"main.playFeatured", _td("Play now"), _td("Play now"), EWebTranslationDomain::Client},
         {"main.linkDiscordToPlay", _td("Link Discord to play"), _td("Link Discord to play"), EWebTranslationDomain::Client},
         {"main.resumeGame", _td("Resume game"), _td("Resume game"), EWebTranslationDomain::Client},
@@ -98,9 +98,9 @@ namespace
          EWebTranslationDomain::Client},
         {"main.mapEditor", _td("Map editor"), _td("Map editor"), EWebTranslationDomain::MainMenu},
         {"main.quitGame", _td("Quit game"), _td("Quit"), EWebTranslationDomain::MainMenu},
-        {"main.identity", _td("Neon Identity"), _td("Neon Identity"), EWebTranslationDomain::Client},
-        {"main.inGame", _td("MTA Neon — In game"), _td("MTA Neon — In game"), EWebTranslationDomain::Client},
-        {"main.preview", _td("v1.6 — Neon Preview"), _td("v1.6 — Neon Preview"), EWebTranslationDomain::Client},
+        {"main.identity", _td("SA:O account"), _td("SA:O account"), EWebTranslationDomain::Client},
+        {"main.inGame", _td("San Andreas Online — In game"), _td("San Andreas Online — In game"), EWebTranslationDomain::Client},
+        {"main.preview", _td("San Andreas Online — Preview"), _td("San Andreas Online — Preview"), EWebTranslationDomain::Client},
         {"common.settings", _td("Settings"), _td("Settings"), EWebTranslationDomain::MainMenu},
         {"common.disconnect", _td("Disconnect"), _td("Disconnect"), EWebTranslationDomain::MainMenu},
         {"common.about", _td("About"), _td("About"), EWebTranslationDomain::MainMenu},
@@ -118,7 +118,7 @@ namespace
         {"common.ping", _td("Ping"), _td("Ping"), EWebTranslationDomain::Client},
         {"common.mode", _td("Mode"), _td("Gamemode"), EWebTranslationDomain::Client},
         {"common.navigate", _td("Navigate"), _td("Navigate"), EWebTranslationDomain::Client},
-        {"source.neon", _td("Neon servers"), _td("Neon servers"), EWebTranslationDomain::Client},
+        {"source.neon", _td("SA:O servers"), _td("SA:O servers"), EWebTranslationDomain::Client},
         {"source.local", _td("Local"), _td("Local"), EWebTranslationDomain::Client},
         {"source.favourites", _td("Favourites"), _td("Favourites"), EWebTranslationDomain::Client},
         {"source.recent", _td("Recent"), _td("Recent"), EWebTranslationDomain::Client},
@@ -145,7 +145,7 @@ namespace
         {"server.addFavourite", _td("Add to favourites"), _td("Add Favorite"), EWebTranslationDomain::Client},
         {"server.playersUnverified", _td("Player count not verified"), _td("Player count not verified"), EWebTranslationDomain::Client},
         {"server.offline", _td("Offline"), _td("Offline"), EWebTranslationDomain::Client},
-        {"server.featured", _td("Neon featured"), _td("Neon featured"), EWebTranslationDomain::Client},
+        {"server.featured", _td("SA:O featured"), _td("SA:O featured"), EWebTranslationDomain::Client},
         {"details.selectServer", _td("Select a server to view details."), _td("Select a server to view details."), EWebTranslationDomain::Client},
         {"details.selectedDestination", _td("Selected server"), _td("Selected server"), EWebTranslationDomain::Client},
         {"details.copyAddress", _td("Copy {address}"), _td("Copy {address}"), EWebTranslationDomain::Client},
@@ -168,7 +168,7 @@ namespace
         {"modal.joining", _td("Joining {server}"), _td("Joining {server}"), EWebTranslationDomain::Client},
         {"modal.enteringSanAndreas", _td("Entering San Andreas"), _td("Entering San Andreas"), EWebTranslationDomain::Client},
         {"modal.contactingServer", _td("Checking server…"), _td("Checking server…"), EWebTranslationDomain::Client},
-        {"modal.authorizingIdentity", _td("Neon Identity"), _td("Neon Identity"), EWebTranslationDomain::Client},
+        {"modal.authorizingIdentity", _td("SA:O account"), _td("SA:O account"), EWebTranslationDomain::Client},
         {"modal.authorizingHint", _td("Authorizing identity…"), _td("Authorizing identity…"), EWebTranslationDomain::Client},
         {"modal.connectionAccepted", _td("Welcome to the streets"), _td("Welcome to the streets"), EWebTranslationDomain::Client},
         {"modal.enteringGame", _td("Loading game…"), _td("Loading game…"), EWebTranslationDomain::Client},
@@ -182,13 +182,13 @@ namespace
          _td("The server did not respond. Check your connection and try again."), EWebTranslationDomain::Client},
         {"modal.passwordRejected", _td("Wrong password"), _td("Wrong password"), EWebTranslationDomain::Client},
         {"modal.passwordRejectedHint", _td("Enter the server password again."), _td("Enter the server password again."), EWebTranslationDomain::Client},
-        {"modal.identityRequired", _td("Neon Identity required"), _td("Neon Identity required"), EWebTranslationDomain::Client},
+        {"modal.identityRequired", _td("SA:O account required"), _td("SA:O account required"), EWebTranslationDomain::Client},
         {"modal.identityRequiredHint", _td("Return to the main menu and link Discord before joining this server."),
          _td("Return to the main menu and link Discord before joining this server."), EWebTranslationDomain::Client},
         {"modal.identityFailed", _td("Identity check failed"), _td("Identity check failed"), EWebTranslationDomain::Client},
         {"modal.identityFailedHint", _td("Authorization failed. Try again."), _td("Authorization failed. Try again."), EWebTranslationDomain::Client},
         {"modal.versionMismatch", _td("Different game version"), _td("Different game version"), EWebTranslationDomain::Client},
-        {"modal.versionMismatchHint", _td("This server requires another MTA version."), _td("This server requires another MTA version."),
+        {"modal.versionMismatchHint", _td("This server requires a different game version."), _td("This server requires a different game version."),
          EWebTranslationDomain::Client},
         {"modal.connectionDenied", _td("Access denied"), _td("Access denied"), EWebTranslationDomain::Client},
         {"modal.connectionDeniedHint", _td("This server refused the connection."), _td("This server refused the connection."), EWebTranslationDomain::Client},
@@ -268,8 +268,8 @@ namespace
     {
         if (status == "Not signed in")
             return _("Not signed in");
-        if (status == "Neon account connected")
-            return _("Neon account connected");
+        if (status == "SA:O account connected")
+            return _("SA:O account connected");
         if (status == "Opening Discord...")
             return _("Opening Discord...");
         if (status == "Complete sign-in in your browser")
@@ -536,7 +536,7 @@ public:
         const std::string baseUrl = GetRegistryBaseUrl();
         if (!IsAcceptedRegistryBaseUrl(baseUrl))
         {
-            SetError("The Neon registry URL must use HTTPS");
+            SetError("The SA:O server list URL must use HTTPS");
             return;
         }
 
@@ -544,7 +544,7 @@ public:
         CNetHTTPDownloadManagerInterface* http = network ? network->GetHTTPDownloadManager(EDownloadMode::WEBBROWSER_LISTS) : nullptr;
         if (!http)
         {
-            SetError("The Neon registry network service is unavailable");
+            SetError("The SA:O server list network service is unavailable");
             return;
         }
 
@@ -556,7 +556,7 @@ public:
         options.requestHeaders["Accept"] = "application/json";
         if (!http->QueueFile((baseUrl + "/.well-known/neon-server-registry").c_str(), nullptr, this, StaticDownloadFinished, options))
         {
-            SetError("The Neon server registry request could not be started");
+            SetError("The SA:O server list request could not be started");
             return;
         }
 
@@ -628,13 +628,13 @@ private:
         if (!result.bSuccess || result.iErrorCode < 200 || result.iErrorCode >= 300 || !result.pData || result.dataSize == 0 ||
             result.dataSize > MAX_REGISTRY_RESPONSE_BYTES)
         {
-            SetError("The Neon server registry is temporarily unavailable");
+            SetError("The SA:O server list is temporarily unavailable");
             return;
         }
 
         if (!ApplyManifest(result.pData, result.dataSize))
         {
-            SetError("The Neon server registry returned invalid data");
+            SetError("The SA:O server list returned invalid data");
             return;
         }
 

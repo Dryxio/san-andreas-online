@@ -118,8 +118,11 @@ Var UninstallExePath
 !endif
 
 !ifdef MTA_NEON
+    ; PRODUCT_NAME is identity: it names the uninstall registry key, so renaming it would leave
+    ; the previous install as a second Add/Remove Programs entry. PRODUCT_NAME_NO_VER is only
+    ; the player-visible name (installer title, Add/Remove Programs DisplayName, page text).
     !define PRODUCT_NAME "MTA Neon ${0.0}"
-    !define PRODUCT_NAME_NO_VER "MTA Neon"
+    !define PRODUCT_NAME_NO_VER "San Andreas Online"
     !define PRODUCT_PUBLISHER "Dryxio"
     !define PRODUCT_WEB_SITE "https://github.com/Dryxio/mtasa-neon"
     !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\MTA Neon ${0.0}.exe"
@@ -224,7 +227,7 @@ Page custom CustomDirectoryPage CustomDirectoryPageLeave
         !define VI_PRODUCT_VERSION "${0.0.0}.0"
     !endif
     !ifdef MTA_NEON
-        !define VI_PRODUCT_NAME "MTA Neon"
+        !define VI_PRODUCT_NAME "San Andreas Online"
         !define VI_COMPANY_NAME "Dryxio"
     !else
         !define VI_PRODUCT_NAME "MTA San Andreas"
@@ -233,7 +236,7 @@ Page custom CustomDirectoryPage CustomDirectoryPageLeave
     !define /date DATE_YEAR "%Y"
     !ifdef MTA_NEON
         !define VI_LEGAL_COPYRIGHT "(C) 2003 - ${DATE_YEAR} Multi Theft Auto contributors"
-        !define VI_FILE_DESCRIPTION "MTA Neon Client Installer"
+        !define VI_FILE_DESCRIPTION "San Andreas Online Client Installer"
     !else
         !define VI_LEGAL_COPYRIGHT "(C) 2003 - ${DATE_YEAR} Multi Theft Auto"
         !ifndef LIGHTBUILD
@@ -253,25 +256,25 @@ VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductVersion" "${VI_PRODUCT_VERSION}"
 
 ;@INSERT_TRANSLATIONS@
 
-LangString	GET_XPVISTA_PLEASE	${LANG_ENGLISH} "Multi Theft Auto does not support Windows XP or Vista.  Please upgrade your computer."
-LangString	GET_WIN81_PLEASE	${LANG_ENGLISH} "This version of MTA:SA requires Windows 10 or later. Please upgrade your computer."
-LangString  GET_MASTER_PLEASE	${LANG_ENGLISH} "The version of MTA:SA you've downloaded is designed for old versions of Windows.  Please download an alternative version from www.multitheftauto.com."
+LangString	GET_XPVISTA_PLEASE	${LANG_ENGLISH} "San Andreas Online does not support Windows XP or Vista.  Please upgrade your computer."
+LangString	GET_WIN81_PLEASE	${LANG_ENGLISH} "This version of San Andreas Online requires Windows 10 or later. Please upgrade your computer."
+LangString  GET_MASTER_PLEASE	${LANG_ENGLISH} "The version of San Andreas Online you've downloaded is designed for old versions of Windows.  Please download an alternative version."
 LangString  WELCOME_TEXT  ${LANG_ENGLISH}   "This wizard will guide you through the installation or update of $(^Name) ${REVISION_TAG}\n\n\
 It is recommended that you close all other applications before starting Setup.\n\n\
 [Admin access may be requested for Vista and up]\n\n\
 Click Next to continue."
 LangString  HEADER_Text         ${LANG_ENGLISH} "Grand Theft Auto: San Andreas location"
 LangString  DIRECTORY_Text_Dest ${LANG_ENGLISH} "Grand Theft Auto: San Andreas folder"
-LangString  DIRECTORY_Text_Top  ${LANG_ENGLISH} "Please select your Grand Theft Auto: San Andreas folder.$\n$\nYou MUST have Grand Theft Auto: San Andreas 1.0 installed to use MTA:SA, it does not support any other versions.$\n$\nClick Install to begin installing."
+LangString  DIRECTORY_Text_Top  ${LANG_ENGLISH} "Please select your Grand Theft Auto: San Andreas folder.$\n$\nYou MUST have Grand Theft Auto: San Andreas 1.0 installed to use San Andreas Online, it does not support any other versions.$\n$\nClick Install to begin installing."
 
 ; Language files
 LangString  DESC_Section10          ${LANG_ENGLISH} "Create a Start Menu group for installed applications"
-LangString  DESC_Section11          ${LANG_ENGLISH} "Create a Desktop Shortcut for the MTA:SA Client."
+LangString  DESC_Section11          ${LANG_ENGLISH} "Create a Desktop Shortcut for the San Andreas Online Client."
 LangString  DESC_Section12          ${LANG_ENGLISH} "Register mtasa:// protocol for browser clickable-ness."
 LangString  DESC_Section13          ${LANG_ENGLISH} "Add to Windows Games Explorer (if present)."
 LangString  DESC_DirectX            ${LANG_ENGLISH} "Install or update DirectX (if required)."
-LangString  DESC_Section1           ${LANG_ENGLISH} "The core components required to run Multi Theft Auto."
-LangString  DESC_Section2           ${LANG_ENGLISH} "The MTA:SA modification, allowing you to play online."
+LangString  DESC_Section1           ${LANG_ENGLISH} "The core components required to run San Andreas Online."
+LangString  DESC_Section2           ${LANG_ENGLISH} "The San Andreas Online modification, allowing you to play online."
 ;LangString DESC_Section3           ${LANG_ENGLISH} "The Multi Theft Auto:Editor for MTA:SA, allowing you to create and edit maps."
 ;LangString DESC_SectionGroupMods   ${LANG_ENGLISH} "Modifications for Multi Theft Auto. Without at least one of these, you cannot play Multi Theft Auto."
 LangString  DESC_SectionGroupServer  ${LANG_ENGLISH}    "The Multi Theft Auto Server. This allows you to host games from your computer. This requires a fast internet connection."
@@ -283,7 +286,7 @@ LangString  DESC_Section8           ${LANG_ENGLISH} "The MTA:SA 1.0 Map Editor. 
 LangString  DESC_Section9           ${LANG_ENGLISH} "This is the SDK for creating binary modules for the MTA server. Only install if you have a good understanding of C++!"
 ;LangString DESC_Blank          ${LANG_ENGLISH} ""
 LangString  DESC_SectionGroupDev        ${LANG_ENGLISH} "Development code and tools that aid in the creation of mods for Multi Theft Auto"
-LangString  DESC_SectionGroupClient  ${LANG_ENGLISH}    "The client is the program you run to play on a Multi Theft Auto server"
+LangString  DESC_SectionGroupClient  ${LANG_ENGLISH}    "The client is the program you run to play on a San Andreas Online server"
 
 
 Function LaunchLink
@@ -517,6 +520,18 @@ Function .onInstSuccess
 
 	# Initilize variables holding paths and names
 	Call MTAInitFileNamesAndPaths
+    !ifdef MTA_NEON
+        ; Builds before the San Andreas Online rename created "MTA Neon" shortcuts. Remove
+        ; them here so an upgrade replaces them with the renamed ones below instead of
+        ; leaving duplicates. Only these exact fork names are touched (official MTA uses
+        ; "MTA San Andreas x.y"), and the old folder is removed only if it is then empty.
+        ; Taskbar/Start pins are separate copies and keep pointing at the same exe.
+        Delete "$DESKTOP\MTA Neon.lnk"
+        Delete "$SMPROGRAMS\MTA Neon\MTA Neon.lnk"
+        Delete "$SMPROGRAMS\MTA Neon\MTA Neon Server.lnk"
+        Delete "$SMPROGRAMS\MTA Neon\Uninstall MTA Neon.lnk"
+        RmDir "$SMPROGRAMS\MTA Neon"
+    !endif
     ; Start menu items
     ${If} $CreateSMShortcuts == 1
 		${IfNot} ${FileExists} "$StartMenuMTAFolderPath\*.*"
@@ -590,7 +605,7 @@ Function .onInstSuccess
     !ifdef MTA_NEON
         ; Neon owns a separate protocol so one-click joins never replace or
         ; depend on an official MTA installation's mtasa:// association.
-        WriteRegStr HKCR "mtaneon" "" "URL:MTA Neon Protocol"
+        WriteRegStr HKCR "mtaneon" "" "URL:San Andreas Online Protocol"
         WriteRegStr HKCR "mtaneon" "URL Protocol" ""
         WriteRegStr HKCR "mtaneon\DefaultIcon" "" "$INSTDIR\Multi Theft Auto.exe"
         WriteRegStr HKCR "mtaneon\shell\open\command" "" '"$INSTDIR\Multi Theft Auto.exe" "%1"'
@@ -1336,7 +1351,7 @@ FunctionEnd
 
 LangString UNINST_REQUEST ${LANG_ENGLISH}   "Are you sure you want to completely remove $(^Name) and all of its components?"
 LangString UNINST_REQUEST_NOTE ${LANG_ENGLISH}  "Uninstalling before update?\
-$\r$\nIt is not necessary to uninstall before installing a new version of MTA:SA\
+$\r$\nIt is not necessary to uninstall before installing a new version of San Andreas Online\
 $\r$\nRun the new installer to upgrade and preserve your settings."
 
 Function un.onInit
@@ -1446,7 +1461,15 @@ Section Uninstall
 
         !ifdef MTA_NEON
             ; Delete only fork shortcuts, never shortcuts belonging to official MTA.
+            ; Current names (San Andreas Online) first, then the pre-rename "MTA Neon"
+            ; names in case an older install was never upgraded by a renamed installer.
+            Delete "$SMPROGRAMS\San Andreas Online\San Andreas Online.lnk"
+            Delete "$SMPROGRAMS\San Andreas Online\San Andreas Online Server.lnk"
+            Delete "$SMPROGRAMS\San Andreas Online\Uninstall San Andreas Online.lnk"
+            Delete "$DESKTOP\San Andreas Online.lnk"
+            RmDir /r "$SMPROGRAMS\San Andreas Online"
             Delete "$SMPROGRAMS\MTA Neon\MTA Neon.lnk"
+            Delete "$SMPROGRAMS\MTA Neon\MTA Neon Server.lnk"
             Delete "$SMPROGRAMS\MTA Neon\Uninstall MTA Neon.lnk"
             Delete "$DESKTOP\MTA Neon.lnk"
             RmDir /r "$SMPROGRAMS\MTA Neon"
@@ -2127,7 +2150,7 @@ LangString INST_MTA_CONFLICT ${LANG_ENGLISH}    "A different major version of MT
             MTA is designed for major versions to be installed in different paths.$\n \
             Are you sure you want to overwrite MTA $1 at \
             $INSTDIR ?"
-LangString INST_GTA_CONFLICT ${LANG_ENGLISH}    "MTA cannot be installed into the same directory as GTA:SA.$\n$\n\
+LangString INST_GTA_CONFLICT ${LANG_ENGLISH}    "San Andreas Online cannot be installed into the same directory as GTA:SA.$\n$\n\
             Do you want to use the default install directory$\n\
             $DEFAULT_INSTDIR ?"
 LangString INST_GTA_ERROR1 ${LANG_ENGLISH} "The selected directory does not exist.$\n$\n\
@@ -3016,9 +3039,11 @@ FunctionEnd
 Function MTAInitFileNamesAndPaths
 	# Shortcuts names
 	!ifdef MTA_NEON
-		StrCpy $ClientShortcutName "MTA Neon"
-		StrCpy $ServerShortcutName "MTA Neon Server"
-		StrCpy $UninstallShortcutName "Uninstall MTA Neon"
+		; Player-visible names only. The install folder, registry keys and exe names keep
+		; their "MTA Neon" identity; .onInstSuccess removes the pre-rename shortcuts.
+		StrCpy $ClientShortcutName "San Andreas Online"
+		StrCpy $ServerShortcutName "San Andreas Online Server"
+		StrCpy $UninstallShortcutName "Uninstall San Andreas Online"
 	!else
 		StrCpy $ClientShortcutName "MTA San Andreas"
 		StrCpy $ServerShortcutName "MTA Server"
@@ -3026,7 +3051,7 @@ Function MTAInitFileNamesAndPaths
 	!endif
 	# Shostcuts paths
 	!ifdef MTA_NEON
-		StrCpy $StartMenuMTAFolderPath "$SMPROGRAMS\MTA Neon"
+		StrCpy $StartMenuMTAFolderPath "$SMPROGRAMS\San Andreas Online"
 	!else
 		StrCpy $StartMenuMTAFolderPath "$SMPROGRAMS\MTA San Andreas ${0.0}"
 	!endif

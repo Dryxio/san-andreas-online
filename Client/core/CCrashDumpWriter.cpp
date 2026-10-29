@@ -1635,7 +1635,7 @@ long WINAPI CCrashDumpWriter::HandleExceptionGlobal(_EXCEPTION_POINTERS* pExcept
         HWND hDialogWindow = nullptr;
         for (std::size_t attempts = 0; attempts < MAX_WINDOW_POLL_ATTEMPTS && hDialogWindow == nullptr; ++attempts)
         {
-            hDialogWindow = FindWindowW(nullptr, L"MTA: San Andreas has encountered a problem");
+            hDialogWindow = FindWindowW(nullptr, L"San Andreas Online has encountered a problem");
             if (hDialogWindow == nullptr)
                 Sleep(Milliseconds(WINDOW_POLL_TIMEOUT));
         }
@@ -2579,8 +2579,11 @@ void CCrashDumpWriter::DumpMiniDump(_EXCEPTION_POINTERS* pException, CExceptionI
     }
 
     HWND hGTAWindow = FindWindowW(L"Grand theft auto San Andreas", nullptr);
+    // This runs inside the crashed client, whose own window is titled "San Andreas Online".
+    // The old "MTA: San Andreas" title is deliberately not searched: here it could only match
+    // a running official MTA:SA client, which must not be minimised by our crash handler.
     if (hGTAWindow == nullptr)
-        hGTAWindow = FindWindowW(nullptr, L"MTA: San Andreas");
+        hGTAWindow = FindWindowW(nullptr, L"San Andreas Online");
     if (hGTAWindow != nullptr && IsWindow(hGTAWindow))
     {
         ShowWindowAsync(hGTAWindow, SW_MINIMIZE);
@@ -2813,7 +2816,7 @@ void CCrashDumpWriter::DumpMiniDump(_EXCEPTION_POINTERS* pException, CExceptionI
             HWND hDialogWindow = nullptr;
             for (std::size_t attempts = 0; attempts < MAX_WINDOW_POLL_ATTEMPTS && hDialogWindow == nullptr; ++attempts)
             {
-                hDialogWindow = FindWindowW(nullptr, L"MTA: San Andreas has encountered a problem");
+                hDialogWindow = FindWindowW(nullptr, L"San Andreas Online has encountered a problem");
                 if (hDialogWindow == nullptr)
                     Sleep(Milliseconds(WINDOW_POLL_TIMEOUT));
             }
@@ -2916,7 +2919,7 @@ void CCrashDumpWriter::DumpMiniDump(_EXCEPTION_POINTERS* pException, CExceptionI
             HWND hDialogWindow = nullptr;
             for (std::size_t attempts = 0; attempts < SHELL_EXEC_POLL_ATTEMPTS && hDialogWindow == nullptr; attempts++)
             {
-                hDialogWindow = FindWindowW(nullptr, L"MTA: San Andreas has encountered a problem");
+                hDialogWindow = FindWindowW(nullptr, L"San Andreas Online has encountered a problem");
                 if (hDialogWindow == nullptr)
                     Sleep(Milliseconds(WINDOW_POLL_TIMEOUT));
             }
@@ -2949,14 +2952,14 @@ void CCrashDumpWriter::DumpMiniDump(_EXCEPTION_POINTERS* pException, CExceptionI
         AddReportLog(3129, "RunErrorTool completely failed to launch crash dialog");
 
         const wchar_t* emergencyMessage =
-            L"MTA: San Andreas has crashed.\n\n"
+            L"San Andreas Online has crashed.\n\n"
             L"The usual crash dialog has also failed, with this as fallback.\n\n"
             L"Crash information has been saved to:\n"
-            L"MTA San Andreas\\mta\\core.log\n\n"
-            L"Contact support on the MTA discord: https://discord.gg/RygaCSD.\n\n"
+            L"MTA\\core.log in the game's install folder\n\n"
+            L"Contact support on the San Andreas Online Discord: https://discord.com/invite/mgFRd2AzF8\n\n"
             L"The game will now close.";
 
-        MessageBoxW(nullptr, emergencyMessage, L"MTA: San Andreas - Fatal Error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
+        MessageBoxW(nullptr, emergencyMessage, L"San Andreas Online - Fatal Error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
     }
 
     return dialogLaunched;

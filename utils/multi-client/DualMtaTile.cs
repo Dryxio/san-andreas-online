@@ -59,7 +59,7 @@ public static class Program
                 process.Refresh();
                 if (process.MainWindowTitle.Contains("[CL2]"))
                     secondary = process.MainWindowHandle;
-                else if (process.MainWindowTitle == "MTA: San Andreas")
+                else if (process.MainWindowTitle == "San Andreas Online" || process.MainWindowTitle == "MTA: San Andreas")
                     primary = process.MainWindowHandle;
             }
 

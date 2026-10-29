@@ -832,7 +832,7 @@ jobs:
           - **Windows x64:** download \`MTA-Neon-Server-Windows-x64.zip\`, extract it, edit \`mods/deathmatch/mtaserver.conf\`, then start \`MTA Server64.exe\`.
           - **Linux x64 or ARM64:** download the matching \`.tar.gz\` package.
 
-          Client and server files in this release come from the same successful \`master\` build. Keep them together when using Neon-specific network features.
+          Client and server files in this release come from the same successful \`master\` build. Keep them together when using San Andreas Online network features.
 
           EOF
           cat ReleaseChangelog.md >> ReleaseNotes.md
@@ -841,12 +841,12 @@ jobs:
           ## Build information
 
           - Built: $build_date
-          - Public version: \`Neon $display_version\`
+          - Public version: \`San Andreas Online $display_version\`
           - Technical client version: \`$technical_version\`
           - Commit: [\`$short_sha\`](https://github.com/$GITHUB_REPOSITORY/commit/$GITHUB_SHA)
           - Workflow run: [#$GITHUB_RUN_NUMBER](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)
 
-          Neon is experimental and is not affiliated with or endorsed by the Multi Theft Auto team. SHA-256 hashes are provided in \`SHA256SUMS.txt\`.
+          San Andreas Online is experimental, is based on Multi Theft Auto, and is not affiliated with or endorsed by the Multi Theft Auto team, Rockstar Games or Take-Two Interactive. SHA-256 hashes are provided in \`SHA256SUMS.txt\`.
           EOF
 
       - name: Refuse a duplicate release identity
@@ -946,7 +946,7 @@ jobs:
 
           release_tag="$RELEASE_TAG"
           release_assets=(
-            'ReleaseAssets/MTA-Neon-Setup.exe#PLAY ON WINDOWS - MTA Neon client installer'
+            'ReleaseAssets/MTA-Neon-Setup.exe#PLAY ON WINDOWS - San Andreas Online client installer'
             'ReleaseAssets/MTA-Neon-Server-Windows-x64.zip#HOST ON WINDOWS - x64 server package'
             'ReleaseAssets/MTA-Neon-Linux-Server-x64.tar.gz#HOST ON LINUX - x64 server package'
             'ReleaseAssets/MTA-Neon-Linux-Server-arm64.tar.gz#HOST ON LINUX - ARM64 server package'

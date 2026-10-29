@@ -1958,7 +1958,7 @@ void CGame::Packet_PlayerJoin(const NetServerPlayerID& Source)
     const bool automaticIdentityPending = m_pMainConfig->GetNeonAuthAutomatic() && (!m_pNeonServerAnnouncer || !m_pNeonServerAnnouncer->IsIdentityActive());
     if (automaticIdentityPending && m_pMainConfig->GetNeonAuthMode() == ENeonAuthMode::Required)
     {
-        RefusePendingConnection(Source, "This server is still registering with Neon Identity. Please retry shortly.");
+        RefusePendingConnection(Source, "This server is still registering with San Andreas Online. Please retry shortly.");
         return;
     }
 
@@ -1998,13 +1998,13 @@ void CGame::Packet_PlayerJoinData(CPlayerJoinDataPacket& Packet)
             (!m_pNeonServerAnnouncer || !m_pNeonServerAnnouncer->IsIdentityActive()))
         {
             CLogger::LogPrintf("CONNECT: %s refused before player creation (Neon Identity registration pending)\n", szNick);
-            RefusePendingConnection(Packet.GetSourceSocket(), "This server is still registering with Neon Identity. Please retry shortly.");
+            RefusePendingConnection(Packet.GetSourceSocket(), "This server is still registering with San Andreas Online. Please retry shortly.");
             return;
         }
         if (neonAuthMode == ENeonAuthMode::Required && !hasNeonTicket)
         {
             CLogger::LogPrintf("CONNECT: %s refused before player creation (Neon Identity required)\n", szNick);
-            RefusePendingConnection(Packet.GetSourceSocket(), "Sign in to your Neon account before connecting to this server.");
+            RefusePendingConnection(Packet.GetSourceSocket(), "Sign in to your SA:O account before connecting to this server.");
             return;
         }
 
@@ -2014,7 +2014,7 @@ void CGame::Packet_PlayerJoinData(CPlayerJoinDataPacket& Packet)
             if (!m_neonIdentityTicketVerifier.VerifyAndConsume(Packet.GetNeonIdentityTicket(), neonIdentity, identityError))
             {
                 CLogger::LogPrintf("CONNECT: %s refused before player creation (Neon Identity: %s)\n", szNick, identityError.c_str());
-                RefusePendingConnection(Packet.GetSourceSocket(), "Your Neon sign-in ticket is invalid or expired. Please reconnect.");
+                RefusePendingConnection(Packet.GetSourceSocket(), "Your SA:O sign-in ticket is invalid or expired. Please reconnect.");
                 return;
             }
         }
@@ -2065,7 +2065,7 @@ void CGame::Packet_PlayerJoinData(CPlayerJoinDataPacket& Packet)
         if (Packet.GetNetVersion() != MTA_DM_NETCODE_VERSION)
         {
             CLogger::LogPrintf("CONNECT: %s failed to connect (Bad version; client: %X, server: %X)\n", szNick, Packet.GetNetVersion(), MTA_DM_NETCODE_VERSION);
-            return DisconnectPlayer(this, *pPlayer, "This server requires the current Neon network protocol.");
+            return DisconnectPlayer(this, *pPlayer, "This server requires the current San Andreas Online network protocol.");
         }
 
         // Set the bitstream version number for this connection

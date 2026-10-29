@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "redirects": [
+    { "source": "/download", "destination": "https://github.com/Dryxio/mtasa-neon/releases/latest/download/MTA-Neon-Setup.exe", "permanent": false },
+    { "source": "/discord", "destination": "https://discord.com/invite/mgFRd2AzF8", "permanent": false },
+    { "source": "/docs", "destination": "https://mtasa-neon-wiki.vercel.app/neon", "permanent": false },
+    { "source": "/wiki", "destination": "https://mtasa-neon-wiki.vercel.app/neon", "permanent": false },
+    { "source": "/server", "destination": "https://github.com/Dryxio/mtasa-neon/releases/latest", "permanent": false }
+  ],
+  "headers": [
+    { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }] }
+  ]
+}

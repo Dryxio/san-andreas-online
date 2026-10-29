@@ -96,9 +96,9 @@ export function Updates({ buildNumber, onClose }: UpdatesProps) {
 
       <header className="updates-header">
         <div>
-          <span className="updates-header__eyebrow">MTA:SA Neon</span>
+          <span className="updates-header__eyebrow">San Andreas Online</span>
           <h1>What’s new</h1>
-          <p>The latest Neon changes, without the technical noise.</p>
+          <p>The latest San Andreas Online changes, without the technical noise.</p>
         </div>
         <button
           type="button"
@@ -136,7 +136,7 @@ export function Updates({ buildNumber, onClose }: UpdatesProps) {
                 >
                   <span className="updates-history__marker" aria-hidden="true">▸</span>
                   <span className="updates-history__copy">
-                    <strong>Neon {formatReleaseVersion(entry)}</strong>
+                    <strong>SA:O {formatReleaseVersion(entry)}</strong>
                     <span>{entry.title}</span>
                     <time dateTime={entry.date}>{formatReleaseDate(entry)}</time>
                   </span>
@@ -169,14 +169,14 @@ export function Updates({ buildNumber, onClose }: UpdatesProps) {
           </div>
 
           <footer className="updates-detail__footer">
-            <span>Neon build {selected.build}</span>
+            <span>SA:O build {selected.build}</span>
             <span>{selected.sections.reduce((total, section) => total + section.items.length, 0)} documented changes</span>
           </footer>
         </article>
       </div>
 
       <footer className="updates-controls">
-        <span>Neon release notes</span>
+        <span>San Andreas Online release notes</span>
         <span><kbd>↑</kbd><kbd>↓</kbd> Change release&nbsp;&nbsp; <kbd>Esc</kbd> Back</span>
       </footer>
     </main>

@@ -82,7 +82,7 @@ END
 
 IDD_CRASHED_DIALOG DIALOGEX 0, 0, 500, 480
 STYLE DS_SETFONT | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_THICKFRAME
-CAPTION "MTA: San Andreas has encountered a problem"
+CAPTION "San Andreas Online has encountered a problem"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "Yes",IDOK,187,459,50,14
@@ -92,20 +92,20 @@ BEGIN
     CTEXT           "Doing so will increase the chance of this crash being fixed.",IDC_SEND_DESC_STATIC,18,410,464,14
     GROUPBOX        "",IDC_CHECKBOX_GROUP,12,382,476,46
     GROUPBOX        "Crash information",IDC_CRASH_HEAD,7,7,486,368,BS_CENTER
-    CTEXT           "Do you want to restart MTA: San Andreas ?",IDC_RESTART_QUESTION_STATIC,20,442,460,10
+    CTEXT           "Do you want to restart San Andreas Online ?",IDC_RESTART_QUESTION_STATIC,20,442,460,10
     EDITTEXT        IDC_CRASH_INFO_EDIT,15,22,470,345,ES_MULTILINE | ES_READONLY | ES_WANTRETURN | WS_VSCROLL | WS_HSCROLL
 END
 
 IDD_D3DDLL_DIALOG DIALOGEX 0, 0, 373, 236
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "MTA: San Andreas - Warning"
+CAPTION "San Andreas Online - Warning"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "Play MTA:SA",IDOK,153,209,67,14
+    DEFPUSHBUTTON   "Play SA:O",IDOK,153,209,67,14
     PUSHBUTTON      "Quit",IDCANCEL,245,209,67,14
     CTEXT           "Your Grand Theft Auto: San Andreas install directory contains one of these files:",IDC_D3DDLL_TEXT1,31,18,310,17 
     EDITTEXT        IDC_EDIT_GRAPHICS_DLL_PATH,31,30,310,50,ES_CENTER | ES_AUTOHSCROLL | ES_AUTOVSCROLL | ES_READONLY | ES_MULTILINE | WS_VSCROLL
-    CTEXT           "These files are not required and may interfere with the graphical features in this version of MTA:SA.\n\nIt is recommended that you remove or rename these files.",IDC_D3DDLL_TEXT2,14,91,345,33
+    CTEXT           "These files are not required and may interfere with the graphical features in this version of San Andreas Online.\n\nIt is recommended that you remove or rename these files.",IDC_D3DDLL_TEXT2,14,91,345,33
     GROUPBOX        "",IDC_STATIC,7,7,359,122
     GROUPBOX        "",IDC_STATIC,7,142,359,43
     CONTROL         " Keep these files, but also show this warning on next start",IDC_NO_ACTION,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,61,151,228,10
@@ -116,7 +116,7 @@ END
 
 IDD_OPTIMUS_DIALOG DIALOGEX 0, 0, 238, 260
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "MTA: San Andreas - Confusing options"
+CAPTION "San Andreas Online - Confusing options"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,171,239,50,14
@@ -136,13 +136,13 @@ END
 
 IDD_NOAV_DIALOG DIALOGEX 0, 0, 316, 183
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "MTA: San Andreas"
+CAPTION "San Andreas Online"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,231,162,50,14
     PUSHBUTTON      "Help",IDC_BUTTON_HELP,38,162,50,14
     CONTROL         "",IDC_CHECK_NOT_AGAIN,"Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,75,123,218,26
-    CTEXT           "MTA could not detect an anti-virus on your PC.\n\nViruses interfere with MTA and degrade your gameplay experience.\n\nPress 'Help' for more information.",IDC_NOAV_TEXT2,24,52,267,46
+    CTEXT           "San Andreas Online could not detect an anti-virus on your PC.\n\nViruses interfere with San Andreas Online and degrade your gameplay experience.\n\nPress 'Help' for more information.",IDC_NOAV_TEXT2,24,52,267,46
     CTEXT           "Warning: Could not detect anti-virus product",IDC_NOAV_TEXT1,7,15,302,18
     GROUPBOX        "",IDC_STATIC,15,116,285,35
     GROUPBOX        "",IDC_STATIC,16,43,283,59

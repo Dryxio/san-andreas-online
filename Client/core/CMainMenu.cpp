@@ -835,7 +835,7 @@ void CMainMenu::UpdateNeonIdentityControls()
     if (identity->IsSigningIn())
         m_pNeonIdentityButton->SetText(_("Cancel Discord sign-in"));
     else if (identity->IsAuthenticated())
-        m_pNeonIdentityButton->SetText(_("Sign out of Neon"));
+        m_pNeonIdentityButton->SetText(_("Sign out of SA:O"));
     else
         m_pNeonIdentityButton->SetText(_("Connect Discord account"));
 

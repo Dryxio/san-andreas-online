@@ -1,6 +1,6 @@
-MTA Neon uses FMOD Engine 2.02.26 by Firelight Technologies Pty Ltd.
+San Andreas Online uses FMOD Engine 2.02.26 by Firelight Technologies Pty Ltd.
 
-Only the FMOD runtime libraries required by MTA Neon are redistributed. FMOD
+Only the FMOD runtime libraries required by San Andreas Online are redistributed. FMOD
 Studio, SDK headers, examples and example media are not included.
 
 FMOD legal information and licensing terms:

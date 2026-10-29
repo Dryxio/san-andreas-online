@@ -390,7 +390,7 @@ void CConnectManager::DoPulse()
         if (!identity)
         {
             if (UsesWebConnectionUi())
-                CServerBrowserWeb::NotifyConnectionFailed("identity-failed", _("Neon Identity is unavailable."));
+                CServerBrowserWeb::NotifyConnectionFailed("identity-failed", _("The SA:O account service is unavailable."));
             Abort();
             return;
         }
@@ -417,7 +417,7 @@ void CConnectManager::DoPulse()
             {
                 g_pCore->RemoveMessageBox();
                 Abort();
-                g_pCore->ShowMessageBox(_("Neon account"), error.c_str(), MB_BUTTON_OK | MB_ICON_ERROR);
+                g_pCore->ShowMessageBox(_("SA:O account"), error.c_str(), MB_BUTTON_OK | MB_ICON_ERROR);
             }
             return;
         }
@@ -632,16 +632,16 @@ bool CConnectManager::StaticProcessPacket(unsigned char ucPacketID, NetBitStream
             {
                 if (g_pConnectManager->UsesWebConnectionUi())
                 {
-                    CServerBrowserWeb::NotifyConnectionFailed("identity-required",
-                                                              _("This server requires a linked Discord account. Connect it from the Neon menu first."));
+                    CServerBrowserWeb::NotifyConnectionFailed(
+                        "identity-required", _("This server requires a linked Discord account. Connect it from the San Andreas Online menu first."));
                     g_pConnectManager->Abort();
                 }
                 else
                 {
                     CCore::GetSingleton().RemoveMessageBox();
                     g_pConnectManager->Abort();
-                    CCore::GetSingleton().ShowMessageBox(_("Neon account"),
-                                                         _("This server requires a linked Discord account. Connect it from the Neon menu first."),
+                    CCore::GetSingleton().ShowMessageBox(_("SA:O account"),
+                                                         _("This server requires a linked Discord account. Connect it from the San Andreas Online menu first."),
                                                          MB_BUTTON_OK | MB_ICON_ERROR);
                 }
                 return true;
@@ -656,9 +656,9 @@ bool CConnectManager::StaticProcessPacket(unsigned char ucPacketID, NetBitStream
                     g_pConnectManager->m_bWaitingForNeonTicket = true;
                     g_pConnectManager->m_pendingNeonModName = strModName;
                     if (g_pConnectManager->UsesWebConnectionUi())
-                        CServerBrowserWeb::NotifyConnectionProgress("authorizing", _("Authorizing this server with Neon Identity..."));
+                        CServerBrowserWeb::NotifyConnectionProgress("authorizing", _("Authorizing this server with your SA:O account..."));
                     else
-                        CCore::GetSingleton().ShowMessageBox(_("CONNECTING"), _("Authorizing this server with Neon Identity..."),
+                        CCore::GetSingleton().ShowMessageBox(_("CONNECTING"), _("Authorizing this server with your SA:O account..."),
                                                              MB_BUTTON_CANCEL | MB_ICON_INFO, g_pConnectManager->m_pOnCancelClick);
                     return true;
                 }
@@ -676,7 +676,7 @@ bool CConnectManager::StaticProcessPacket(unsigned char ucPacketID, NetBitStream
                     {
                         CCore::GetSingleton().RemoveMessageBox();
                         g_pConnectManager->Abort();
-                        CCore::GetSingleton().ShowMessageBox(_("Neon account"), error.c_str(), MB_BUTTON_OK | MB_ICON_ERROR);
+                        CCore::GetSingleton().ShowMessageBox(_("SA:O account"), error.c_str(), MB_BUTTON_OK | MB_ICON_ERROR);
                     }
                     return true;
                 }

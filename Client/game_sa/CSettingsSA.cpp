@@ -1005,7 +1005,7 @@ void CSettingsSA::SetValidVideoMode()
             // Confirm that res should be used
             SString strMessage = _("Are you sure you want to use this screen resolution?");
             strMessage += SString("\n\n%d x %d", iWidth, iHeight);
-            if (MessageBoxUTF8(NULL, strMessage, _("MTA: San Andreas"), MB_YESNO | MB_TOPMOST | MB_ICONQUESTION) == IDNO)
+            if (MessageBoxUTF8(NULL, strMessage, _("San Andreas Online"), MB_YESNO | MB_TOPMOST | MB_ICONQUESTION) == IDNO)
                 bAllowUnsafeResolutions = false;
         }
 

@@ -2238,7 +2238,7 @@ void CVersionUpdater::_DialogServerSaysUpdateQuestion()
     // Display message
     GetQuestionBox().Reset();
     GetQuestionBox().SetTitle(_("MANDATORY UPDATE"));
-    GetQuestionBox().SetMessage(_("To join this server, you must update MTA.\n\n Do you want to update now ?"));
+    GetQuestionBox().SetMessage(_("To join this server, you must update San Andreas Online.\n\n Do you want to update now ?"));
     GetQuestionBox().SetButton(0, _("No"));
     GetQuestionBox().SetButton(1, _("Yes"));
     GetQuestionBox().Show();
@@ -2297,7 +2297,7 @@ void CVersionUpdater::_DialogUpdateQueryError()
     GetQuestionBox().Reset();
     GetQuestionBox().SetTitle(_("UPDATE CHECK"));
 #ifdef MTA_NEON
-    GetQuestionBox().SetMessage("The MTA Neon update service is currently unavailable.\n\nPlease try again later.");
+    GetQuestionBox().SetMessage("The San Andreas Online update service is currently unavailable.\n\nPlease try again later.");
 #else
     GetQuestionBox().SetMessage(_("An update is currently not available.\n\nPlease check www.multitheftauto.com"));
 #endif
@@ -2482,7 +2482,7 @@ void CVersionUpdater::_DialogDataFilesQuestion()
     // Display message
     GetQuestionBox().Reset();
     GetQuestionBox().SetTitle(_("ERROR"));
-    GetQuestionBox().SetMessage(_("Some MTA:SA data files are missing.\n\n\nPlease reinstall MTA:SA"));
+    GetQuestionBox().SetMessage(_("Some San Andreas Online data files are missing.\n\n\nPlease reinstall San Andreas Online"));
     GetQuestionBox().SetButton(0, _("Ok"));
     GetQuestionBox().Show();
     _PollAnyButton();
@@ -2650,10 +2650,10 @@ void CVersionUpdater::_ProcessPatchFileQuery()
     }
 
     m_JobInfo.strStatus = "update";
-    m_JobInfo.strTitle = "MTA NEON UPDATE";
-    m_JobInfo.strMsg = SString("A new MTA Neon update is available.\n\nInstalled build: %u\nAvailable: %s\n\nDownload and install it now?", MTASA_VERSION_BUILD,
-                               manifest.displayVersion.c_str());
-    m_JobInfo.strMsg2 = "The MTA Neon update has been downloaded.\n\nThe installer will open after MTA closes.";
+    m_JobInfo.strTitle = "SAN ANDREAS ONLINE UPDATE";
+    m_JobInfo.strMsg = SString("A new San Andreas Online update is available.\n\nInstalled build: %u\nAvailable: %s\n\nDownload and install it now?",
+                               MTASA_VERSION_BUILD, manifest.displayVersion.c_str());
+    m_JobInfo.strMsg2 = "The San Andreas Online update has been downloaded.\n\nThe installer will open after the game closes.";
     m_JobInfo.strYes = "Update";
     m_JobInfo.strNo = "Later";
     m_JobInfo.strFilename = NEON_UPDATE_ASSET_NAME;

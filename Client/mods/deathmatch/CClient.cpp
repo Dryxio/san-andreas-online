@@ -36,7 +36,7 @@ int CClient::ClientInitialize(const char* szArguments, CCoreInterface* pCore)
     // Unused relic from 10+ years ago (as of 2025) but could still be used. Defined by net.
     if (GetDaysUntilExpire() < -1)
     {
-        MessageBox(NULL, _("This version has expired."), (std::string("MTA: San Andreas ") + MTA_DM_BUILDTAG_LONG + _E("CD64")).c_str(),
+        MessageBox(NULL, _("This version has expired."), (std::string("San Andreas Online ") + MTA_DM_BUILDTAG_LONG + _E("CD64")).c_str(),
                    MB_OK | MB_ICONEXCLAMATION | MB_TOPMOST);
         TerminateProcess(GetCurrentProcess(), 1);
     }
