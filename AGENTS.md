@@ -15,7 +15,7 @@ Make, review, commit, and push all source changes from this working tree. Its
 remotes are:
 
 ```text
-origin   https://github.com/Dryxio/mtasa-neon.git
+origin   https://github.com/Dryxio/san-andreas-online.git
 upstream https://github.com/multitheftauto/mtasa-blue.git
 ```
 

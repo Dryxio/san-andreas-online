@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const REPO = 'Dryxio/mtasa-neon';
+  const REPO = 'Dryxio/san-andreas-online';
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ---------- Language ----------

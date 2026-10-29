@@ -7,8 +7,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Dryxio/mtasa-neon/releases/latest/download/MTA-Neon-Setup.exe"><img alt="Download the latest San Andreas Online client for Windows" src="https://img.shields.io/badge/WINDOWS_CLIENT-DOWNLOAD_INSTALLER-F28C18?style=for-the-badge&amp;logo=windows&amp;logoColor=F28C18&amp;labelColor=0A0908" height="40"></a>
-  <a href="https://github.com/Dryxio/mtasa-neon/releases/latest/download/MTA-Neon-Server-Windows-x64.zip"><img alt="Download the latest San Andreas Online server for Windows x64" src="https://img.shields.io/badge/WINDOWS_SERVER-DOWNLOAD_X64_ZIP-F28C18?style=for-the-badge&amp;logo=windows&amp;logoColor=F28C18&amp;labelColor=0A0908" height="40"></a>
+  <a href="https://github.com/Dryxio/san-andreas-online/releases/latest/download/MTA-Neon-Setup.exe"><img alt="Download the latest San Andreas Online client for Windows" src="https://img.shields.io/badge/WINDOWS_CLIENT-DOWNLOAD_INSTALLER-F28C18?style=for-the-badge&amp;logo=windows&amp;logoColor=F28C18&amp;labelColor=0A0908" height="40"></a>
+  <a href="https://github.com/Dryxio/san-andreas-online/releases/latest/download/MTA-Neon-Server-Windows-x64.zip"><img alt="Download the latest San Andreas Online server for Windows x64" src="https://img.shields.io/badge/WINDOWS_SERVER-DOWNLOAD_X64_ZIP-F28C18?style=for-the-badge&amp;logo=windows&amp;logoColor=F28C18&amp;labelColor=0A0908" height="40"></a>
 </p>
 
 <p align="center"><strong>Players only need the Windows client installer. Server owners should use the separate server package. Both links track the latest explicitly published San Andreas Online release.</strong></p>
@@ -157,7 +157,7 @@ neon init --workspace /path/to/gamemode --profile neon-pair --json
 
 Then point the agent to the generated `NEON_AGENT.md` and let it use the CLI while it works. The same portable ZIP supports Windows and macOS with Python 3.10 or newer.
 
-**[Download Neon CLI Portable v1.0.0](https://github.com/Dryxio/mtasa-neon/releases/download/neon-cli-v1.0.0/Neon-CLI-Portable.zip)** · **[Setup and complete agent workflow](https://mtasa-neon-wiki.vercel.app/neon/cli/)**
+**[Download Neon CLI Portable v1.0.0](https://github.com/Dryxio/san-andreas-online/releases/download/neon-cli-v1.0.0/Neon-CLI-Portable.zip)** · **[Setup and complete agent workflow](https://mtasa-neon-wiki.vercel.app/neon/cli/)**
 
 ## Server resources
 

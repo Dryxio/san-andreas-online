@@ -46,7 +46,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          PUBLIC_BUILD: ${{ github.repository == 'Dryxio/mtasa-neon' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && (inputs.prepare_release == true || inputs.publish_release == true) }}
+          PUBLIC_BUILD: ${{ (github.repository == 'Dryxio/mtasa-neon' || github.repository == 'Dryxio/san-andreas-online') && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && (inputs.prepare_release == true || inputs.publish_release == true) }}
         run: |
           set -euo pipefail
 
@@ -745,7 +745,7 @@ jobs:
 
   publish-latest:
     name: Publish approved Neon release
-    if: github.repository == 'Dryxio/mtasa-neon' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.publish_release == true
+    if: (github.repository == 'Dryxio/mtasa-neon' || github.repository == 'Dryxio/san-andreas-online') && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.publish_release == true
     needs: [release_version, windows, macOS, linux, neon-updater-manifest]
     runs-on: ubuntu-latest
     env:

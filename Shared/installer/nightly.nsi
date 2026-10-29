@@ -124,7 +124,7 @@ Var UninstallExePath
     !define PRODUCT_NAME "MTA Neon ${0.0}"
     !define PRODUCT_NAME_NO_VER "San Andreas Online"
     !define PRODUCT_PUBLISHER "Dryxio"
-    !define PRODUCT_WEB_SITE "https://github.com/Dryxio/mtasa-neon"
+    !define PRODUCT_WEB_SITE "https://github.com/Dryxio/san-andreas-online"
     !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\MTA Neon ${0.0}.exe"
     !define PRODUCT_INSTALL_REGKEY "SOFTWARE\MTA Neon\${0.0}"
     !define PRODUCT_INSTALL_DIR_NAME "MTA Neon"
