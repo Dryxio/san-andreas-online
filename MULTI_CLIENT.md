@@ -93,3 +93,7 @@ A successful local test has all of the following:
 - both joins accepted even though the serial is the same;
 - `coreconfig-cl2.xml`, `console-cl2.log`, and the secondary cache root created
   independently from the primary profile.
+
+## Credits
+
+Thanks to Xenius, credited in issue #95 for this local multi-client testing workflow.
