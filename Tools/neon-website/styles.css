@@ -146,6 +146,7 @@ b { font-weight: 600; }
   letter-spacing: .08em;
   cursor: pointer;
 }
+a.lang { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .lang:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); }
 
 /* ---------- Hero: a San Andreas loading screen ---------- */
@@ -282,6 +283,16 @@ b { font-weight: 600; }
 .streets li::before { content: ''; position: absolute; top: -5px; left: 0; width: 8px; height: 8px; background: var(--neon); transform: rotate(45deg); }
 .streets h3 { font: 400 17px/1.3 'SA Bank Gothic', sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--sa-white); }
 .streets p { margin-top: 8px; color: var(--text-dim); }
+
+/* ---------- New in 2026 ---------- */
+.title--ink { color: var(--paper-ink); text-shadow: none; }
+.sub--ink { color: rgba(29, 26, 21, .76); }
+.pulse { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.pulse li { display: flex; flex-direction: column; gap: 8px; padding: 22px 20px; border: 2px solid var(--paper-ink); box-shadow: 6px 6px 0 var(--paper-ink); background: #f7efd8; }
+.pulse strong { font: 400 clamp(30px, 3.4vw, 44px)/1 'Pricedown', Impact, sans-serif; letter-spacing: .02em; color: var(--paper-ink); }
+.pulse span { font: 400 13px/1.35 'SA Bank Gothic', sans-serif; letter-spacing: .06em; text-transform: uppercase; color: rgba(29, 26, 21, .8); }
+.pulse__more { margin-top: 30px; color: rgba(29, 26, 21, .8); }
+.pulse__more a { color: var(--paper-ink); font-weight: 600; }
 
 /* ---------- Compare slider ---------- */
 .tabs { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 20px; }
@@ -555,6 +566,7 @@ b { font-weight: 600; }
   .bar__nav a { font-size: 18px; padding: 8px 8px; }
   .grid { grid-template-columns: repeat(2, 1fr); }
   .streets { grid-template-columns: repeat(2, 1fr); }
+  .pulse { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 860px) {

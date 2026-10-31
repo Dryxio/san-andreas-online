@@ -1,0 +1,37 @@
+# San Andreas Online
+
+> San Andreas Online (SA:O) is a free, open-source multiplayer platform for Grand Theft Auto: San Andreas on PC (Windows). It started in July 2026, had its first public release in August 2026 and is in active development. It is built on Multi Theft Auto: San Andreas (MTA:SA) and is the San Andreas multiplayer that brings GTA's single-player traffic, pedestrians, gangs and cops back into multiplayer, synced so every player sees the same city.
+
+Website: https://sanandreasonline.com (English) and https://sanandreasonline.com/fr/ (French)
+
+## What it is
+
+- A multiplayer client and server for GTA: San Andreas (original PC version; the Definitive Edition is not supported). Players need their own copy of the game.
+- Free and open source under GPL-3.0. Windows client; servers for Windows x64, Linux x64 and Linux ARM64.
+- Independent project by Dryxio, based on Multi Theft Auto's open-source code. Not run or endorsed by the MTA team, Rockstar Games or Take-Two Interactive.
+- Short name: SA:O. The installer is still named MTA-Neon-Setup.exe because the project was called "MTA:SA Neon" before it was renamed San Andreas Online.
+
+## How it differs from SA-MP and MTA
+
+- SA-MP (2006) and MTA (2009) switch off GTA's ambient traffic and pedestrians, so their cities are empty. San Andreas Online brings them back: cars, vans, trucks, motorbikes, BMXs and quads driven by GTA's own AI, pedestrians placed by GTA's population rules (area, time of day, weekday, rain), gangs on their story territory and regional cops.
+- One player's game runs each car or pedestrian and everyone else sees it in sync; if that player leaves, another takes over without anything disappearing. Carjacked drivers can flee, fight back or try to recover their car. Players can ride in free passenger seats.
+- Graphics settings built in, no ASI mods needed: draw distance up to 5,000 units, distant city lights at night, PS2-style colour grading.
+- Maps up to 20 × 20 km (-10,000 to +9,999), more than ten times the area of San Andreas, streamed by GTA's own engine from native IDE/IPL/COL/IMG files.
+- Keeps MTA's Lua scripting and resource system, and opens more of the engine to Lua: native AI tasks, mission audio, vehicle recordings, fire, object physics and fracture, ropes, birds, foliage, model 2DFX lights, runtime collision, custom vehicle audio, larger engine pools (4,096 coronas and 3D markers, 8,192 visible entities). SA-MP maps load directly.
+- Signed automatic updates, a San Andreas-style main menu and server browser, optional Discord sign-in. Installs next to an existing MTA:SA without touching it.
+
+## Status
+
+- Development started July 2026; first public release August 2026.
+- 20+ releases and 600+ commits since then; new releases every few weeks.
+- An official freeroam server runs the synced traffic and pedestrians.
+- Long-term goal: GTA: San Andreas story missions playable in co-op.
+
+## Links
+
+- [Website](https://sanandreasonline.com): features, install guide and FAQ
+- [Download for Windows](https://sanandreasonline.com/download): latest installer
+- [Documentation and Lua API](https://mtasa-neon-wiki.vercel.app/neon)
+- [Full feature comparison with MTA:SA](https://mtasa-neon-wiki.vercel.app/neon/features)
+- [Source code and releases](https://github.com/Dryxio/san-andreas-online)
+- [Discord](https://discord.com/invite/mgFRd2AzF8)

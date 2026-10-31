@@ -1,4 +1,18 @@
+# Everyone may crawl the whole site, including search and AI assistant crawlers:
+# we want San Andreas Online to show up in Google and in ChatGPT, Claude,
+# Perplexity and similar answers. llms.txt has a plain-text summary for them.
 User-agent: *
+Allow: /
+
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
 Allow: /
 
 Sitemap: https://sanandreasonline.com/sitemap.xml
