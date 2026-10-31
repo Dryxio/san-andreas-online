@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "redirects": [
+    { "source": "/", "has": [{ "type": "host", "value": "mtasa-neon.vercel.app" }], "destination": "https://sanandreasonline.com/", "permanent": true },
     { "source": "/:path*", "has": [{ "type": "host", "value": "mtasa-neon.vercel.app" }], "destination": "https://sanandreasonline.com/:path*", "permanent": true },
     { "source": "/download", "destination": "https://github.com/Dryxio/san-andreas-online/releases/latest/download/MTA-Neon-Setup.exe", "permanent": false },
     { "source": "/discord", "destination": "https://discord.com/invite/mgFRd2AzF8", "permanent": false },
