@@ -145,7 +145,7 @@ local menu = assert(createNativeUI('menu', {
     widths={230, 100}, alignments={1, 2},
 }))
 local grid = assert(createNativeUI('grid', {
-    x=180, y=120, width=220, columns=8, selected=1,
+    x=29, y=145, width=25.7, columns=8, selected=1, -- solo TransFender grid
 }))
 ```
 
@@ -154,7 +154,11 @@ array. Optional `enabled` defaults to all true. At least one row must be enabled
 the selected row must be enabled. `headers`, `widths`, `alignments` are optional
 per-column arrays. Total column width cannot exceed 640. Alignment uses GTA's
 values: 0 center, 1 left, 2 right. Grids have 1–8 columns and columns² cells, up
-to 64 palette colors. The returned color is the GTA vehicle color ID, not RGBA.
+to 64 palette colors; a grid's `width` is the size of one square cell (the solo
+mod shop uses 25.7). The returned color is the GTA vehicle color ID, not RGBA.
+Menu and grid `x`, `y`, `width` and `widths` are script units (640×448) and are
+converted with GTA's HUD multipliers, so menus keep their size at any resolution.
+The window title wraps at the total column width.
 
 The oldest visible available owned menu has input focus. The second can remain
 visible. Selection is one-based in Lua. Navigation uses native pad processing;

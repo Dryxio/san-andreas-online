@@ -75,7 +75,7 @@ function scenes.menu()
     log('Navigation native ; sprint = valider, entrer/sortir = annuler. Tester les binds et touches maintenues.')
 end
 function scenes.grid()
-    activeMenu = create('grid', {x=170,y=100,width=240,columns=8,selected=1})
+    activeMenu = create('grid', {x=29,y=145,width=25.7,columns=8,selected=1})
     log('Grille native 8×8. Tester les cases après la 12e, puis valider/annuler.')
 end
 function scenes.blackjack()

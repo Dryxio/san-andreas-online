@@ -661,6 +661,12 @@ bool CNativeUISA::MakeMenu(NativeUIHandle id, NativeUI::Entry& e, std::string& e
         return false;
     }
     const auto& o = e.options;
+    // The API is script-space 640x448 like every other positioned kind, but
+    // CMenuSystem stores screen pixels: the SCM menu opcodes stretched their
+    // arguments before calling it. Without this, a 1080p menu was a third of
+    // its width (titles wrapped over the rows) and a grid width, which is one
+    // cell, drew raw script units as a near full-screen palette.
+    const float sx = At<int>(0xC17044) * At<float>(0x859520), sy = At<int>(0xC17048) * At<float>(0x859524);
     Menu*       menu{};
     {
         MenuScope scope;
@@ -668,7 +674,7 @@ bool CNativeUISA::MakeMenu(NativeUIHandle id, NativeUI::Entry& e, std::string& e
         // private empty view then attach the result only for native calls.
         const auto nativeId =
             reinterpret_cast<unsigned char(__cdecl*)(unsigned char, const char*, float, float, float, unsigned char, bool, bool, signed char)>(0x582300)(
-                e.kind == ENativeUIKind::Grid ? 1 : 0, Key(o.text).c_str(), o.x, o.y, o.width, static_cast<unsigned char>(o.columns), true, true,
+                e.kind == ENativeUIKind::Grid ? 1 : 0, Key(o.text).c_str(), o.x * sx, o.y * sy, o.width * sx, static_cast<unsigned char>(o.columns), true, true,
                 static_cast<signed char>(o.alignment));
         menu = At<MenuGlobals>(0xBA82D8).pointers[nativeId];
     }
@@ -694,7 +700,7 @@ bool CNativeUISA::MakeMenu(NativeUIHandle id, NativeUI::Entry& e, std::string& e
         {
             if (c < o.headers.size())
                 std::strcpy(menu->headers[c], Key(o.headers[c]).c_str());
-            menu->widths[c] = c < o.widths.size() ? o.widths[c] : o.width;
+            menu->widths[c] = (c < o.widths.size() ? o.widths[c] : o.width) * sx;
             menu->alignment[c] = static_cast<signed char>(c < o.alignments.size() ? o.alignments[c] : o.alignment);
             menu->headerAlignment[c] = menu->alignment[c];
         }
