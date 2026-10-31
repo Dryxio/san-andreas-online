@@ -222,6 +222,7 @@ void CLuaVehicleDefs::LoadFunctions()
         {"setVehicleAudioSetting", ArgumentParser<SetVehicleAudioSetting>},
         {"resetVehicleAudioSettings", ArgumentParser<ResetVehicleAudioSettings>},
         {"requestVehicleRecording", ArgumentParser<RequestVehicleRecording>},
+        {"loadVehicleRecording", ArgumentParser<LoadVehicleRecording>},
         {"startVehiclePlayback", ArgumentParser<StartVehiclePlayback>},
         {"stopVehiclePlayback", ArgumentParser<StopVehiclePlayback>},
         {"setVehiclePlaybackSpeed", ArgumentParser<SetVehiclePlaybackSpeed>},
@@ -5046,12 +5047,29 @@ bool CLuaVehicleDefs::RequestVehicleRecording(lua_State* luaVM, int recordingId)
     return true;
 }
 
+std::variant<bool, int> CLuaVehicleDefs::LoadVehicleRecording(lua_State* luaVM, std::string frames)
+{
+    // A resource ships its own .rrr bytes (e.g. read with fileRead). The
+    // recording is owned by that resource and freed when it stops, like a
+    // requested stock recording.
+    CResource* resource = GetCallingResource(luaVM);
+    if (!resource)
+        return false;
+
+    const int recordingId = g_pGame->LoadCustomVehicleRecording(frames.data(), frames.size());
+    if (recordingId < 0)
+        return false;
+
+    g_vehicleRecordingOwners[recordingId].insert(resource);
+    return recordingId;
+}
+
 bool CLuaVehicleDefs::IsVehicleRecordingLoaded(int recordingId)
 {
     return g_pGame->IsVehicleRecordingLoaded(recordingId);
 }
 
-bool CLuaVehicleDefs::StartVehiclePlayback(lua_State* luaVM, CClientVehicle* vehicle, int recordingId)
+bool CLuaVehicleDefs::StartVehiclePlayback(lua_State* luaVM, CClientVehicle* vehicle, int recordingId, std::optional<bool> useCarAI, std::optional<bool> looped)
 {
     CResource* resource = GetCallingResource(luaVM);
     if (!resource || !vehicle || !vehicle->IsStreamedIn() || !vehicle->GetGameVehicle() || vehicle->IsBlown() || vehicle->IsFrozen())
@@ -5079,7 +5097,10 @@ bool CLuaVehicleDefs::StartVehiclePlayback(lua_State* luaVM, CClientVehicle* veh
     if (driver && (driver->GetType() != CCLIENTPED || (!driver->IsLocalEntity() && !driver->IsSyncing())))
         return false;
 
-    if (!g_pGame->StartVehiclePlayback(vehicle->GetGameVehicle(), recordingId))
+    // AI playback lets the native autopilot steer from the closest frame, so
+    // after an ownership change the resource can simply start it again on the
+    // new syncer (PulseVehiclePlayback stops the old slot).
+    if (!g_pGame->StartVehiclePlayback(vehicle->GetGameVehicle(), recordingId, useCarAI.value_or(false), looped.value_or(false)))
         return false;
 
     g_vehiclePlaybackOwners.emplace(vehicle, resource);

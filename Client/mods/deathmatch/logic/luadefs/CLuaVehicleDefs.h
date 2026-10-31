@@ -212,9 +212,10 @@ public:
     static bool SetSmokeTrailEnabled(CClientVehicle* vehicle, bool state);
     static bool IsSmokeTrailEnabled(CClientVehicle* vehicle) noexcept;
 
-    static bool RequestVehicleRecording(lua_State* luaVM, int recordingId);
-    static bool IsVehicleRecordingLoaded(int recordingId);
-    static bool StartVehiclePlayback(lua_State* luaVM, CClientVehicle* vehicle, int recordingId);
+    static bool                    RequestVehicleRecording(lua_State* luaVM, int recordingId);
+    static bool                    IsVehicleRecordingLoaded(int recordingId);
+    static std::variant<bool, int> LoadVehicleRecording(lua_State* luaVM, std::string frames);
+    static bool StartVehiclePlayback(lua_State* luaVM, CClientVehicle* vehicle, int recordingId, std::optional<bool> useCarAI, std::optional<bool> looped);
     static bool StopVehiclePlayback(lua_State* luaVM, CClientVehicle* vehicle);
     static bool SetVehiclePlaybackSpeed(lua_State* luaVM, CClientVehicle* vehicle, float speed);
     static bool IsVehiclePlaybackActive(CClientVehicle* vehicle);

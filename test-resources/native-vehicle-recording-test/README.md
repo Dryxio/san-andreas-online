@@ -27,8 +27,9 @@ builds and deploys this resource, then asks the user to run the protocol.
 
 ```text
 requestVehicleRecording(recordingId)
+recordingId = loadVehicleRecording(rrrBytes)       -- or false
 isVehicleRecordingLoaded(recordingId)
-startVehiclePlayback(vehicle, recordingId)
+startVehiclePlayback(vehicle, recordingId [, useCarAI=false [, looped=false]])
 setVehiclePlaybackSpeed(vehicle, speed)
 stopVehiclePlayback(vehicle)
 isVehiclePlaybackActive(vehicle)
@@ -66,3 +67,25 @@ the default speed. The `2.0x` harness additionally validates opcode `06FD`.
 Tagging Up Turf then completed the same recording in `8040 ms` with `0.00 m`
 server-observed endpoint error before restoring Sweet as passenger and passing
 the mission.
+
+## Resource recordings and AI playback
+
+`loadVehicleRecording(data)` loads a resource's own recording: the raw bytes of
+a GTA `.rrr` file, i.e. N >= 2 `CVehicleStateEachFrame` records of 32 bytes
+(`uint32` time in ms, `int16[3]` velocity x16383.5 in GTA units per frame,
+`int8[3]` right and `int8[3]` up vectors x127, steering x20, gas x100,
+brake x100, handbrake byte, `float[3]` position). Times must strictly increase
+and positions be finite. It returns a recording number (50000 and up) owned by
+the calling resource and freed when the resource stops, or `false`. Data sits
+in a free GTA `CPath` slot after the IMG-registered ones (475 slots in total),
+so GTA's own lookup, playback and reference counting apply. `requestVehicleRecording`
+on such a number only reports that it is resident.
+
+`startVehiclePlayback(vehicle, id, true)` uses GTA's AI playback (0x45A980 with
+`useCarAI`, then `CHANGE_CAR_PLAYBACK_TO_USE_AI` 0x45A360):
+`MISSION_FOLLOW_RECORDED_PATH` starts at the frame closest to the car, steers
+towards the next frame at least 2 m ahead, weaves through traffic, keeps
+collisions and targets the recorded speed times `setVehiclePlaybackSpeed`.
+Frame times are ignored in this mode. It stops at the last frame; record every
+lap in one recording. As with rigid playback, an ownership change stops the
+slot; restarting on the new syncer resumes from the closest frame.

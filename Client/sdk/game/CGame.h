@@ -732,11 +732,19 @@ public:
     // executable addresses or touches the 16-slot native pool directly.
     virtual bool RequestVehicleRecording(int recordingId) = 0;
     virtual bool IsVehicleRecordingLoaded(int recordingId) = 0;
-    virtual bool StartVehiclePlayback(CVehicle* vehicle, int recordingId) = 0;
+    // useCarAI selects GTA's physics playback (MISSION_FOLLOW_RECORDED_PATH):
+    // the car steers along the frames, weaves through traffic and keeps its
+    // collisions instead of replaying the transforms rigidly.
+    virtual bool StartVehiclePlayback(CVehicle* vehicle, int recordingId, bool useCarAI = false, bool looped = false) = 0;
     virtual bool StopVehiclePlayback(CVehicle* vehicle) = 0;
     virtual bool IsVehiclePlaybackActive(CVehicle* vehicle) = 0;
     virtual bool RemoveVehicleRecording(int recordingId) = 0;
     virtual bool SetVehiclePlaybackSpeed(CVehicle* vehicle, float speed) = 0;
+    // Resource-supplied recordings in GTA's 32-byte CVehicleStateEachFrame
+    // layout (.rrr). Returns a recording number usable by the calls above,
+    // or -1. RemoveVehicleRecording frees them once no playback uses them.
+    virtual int  LoadCustomVehicleRecording(const void* frames, std::size_t size) = 0;
+    virtual bool IsCustomVehicleRecording(int recordingId) = 0;
 
     // GTA mission text is backed by one global GXT block plus the native
     // CMessages/CHud queues. Keep fixed executable calls behind game_sa so

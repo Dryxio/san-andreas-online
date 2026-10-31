@@ -339,11 +339,13 @@ public:
 
     bool RequestVehicleRecording(int recordingId) override;
     bool IsVehicleRecordingLoaded(int recordingId) override;
-    bool StartVehiclePlayback(CVehicle* vehicle, int recordingId) override;
+    bool StartVehiclePlayback(CVehicle* vehicle, int recordingId, bool useCarAI, bool looped) override;
     bool StopVehiclePlayback(CVehicle* vehicle) override;
     bool IsVehiclePlaybackActive(CVehicle* vehicle) override;
     bool RemoveVehicleRecording(int recordingId) override;
     bool SetVehiclePlaybackSpeed(CVehicle* vehicle, float speed) override;
+    int  LoadCustomVehicleRecording(const void* frames, std::size_t size) override;
+    bool IsCustomVehicleRecording(int recordingId) override;
 
     bool LoadMissionTextBlock(const char* blockName) override;
     bool ShowMissionText(const char* key, unsigned int duration, unsigned short flags) override;

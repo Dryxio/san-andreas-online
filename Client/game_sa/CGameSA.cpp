@@ -17,6 +17,8 @@
 #include "SharedUtil.hpp"
 #include "SharedUtil.MemAccess.hpp"
 #include <core/CCoreInterface.h>
+#include <cstring>
+#include <unordered_map>
 #include "C3DMarkersSA.h"
 #include "CAEAudioHardwareSA.h"
 #include "CAERadioTrackManagerSA.h"
@@ -175,6 +177,30 @@ namespace
     constexpr std::uintptr_t FUNC_StopVehiclePlayback = 0x45A280;
     constexpr std::uintptr_t FUNC_IsVehiclePlaybackActive = 0x4594C0;
     constexpr std::uintptr_t FUNC_SetVehiclePlaybackSpeed = 0x459660;
+    constexpr std::uintptr_t FUNC_ChangeCarPlaybackToUseAI = 0x45A360;
+    constexpr std::uintptr_t FUNC_CMemoryMgr_Malloc = 0x72F420;
+    constexpr std::uintptr_t FUNC_CMemoryMgr_Free = 0x72F430;
+
+    // CPath (0x10) and CVehicleStateEachFrame (0x20) from GTA:SA 1.0.
+    struct VehicleRecordingPath
+    {
+        int         number;
+        void*       data;
+        int         size;
+        signed char refCount;
+        char        padding[3];
+    };
+    static_assert(sizeof(VehicleRecordingPath) == VEHICLE_RECORDING_PATH_SIZE, "retail CPath layout");
+    constexpr std::size_t VEHICLE_RECORDING_FRAME_SIZE = 0x20;
+    constexpr std::size_t VEHICLE_RECORDING_FRAME_TIME = 0x00;
+    constexpr std::size_t VEHICLE_RECORDING_FRAME_POSITION = 0x14;
+    constexpr std::size_t MAX_CUSTOM_RECORDING_FRAMES = 65536;
+    // Stock carrec numbers stay far below this. A retired slot keeps a number
+    // no script can request, so FindIndexWithFileNameNumber never selects it.
+    constexpr int                CUSTOM_VEHICLE_RECORDING_FIRST = 50000;
+    constexpr int                RETIRED_VEHICLE_RECORDING = -50000;
+    int                          g_nextCustomVehicleRecording = CUSTOM_VEHICLE_RECORDING_FIRST;
+    std::unordered_map<int, int> g_customVehicleRecordingSlots;
 
     constexpr std::uintptr_t GTA_PATH_FIND = 0x96F050;
     constexpr std::uintptr_t FUNC_StreamZoneModels = 0x40A560;
@@ -4417,6 +4443,11 @@ CObjectGroupPhysicalProperties* CGameSA::GetObjectGroupPhysicalProperties(unsign
 
 bool CGameSA::RequestVehicleRecording(int recordingId)
 {
+    // A resource recording has no IMG entry: its data is already resident and
+    // streaming its RRR model id would read an unrelated archive slot.
+    if (IsCustomVehicleRecording(recordingId))
+        return IsVehicleRecordingLoaded(recordingId);
+
     // Vanilla silently falls back to streaming slot zero for unknown numbers.
     // Reject them here so a resource typo cannot request or later play another
     // recording by accident.
@@ -4435,16 +4466,19 @@ bool CGameSA::IsVehicleRecordingLoaded(int recordingId)
     return reinterpret_cast<bool(__cdecl*)(int)>(FUNC_IsVehicleRecordingLoaded)(recordingId);
 }
 
-bool CGameSA::StartVehiclePlayback(CVehicle* vehicle, int recordingId)
+bool CGameSA::StartVehiclePlayback(CVehicle* vehicle, int recordingId, bool useCarAI, bool looped)
 {
     if (!vehicle || !IsVehicleRecordingLoaded(recordingId) || IsVehiclePlaybackActive(vehicle) || !HasFreeVehiclePlaybackSlot())
         return false;
 
-    // This is the direct 05EB path used by SWEET1. AI and looping variants are
-    // intentionally not inferred from optional Lua flags until their distinct
-    // lifecycle and synchronization behavior has its own conformance slice.
-    reinterpret_cast<void(__cdecl*)(CVehicleSAInterface*, int, bool, bool)>(FUNC_StartVehiclePlayback)(vehicle->GetVehicleInterface(), recordingId, false,
-                                                                                                       false);
+    // 05EB (SWEET1) is the rigid path. With useCarAI, 0x45A980 selects
+    // MISSION_FOLLOW_RECORDED_PATH from the frame closest to the car and keeps
+    // collisions; 0x45A360 (CHANGE_CAR_PLAYBACK_TO_USE_AI) then applies the
+    // physics status GTA itself uses for AI playback, so the autopilot drives.
+    auto* vehicleInterface = vehicle->GetVehicleInterface();
+    reinterpret_cast<void(__cdecl*)(CVehicleSAInterface*, int, bool, bool)>(FUNC_StartVehiclePlayback)(vehicleInterface, recordingId, useCarAI, looped);
+    if (useCarAI && IsVehiclePlaybackActive(vehicle))
+        reinterpret_cast<void(__cdecl*)(CVehicleSAInterface*)>(FUNC_ChangeCarPlaybackToUseAI)(vehicleInterface);
     return IsVehiclePlaybackActive(vehicle);
 }
 
@@ -4467,6 +4501,20 @@ bool CGameSA::IsVehiclePlaybackActive(CVehicle* vehicle)
 
 bool CGameSA::RemoveVehicleRecording(int recordingId)
 {
+    const auto custom = g_customVehicleRecordingSlots.find(recordingId);
+    if (custom != g_customVehicleRecordingSlots.end())
+    {
+        auto& path = reinterpret_cast<VehicleRecordingPath*>(VEHICLE_RECORDING_PATHS)[custom->second];
+        // The loader holds one reference so GTA's unused-recording sweep never
+        // frees resource data. Any extra reference is a live playback.
+        if (path.number != recordingId || path.refCount != 1)
+            return false;
+        reinterpret_cast<void(__cdecl*)(void*)>(FUNC_CMemoryMgr_Free)(path.data);
+        path = {RETIRED_VEHICLE_RECORDING, nullptr, 0, 0, {}};
+        g_customVehicleRecordingSlots.erase(custom);
+        return true;
+    }
+
     if (!IsKnownVehicleRecording(recordingId))
         return false;
 
@@ -4484,6 +4532,71 @@ bool CGameSA::SetVehiclePlaybackSpeed(CVehicle* vehicle, float speed)
     // a stale resource from configuring a later occupant of the global pool.
     reinterpret_cast<void(__cdecl*)(CVehicleSAInterface*, float)>(FUNC_SetVehiclePlaybackSpeed)(vehicle->GetVehicleInterface(), speed);
     return IsVehiclePlaybackActive(vehicle);
+}
+
+int CGameSA::LoadCustomVehicleRecording(const void* frames, std::size_t size)
+{
+    if (!frames || size < 2 * VEHICLE_RECORDING_FRAME_SIZE || size % VEHICLE_RECORDING_FRAME_SIZE != 0 ||
+        size > MAX_CUSTOM_RECORDING_FRAMES * VEHICLE_RECORDING_FRAME_SIZE)
+        return -1;
+
+    // CVehicleRecording::Load prunes any non-initial zero-time frame, and the
+    // rigid player interpolates by time: require strictly increasing times
+    // and finite positions instead of letting GTA read a malformed buffer.
+    const auto*   bytes = static_cast<const unsigned char*>(frames);
+    std::uint32_t previousTime = 0;
+    for (std::size_t offset = 0; offset < size; offset += VEHICLE_RECORDING_FRAME_SIZE)
+    {
+        std::uint32_t time;
+        float         position[3];
+        std::memcpy(&time, bytes + offset + VEHICLE_RECORDING_FRAME_TIME, sizeof(time));
+        std::memcpy(position, bytes + offset + VEHICLE_RECORDING_FRAME_POSITION, sizeof(position));
+        if ((offset != 0 && time <= previousTime) || !std::isfinite(position[0]) || !std::isfinite(position[1]) || !std::isfinite(position[2]))
+            return -1;
+        previousTime = time;
+    }
+
+    // Custom paths live in CPath slots after the IMG-registered ones. Raising
+    // NumPlayBackFiles lets GTA's own number lookup, load check, playback and
+    // reference counting treat them like stock recordings.
+    auto& count = *reinterpret_cast<int*>(VEHICLE_RECORDING_COUNT);
+    auto* paths = reinterpret_cast<VehicleRecordingPath*>(VEHICLE_RECORDING_PATHS);
+    int   index = -1;
+    if (count < 0 || count > MAX_VEHICLE_RECORDINGS)
+        return -1;
+    for (int i = 0; i < count; ++i)
+    {
+        if (paths[i].number == RETIRED_VEHICLE_RECORDING && !paths[i].data && paths[i].refCount == 0)
+        {
+            index = i;
+            break;
+        }
+    }
+    if (index < 0)
+    {
+        if (count >= MAX_VEHICLE_RECORDINGS || paths[count].data)
+            return -1;
+        index = count;
+    }
+
+    // GTA frees recording data with CMemoryMgr::Free, so allocate with its
+    // matching allocator.
+    void* buffer = reinterpret_cast<void*(__cdecl*)(unsigned int, unsigned int)>(FUNC_CMemoryMgr_Malloc)(static_cast<unsigned int>(size), 0);
+    if (!buffer)
+        return -1;
+    std::memcpy(buffer, frames, size);
+
+    const int recordingId = g_nextCustomVehicleRecording++;
+    paths[index] = {recordingId, buffer, static_cast<int>(size), 1, {}};
+    if (index == count)
+        ++count;
+    g_customVehicleRecordingSlots[recordingId] = index;
+    return recordingId;
+}
+
+bool CGameSA::IsCustomVehicleRecording(int recordingId)
+{
+    return g_customVehicleRecordingSlots.contains(recordingId);
 }
 
 bool CGameSA::LoadMissionTextBlock(const char* blockName)
