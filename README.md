@@ -32,15 +32,15 @@ San Andreas Online renders all of this itself. Nothing to install and no ASI fil
 
 **Draw distance**
 
-![Rooftop view over Los Santos: distant buildings are flat low-detail blobs in MTA:SA and resolve into detailed geometry in San Andreas Online](docs/media/compare-draw-distance.jpg)
+![Rooftop view over Los Santos: distant buildings are flat low-detail blobs in the original and resolve into detailed geometry in San Andreas Online](docs/media/compare-draw-distance.jpg)
 
 **Distant lights at night**
 
-![Night view over the city: fogged out beyond a short distance in MTA:SA, full skyline with hundreds of distant lights in San Andreas Online](docs/media/compare-project2dfx.jpg)
+![Night view over the city: fogged out beyond a short distance in the original, full skyline with hundreds of distant lights in San Andreas Online](docs/media/compare-project2dfx.jpg)
 
 **PS2-style color**
 
-![Street-level view in Ganton: neutral colors in MTA:SA, warmer and more saturated PS2-style grading in San Andreas Online](docs/media/compare-skygfx.jpg)
+![Street-level view in Ganton: neutral colors in the original, warmer and more saturated PS2-style grading in San Andreas Online](docs/media/compare-skygfx.jpg)
 
 San Andreas Online also ships its own GTA:SA-inspired menu and server browser, with an optional Discord identity.
 
