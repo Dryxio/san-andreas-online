@@ -277,6 +277,7 @@ public:
     virtual void SetEngineOn(bool bEngineOn) = 0;
     virtual void SetGunSwitchedOff(bool bGunsOff) = 0;
     virtual void SetHandbrakeOn(bool bHandbrakeOn) = 0;
+    virtual void SetBeingCarJacked(bool bBeingCarJacked) = 0;
     virtual void SetLightsOn(bool bLightsOn) = 0;
     virtual void SetOverrideLights(unsigned int uiOverrideLights) = 0;
     virtual void SetTakeLessDamage(bool bTakeLessDamage) = 0;

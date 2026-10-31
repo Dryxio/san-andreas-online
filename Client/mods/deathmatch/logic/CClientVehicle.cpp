@@ -1835,6 +1835,14 @@ void CClientVehicle::SetCollisionEnabled(bool bCollisionEnabled)
     m_bIsCollisionEnabled = bCollisionEnabled;
 }
 
+void CClientVehicle::SetParkingBrake(bool bEnabled)
+{
+    m_bParkingBrake = bEnabled;
+    // Releasing takes effect on the next streamed-in pulse, which clears the
+    // hold it raised; engaging does too, so a streamed-out car is held as soon
+    // as it is created again.
+}
+
 bool CClientVehicle::GetCanShootPetrolTank()
 {
     return m_pVehicle ? m_pVehicle->GetCanShootPetrolTank() : m_bCanShootPetrolTank;
@@ -2403,6 +2411,26 @@ void CClientVehicle::StreamedInPulse()
         {
             // Vehicles have a way of getting their cols back, so we have to force this each frame (not much overhead anyway)
             m_pVehicle->SetUsesCollision(m_bIsCollisionEnabled);
+        }
+
+        // Parking brake. GTA's control of an empty car (CAutomobile::ProcessControl,
+        // STATUS_ABANDONED) forces the handbrake off every frame and brakes at
+        // 0.2 at most, so a parked car slides down any real slope once its
+        // physics wakes up. The same branch applies the handbrake and full brake
+        // while bIsBeingCarJacked is set (GTA holds a car still during a jack),
+        // and that flag has no other effect, so we hold it while nobody drives.
+        // It is cleared only if we raised it, never during a real car-jack.
+        const bool bHoldParked = m_bParkingBrake && !m_pDriver;
+        if (bHoldParked)
+        {
+            m_pVehicle->SetBeingCarJacked(true);
+            m_pVehicle->SetHandbrakeOn(true);
+            m_bParkingBrakeHeld = true;
+        }
+        else if (m_bParkingBrakeHeld)
+        {
+            m_pVehicle->SetBeingCarJacked(false);
+            m_bParkingBrakeHeld = false;
         }
 
         // Handle waiting for the ground to load
@@ -3118,6 +3146,8 @@ void CClientVehicle::Create()
 
         // We've just been streamed in
         m_bJustStreamedIn = true;
+        // A fresh game vehicle has no parking hold yet; the next pulse applies it.
+        m_bParkingBrakeHeld = false;
 
         // Tell the streamer we've created this object
         NotifyCreate();

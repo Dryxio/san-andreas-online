@@ -141,6 +141,7 @@ void CLuaVehicleDefs::LoadFunctions()
         {"getVehicleAudioSettings", ArgumentParser<GetVehicleAudioSettings>},
         {"isVehicleRecordingLoaded", ArgumentParser<IsVehicleRecordingLoaded>},
         {"isVehiclePlaybackActive", ArgumentParser<IsVehiclePlaybackActive>},
+        {"isVehicleParkingBrakeEnabled", ArgumentParser<IsVehicleParkingBrakeEnabled>},
         {"getVehicleDoorLockMode", ArgumentParser<GetVehicleDoorLockMode>},
         {"getVehicleTyresCanBurst", ArgumentParser<GetVehicleTyresCanBurst>},
         {"getVehicleStraightLineDistance", ArgumentParser<GetVehicleStraightLineDistance>},
@@ -226,6 +227,7 @@ void CLuaVehicleDefs::LoadFunctions()
         {"startVehiclePlayback", ArgumentParser<StartVehiclePlayback>},
         {"stopVehiclePlayback", ArgumentParser<StopVehiclePlayback>},
         {"setVehiclePlaybackSpeed", ArgumentParser<SetVehiclePlaybackSpeed>},
+        {"setVehicleParkingBrake", ArgumentParser<SetVehicleParkingBrake>},
     };
 
     // Add functions
@@ -346,6 +348,8 @@ void CLuaVehicleDefs::AddClass(lua_State* luaVM)
     lua_classfunction(luaVM, "setDoorState", "setVehicleDoorState");
     lua_classfunction(luaVM, "setLandingGearDown", "setVehicleLandingGearDown");
     lua_classfunction(luaVM, "setEngineState", "setVehicleEngineState");
+    lua_classfunction(luaVM, "setParkingBrake", "setVehicleParkingBrake");
+    lua_classfunction(luaVM, "isParkingBrakeEnabled", "isVehicleParkingBrakeEnabled");
     lua_classfunction(luaVM, "setLightState", "setVehicleLightState");
     lua_classfunction(luaVM, "setFuelTankExplodable", "setVehicleFuelTankExplodable");
     lua_classfunction(luaVM, "setDirtLevel", "setVehicleDirtLevel");
@@ -416,6 +420,7 @@ void CLuaVehicleDefs::AddClass(lua_State* luaVM)
     lua_classvariable(luaVM, "plateText", "setVehiclePlateText", "getVehiclePlateText");
     lua_classvariable(luaVM, "fuelTankExplodable", "setVehicleFuelTankExplodable", "isVehicleFuelTankExplodable");
     lua_classvariable(luaVM, "engineState", "setVehicleEngineState", "getVehicleEngineState");
+    lua_classvariable(luaVM, "parkingBrake", "setVehicleParkingBrake", "isVehicleParkingBrakeEnabled");
     lua_classvariable(luaVM, "landingGearDown", "setVehicleLandingGearDown", "getVehicleLandingGearDown");
     lua_classvariable(luaVM, "lightsOn", NULL, "areVehicleLightsOn");
     lua_classvariable(luaVM, "overrideLights", "setVehicleOverrideLights", "getVehicleOverrideLights");
@@ -5211,4 +5216,18 @@ void CLuaVehicleDefs::ReleaseVehicleRecordings(CResource* resource)
         g_pGame->RemoveVehicleRecording(owners->first);
         owners = g_vehicleRecordingOwners.erase(owners);
     }
+}
+
+// Parked cars that stay put on slopes but can still be pushed (see
+// CClientVehicle::StreamedInPulse). Client-side: each client applies it to its
+// own copy, so a resource sets it on every client, e.g. on stream-in.
+bool CLuaVehicleDefs::SetVehicleParkingBrake(CClientVehicle* vehicle, bool enabled)
+{
+    vehicle->SetParkingBrake(enabled);
+    return true;
+}
+
+bool CLuaVehicleDefs::IsVehicleParkingBrakeEnabled(CClientVehicle* vehicle)
+{
+    return vehicle->IsParkingBrakeEnabled();
 }

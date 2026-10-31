@@ -325,6 +325,10 @@ public:
     void ReportMissionAudioEvent(unsigned short usSound);
 
     bool IsCollisionEnabled() { return m_bIsCollisionEnabled; };
+    // Parking brake: while nobody drives, the car holds on the handbrake and
+    // full brake like a parked car instead of rolling down a slope.
+    void SetParkingBrake(bool bEnabled);
+    bool IsParkingBrakeEnabled() const noexcept { return m_bParkingBrake; }
     void SetCollisionEnabled(bool bCollisionEnabled);
     bool SetLoadCollisionFlag(bool bLoadCollision);
 
@@ -619,6 +623,8 @@ protected:
     float                        m_fGasPedal;
     bool                         m_bVisible;
     bool                         m_bIsCollisionEnabled;
+    bool                         m_bParkingBrake = false;
+    bool                         m_bParkingBrakeHeld = false;
     bool                         m_bEngineOn;
     bool                         m_bEngineBroken;
     bool                         m_bSireneOrAlarmActive;

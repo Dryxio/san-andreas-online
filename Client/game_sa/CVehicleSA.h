@@ -168,7 +168,7 @@ struct CVehicleFlags
     unsigned char bIsDamaged : 1;             // This vehicle has been damaged and is displaying all its components
     unsigned char bHasBeenOwnedByPlayer : 1;  // To work out whether stealing it is a crime
     unsigned char bFadeOut : 1;               // Fade vehicle out
-    unsigned char bIsBeingCarJacked : 1;      // Fade vehicle out
+    unsigned char bIsBeingCarJacked : 1;      // Holds an empty car: handbrake and full brake (CAutomobile::ProcessControl)
     unsigned char bCreateRoadBlockPeds : 1;   // If this vehicle gets close enough we will create peds (coppers or gang members) round it
     unsigned char bCanBeDamaged : 1;          // Set to FALSE during cut scenes to avoid explosions
     // unsigned char bUsingSpecialColModel : 1;
@@ -698,6 +698,7 @@ public:
     void SetEngineOn(bool bEngineOn);
     void SetGunSwitchedOff(bool bGunsOff) { GetVehicleInterface()->m_nVehicleFlags.bGunSwitchedOff = bGunsOff; };
     void SetHandbrakeOn(bool bHandbrakeOn) { GetVehicleInterface()->m_nVehicleFlags.bIsHandbrakeOn = bHandbrakeOn; };
+    void SetBeingCarJacked(bool bBeingCarJacked) { GetVehicleInterface()->m_nVehicleFlags.bIsBeingCarJacked = bBeingCarJacked; };
     void SetLightsOn(bool bLightsOn) { GetVehicleInterface()->m_nVehicleFlags.bLightsOn = bLightsOn; };
     void SetOverrideLights(unsigned int uiOverrideLights) { GetVehicleInterface()->OverrideLights = uiOverrideLights; }
     void SetTaxiLightOn(bool bLightOn);

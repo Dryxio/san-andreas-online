@@ -219,6 +219,8 @@ public:
     static bool StopVehiclePlayback(lua_State* luaVM, CClientVehicle* vehicle);
     static bool SetVehiclePlaybackSpeed(lua_State* luaVM, CClientVehicle* vehicle, float speed);
     static bool IsVehiclePlaybackActive(CClientVehicle* vehicle);
+    static bool SetVehicleParkingBrake(CClientVehicle* vehicle, bool enabled);
+    static bool IsVehicleParkingBrakeEnabled(CClientVehicle* vehicle);
     static void PulseVehiclePlayback(CClientVehicle* vehicle);
     static void OnVehiclePlaybackDestroy(CClientVehicle* vehicle);
     static void ReleaseVehicleRecordings(class CResource* resource);
