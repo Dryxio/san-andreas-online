@@ -8,5 +8,10 @@
     <export function="pedTrafficSetDemo" type="server" />
     <settings>
         <setting name="*debug" value="false" />
+        <!-- Optional for custom maps: comma-separated civilian skin IDs (GTA
+             civilian models only), and "true" to spawn no SA gangs, cops or
+             dealers. Empty/false keeps GTA's zone-based population. -->
+        <setting name="*civilianModels" value="" />
+        <setting name="*civiliansOnly" value="false" />
     </settings>
 </meta>

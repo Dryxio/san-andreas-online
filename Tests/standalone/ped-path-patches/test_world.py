@@ -1,0 +1,180 @@
+"""Tests for compile_world.py (custom-map roads and sidewalks) and check_patch.py.
+
+Synthetic regions keep the tests independent of GTA's data files. Set
+SAO_STOCK_NODES to a directory of stock NODES*.DAT to also compile a sample
+replacement against the real San Andreas graph.
+"""
+import copy
+import importlib.util
+import os
+from pathlib import Path
+import struct
+import sys
+import tempfile
+import unittest
+
+ROOT = Path(__file__).resolve().parents[3]
+TOOLS = ROOT / 'utils/ped-path-patches'
+sys.path.insert(0, str(TOOLS))
+
+
+def load(name):
+    spec = importlib.util.spec_from_file_location(name, TOOLS / f'{name}.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+world = load('compile_world')
+checker = load('check_patch')
+npchlc = load('npchlc')
+
+
+def centre(area):
+    return world.region_centre(area)
+
+
+def raw_area(area):
+    """Four road nodes (two linked pairs) and two linked sidewalk nodes."""
+    cx, cy = centre(area)
+    nodes = []
+    positions = [(cx - 10, cy, 0), (cx + 10, cy, 0), (cx - 10, cy + 40, 0), (cx + 10, cy + 40, 0), (cx, cy - 20, 0), (cx, cy - 10, 0)]
+    link_targets = [[1], [0], [3], [2], [5], [4]]
+    base = 0
+    links, navi_links, lengths = [], [], []
+    navi = []
+    for i, (pos, targets) in enumerate(zip(positions, link_targets)):
+        n = bytearray(28)
+        struct.pack_into('<3h', n, 8, *(round(v * 8) for v in pos))
+        struct.pack_into('<4H', n, 14, 0x7FFE, base, area, i)
+        n[22] = 0
+        n[23] = 1 + i // 2 if i < 4 else 7
+        n[24] = len(targets)
+        n[25] = 0x10 if i < 4 else 0
+        n[26] = 15
+        nodes.append(bytes(n))
+        for t in targets:
+            links.append((area, t))
+            lengths.append(20 if i < 4 else 10)
+            if i < 4:
+                pair = min(i, t) // 2
+                navi_links.append(pair | (area << 10))
+            else:
+                navi_links.append(0)
+        base += len(targets)
+    for pair in range(2):
+        a, b = positions[pair * 2], positions[pair * 2 + 1]
+        rec = bytearray(14)
+        struct.pack_into('<2h', rec, 0, round((a[0] + b[0]) * 4), round((a[1] + b[1]) * 4))
+        struct.pack_into('<HH', rec, 4, area, pair * 2)
+        struct.pack_into('<2b', rec, 8, -100, 0)
+        rec[11] = 0x09
+        navi.append(bytes(rec))
+    count = len(links)
+    out = struct.pack('<5I', 6, 4, 2, len(navi), count) + b''.join(nodes) + b''.join(navi)
+    out += b''.join(struct.pack('<HH', *l) for l in links) + struct.pack('<HH', 0xFFFF, 0) * 192
+    out += struct.pack(f'<{count}H', *navi_links)
+    out += bytes(lengths) + bytes(192) + bytes(count) + bytes(192)
+    return out
+
+
+def write_regions(directory):
+    for a in range(64):
+        (directory / f'NODES{a}.DAT').write_bytes(raw_area(a))
+
+
+class WorldTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        write_regions(self.dir)
+        self.areas, self.stock = world.load(self.dir)
+        cx, cy = centre(9)
+        self.spec = {
+            'roads': {'nodes': [{'id': 'a', 'position': [cx - 20, cy, 1]}, {'id': 'b', 'position': [cx + 20, cy, 1]}],
+                      'edges': [{'a': 'a', 'b': 'b', 'lanes': [1, 0]}]},
+            'sidewalks': {'nodes': [{'id': 'p', 'position': [cx, cy + 5, 1]}, {'id': 'q', 'position': [cx, cy + 25, 1]}],
+                          'edges': [{'a': 'p', 'b': 'q'}]},
+        }
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def compile(self, spec=None):
+        return world.compile_world(self.areas, self.stock, spec or self.spec)
+
+    def test_compiles_and_passes_client_checks(self):
+        data, summary = self.compile()
+        self.assertEqual(data[:8], b'NPEDPAT2')
+        self.assertEqual(summary['replaced'], [9])
+        report = checker.check(self.areas, self.stock, checker.parse(data))
+        self.assertEqual(report['regionsEdited'], 1)
+
+    def test_deterministic(self):
+        self.assertEqual(self.compile()[0], self.compile(copy.deepcopy(self.spec))[0])
+
+    def test_navi_on_lower_endpoint_with_one_way_lanes(self):
+        data, _ = self.compile()
+        patch = checker.parse(data)
+        roads = patch[9]['roads']
+        link = roads[0]['links'][0]
+        navi = patch[9]['navi'][link[2] & 0x3FF]
+        self.assertEqual(tuple(navi['attached']), (9, 0))
+        # a -> b only: a is the lower address, so lanes run away from it.
+        self.assertEqual(navi['lanes'], 1 << 3)
+
+    def test_unused_slots_are_parked_not_emptied(self):
+        data, _ = self.compile()
+        roads = checker.parse(data)[9]['roads']
+        parked = [n for n, e in roads.items() if e['flood'] == world.PARKED_FLOOD]
+        self.assertEqual(sorted(parked), [2, 3])
+        self.assertTrue(all(roads[n]['links'] and roads[n]['flags'] & 0x20 for n in parked))
+
+    def test_single_leftover_slot_is_rejected(self):
+        cx, cy = centre(9)
+        self.spec['roads']['nodes'].append({'id': 'c', 'position': [cx + 30, cy + 30, 1]})
+        self.spec['roads']['edges'].append({'a': 'b', 'b': 'c'})
+        with self.assertRaises(ValueError):
+            self.compile()
+
+    def test_rejects_long_edges_and_capacity(self):
+        cx, cy = centre(9)
+        self.spec['roads']['nodes'][1]['position'] = [cx + 300, cy, 1]
+        with self.assertRaises(ValueError):
+            self.compile()
+        spec = copy.deepcopy(self.spec)
+        spec['roads']['nodes'] = [{'id': str(i), 'position': [cx + i * 5, cy, 1]} for i in range(5)]
+        spec['roads']['edges'] = [{'a': str(i), 'b': str(i + 1)} for i in range(4)]
+        with self.assertRaises(ValueError):
+            self.compile(spec)
+
+    def test_checker_rejects_asymmetric_road(self):
+        data, _ = self.compile()
+        patch = checker.parse(data)
+        patch[9]['roads'][0]['links'][0] = (patch[9]['roads'][0]['links'][0][0], 99, patch[9]['roads'][0]['links'][0][2])
+        with self.assertRaises(ValueError):
+            checker.check(self.areas, self.stock, patch)
+
+    def test_npchlc_arc_and_lanes(self):
+        positions = [(0, 0, 0), (10, 10, 0), (0, 10, 0)]
+        conn = npchlc.Conn(0, 0, 1, 2, 'cars', 0, 40, 0, 1, 1)
+        points = npchlc.polyline(positions, conn, 2)
+        self.assertEqual(points[0], positions[0])
+        self.assertEqual(points[-1], positions[1])
+        for p in points:
+            self.assertAlmostEqual(((p[0] - 0) ** 2 + (p[1] - 10) ** 2) ** 0.5, 10, places=5)
+
+
+@unittest.skipUnless(os.environ.get('SAO_STOCK_NODES'), 'set SAO_STOCK_NODES to the stock NODES directory')
+class StockTests(unittest.TestCase):
+    def test_replacing_a_region_passes_client_checks(self):
+        areas, stock = world.load(Path(os.environ['SAO_STOCK_NODES']))
+        cx, cy = centre(33)
+        spec = {'roads': {'nodes': [{'id': 'a', 'position': [cx, cy, 10]}, {'id': 'b', 'position': [cx + 50, cy, 10]}],
+                          'edges': [{'a': 'a', 'b': 'b'}]}}
+        data, _ = world.compile_world(areas, stock, spec)
+        checker.check(areas, stock, checker.parse(data))
+
+
+if __name__ == '__main__':
+    unittest.main()

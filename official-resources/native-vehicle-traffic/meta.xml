@@ -10,5 +10,9 @@
     <script src="client.lua" type="client" cache="false" />
     <settings>
         <setting name="*debug" value="false" />
+        <!-- Optional pools for custom maps, as comma-separated model IDs.
+             Empty keeps GTA's zone-based (popcycle) cars and occupants. -->
+        <setting name="*vehicleModels" value="" />
+        <setting name="*occupantModels" value="" />
     </settings>
 </meta>

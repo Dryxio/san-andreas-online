@@ -128,6 +128,25 @@ for _, group in pairs(VEHICLE_GROUPS) do
     end
 end
 for _, model in ipairs(CLASS_TEST_MODELS) do ALLOWED_MODELS[model] = true end
+
+-- Optional server-defined pools. GTA's popcycle groups describe San Andreas
+-- zones; a custom map (for example one built on resource path patches) has
+-- its own car mix and civilians, so a server can list them instead. Empty
+-- settings keep the retail popcycle behaviour.
+local function modelList(name, minimum, maximum)
+    local list, seen = {}, {}
+    for token in tostring(get(name) or ""):gmatch("[^%s,;]+") do
+        local model = tonumber(token)
+        if model and model % 1 == 0 and model >= minimum and model <= maximum and not seen[model] then
+            seen[model] = true
+            list[#list + 1] = model
+        end
+    end
+    return list
+end
+local CUSTOM_VEHICLE_MODELS = modelList("vehicleModels", 400, 611)
+local CUSTOM_OCCUPANT_MODELS = modelList("occupantModels", 7, 288)
+for _, model in ipairs(CUSTOM_VEHICLE_MODELS) do ALLOWED_MODELS[model] = true end
 local function selectVehicleModel(owner, session, mode)
     if mode == "interaction" then return 426 end
     if mode == "passengers" or mode == "smooth" or mode == "soak" then return 401 end
@@ -1389,13 +1408,16 @@ requestCandidate = function(owner, mode, attempt, generation, chainRequestedAt)
     local model = false
     if not (mode == "production" or mode == "density" or mode == "spatial") then
         model = selectVehicleModel(owner, nextSession, mode)
+    elseif #CUSTOM_VEHICLE_MODELS > 0 then
+        model = CUSTOM_VEHICLE_MODELS[math.random(#CUSTOM_VEHICLE_MODELS)]
     end
     pendingCandidates[nextSession] = {
         session = nextSession, owner = owner, players = ps, mode = mode, model = model or nil,
         attempt = attempt, requestedAt = getTickCount(), chainRequestedAt = chainRequestedAt or getTickCount(), generation = generation,
         predictionLead = predictionLead or 0, playerSpeed = playerSpeed or 0, predictionHorizon = predictionHorizon or 0,
     }
-    triggerClientEvent(owner, "carTraffic:requestCandidate", resourceRoot, nextSession, model, x, y, z)
+    triggerClientEvent(owner, "carTraffic:requestCandidate", resourceRoot, nextSession, model, x, y, z,
+        #CUSTOM_OCCUPANT_MODELS > 0 and CUSTOM_OCCUPANT_MODELS or false)
     trace("candidate-request", {session = nextSession, owner = getPlayerName(owner), model = model or "native", attempt = attempt,
         x = x, y = y, z = z, predictionLead = predictionLead or 0, playerSpeed = playerSpeed or 0,
         predictionHorizon = predictionHorizon or 0, inFlight = pendingCandidateCount(owner)})

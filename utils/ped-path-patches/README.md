@@ -85,6 +85,62 @@ Only edits and fingerprints are distributed, not the original graph files.
 - Patches do not fix unrelated event-profile, collision-support or synchronization
   problems, and do not provide a server-side route calculator.
 
+## Roads on custom maps (NPEDPAT2)
+
+The same API also loads road edits, so GTA's own driving AI (and SA:O's
+native traffic) drives a custom map's roads. Version 2 files add road node and
+navi (`CCarPathLink`) edits to each region record; version 1 files load as
+before. Write them with `compile_world.py`, never by hand:
+
+```
+python3 utils/ped-path-patches/compile_world.py --paths /path/to/stock/nodes \
+  --spec map.json --output map.npp
+python3 utils/ped-path-patches/check_patch.py --paths /path/to/stock/nodes map.npp
+```
+
+The spec lists road nodes/edges (`lanes: [a_to_b, b_to_a]`, optional `speed`
+0 slow / 1 normal / 2 highway, `light` 0/1/2/`"auto"`) and sidewalk
+nodes/edges (`crossing` flags). Every region that holds a custom node, plus
+any listed in `replace`, loses all its stock roads and sidewalks. The
+compiler then:
+
+- places custom road nodes in that region's stock vehicle slots. Native
+  searches split each region's nodes at the stock vehicle count, so roads can
+  be moved or parked but never added: a region's road capacity is its stock
+  vehicle node count;
+- writes one navi record per edge, attached to the lower node address and
+  pointing toward it, at the midpoint, with lanes for each direction. A
+  one-way road keeps both links and gets zero lanes on one side; dropping a
+  reverse link would hang GTA's route search;
+- parks unused vehicle slots as linked pairs under the region with zero lanes
+  (a road node with no links divides by zero during car placement);
+- assigns flood groups per connected network and recomputes dead-end hints;
+- removes links from neighbouring regions into replaced ones, and replaces a
+  neighbour region too if one of its roads would be left with no links.
+
+`check_patch.py` repeats the client's checks against the stock data before
+you ship a file. The client refuses road files whose effective graph breaks
+any rule above, with an error such as `asymmetric-road-link`.
+
+Limits: 1024 navi records per region; 12 links per road node; edges 1-255 m
+(longer ones must be split); custom roads do not connect to surviving stock
+roads. A region that would keep exactly one unused road slot is refused; add
+or remove one node there. Road edits in a region use the same one-patch-per-
+region rule as sidewalks, and navi ids above the stock count stay reserved
+until the client restarts.
+
+### Importing NPC-HLC traffic paths
+
+`import_npchlc.py` turns NPC-HLC (`npchlc_traffic/paths/maps/*`) graphs into a
+spec: car connections become roads, pedestrian ones sidewalks, curved
+connections are followed as arcs, and NPC-HLC lanes (right lanes n1 to n2,
+left lanes n2 to n1, none for two-way) become GTA lanes. Forbidden-turn pairs
+have no GTA equivalent and are reported.
+
+```
+python3 utils/ped-path-patches/import_npchlc.py weston --output map.json
+```
+
 ## Tester handoff
 
 Use `test-resources/ped-path-patch-test`. Its synthetic Idlewood detour is a

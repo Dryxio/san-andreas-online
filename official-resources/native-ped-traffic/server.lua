@@ -237,6 +237,25 @@ end
 
 local enabled = false
 local debugEnabled = tostring(get("debug")) == "true"
+
+-- Optional settings for custom maps. GTA's popcycle describes San Andreas
+-- zones (Grove Street gangs, LS cops, dealers); a server with its own world
+-- can keep GTA's native walking AI and placement but choose who walks.
+-- Only models GTA knows as civilians are accepted, so the native ped type
+-- (male/female civilian) stays consistent with the model.
+-- Stored on config: this chunk is at Lua's 200-local limit.
+config.customCivilianModels = {}
+do
+    local seen = {}
+    for token in tostring(get("civilianModels") or ""):gmatch("[^%s,;]+") do
+        local model = tonumber(token)
+        if model and civilianPedTypeByModel[model] and not seen[model] then
+            seen[model] = true
+            config.customCivilianModels[#config.customCivilianModels + 1] = model
+        end
+    end
+end
+config.civiliansOnly = tostring(get("civiliansOnly")) == "true"
 local populationTracePath = "@population-server.jsonl"
 local populationTraceRows = 0
 local populationTraceLimit = 20000
@@ -593,6 +612,11 @@ local function calculateNativeTargets(profile, applyDemoDensity)
     local dealerNativeTarget = profile.dealerTarget * densityMultiplier
     local gangNativeTarget = populationWorld.randomGangMembers and profile.gangTarget * densityMultiplier or 0
     local copNativeTarget = profile.effectiveCopTarget * densityMultiplier
+    if config.civiliansOnly then
+        -- The zone still sets the overall density; its slots all go to civilians.
+        civilianNativeTarget = civilianNativeTarget + dealerNativeTarget + gangNativeTarget + copNativeTarget
+        dealerNativeTarget, gangNativeTarget, copNativeTarget = 0, 0, 0
+    end
     local supportedGangWeight = 0
     for index = 1, 8 do supportedGangWeight = supportedGangWeight + profile.gangWeights[index] end
     if profile.totalGangWeight > 0 and supportedGangWeight < profile.totalGangWeight then
@@ -2754,6 +2778,13 @@ local function spawnCandidate(player, candidate, selection)
         candidate.x, candidate.y, candidate.z, populationClass, nil, nil, selection.predictionLead)
     if not owner then
         return false, "no-owner"
+    end
+
+    if populationClass == "civilian" and #config.customCivilianModels > 0 then
+        -- GTA still chose where and how this civilian walks; only the skin
+        -- comes from the server pool, with its matching native civilian type.
+        modelOrReason = config.customCivilianModels[math.random(#config.customCivilianModels)]
+        candidate.pedType = civilianPedTypeByModel[modelOrReason]
     end
 
     local ped = createPed(modelOrReason, candidate.x, candidate.y, candidate.z, direction * 45)
@@ -5688,7 +5719,10 @@ setTimer(function()
 
         local selection = nativeTarget and selectPopulationForPlayer(player)
         local visibilityLanesAvailable = countPedCandidateVisibilityChecks(player) < PED_PRODUCTION_MAX_VISIBILITY_LANES
-        if selection and selection.populationClass == "civilian" and not request and visibilityLanesAvailable then
+        -- GTA picks a couple's two skins together; a custom civilian pool
+        -- cannot honour that pairing, so couples are skipped with a pool.
+        if selection and selection.populationClass == "civilian" and not request and visibilityLanesAvailable and
+            #config.customCivilianModels == 0 then
             local sample15, taken = coupleRuntime.roll()
             local demoRemaining = selection.demoPhysicalCeiling and
                 math.min(selection.demoPhysicalCeiling - selection.physicalCount,

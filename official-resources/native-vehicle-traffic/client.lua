@@ -678,7 +678,7 @@ addEventHandler("carTraffic:detach", resourceRoot, function(id, epoch)
 end)
 
 addEvent("carTraffic:requestCandidate", true)
-addEventHandler("carTraffic:requestCandidate", resourceRoot, function(session, model, x, y, z)
+addEventHandler("carTraffic:requestCandidate", resourceRoot, function(session, model, x, y, z, occupantPool)
     if type(getAmbientVehicleSpawnCandidate) ~= "function" then
         return triggerServerEvent("carTraffic:candidate", resourceRoot, session, false, "api-missing")
     end
@@ -725,8 +725,20 @@ addEventHandler("carTraffic:requestCandidate", resourceRoot, function(session, m
     local candidate, reason = getAmbientVehicleSpawnCandidate(x, y, z, model)
     local occupantModels
     local occupantModelReferences = {}
-    if type(candidate) == "table" and type(getAmbientVehicleOccupantModelCandidate) == "function" then
+    local occupantSource = false
+    if type(candidate) == "table" and type(occupantPool) == "table" and #occupantPool > 0 then
+        -- The server configured its own civilians (custom maps): skip GTA's
+        -- zone-based occupant choice but keep the same streaming checks below.
+        occupantSource = true
+        occupantModels = {}
+        for index = 1, 4 do
+            occupantModels[index] = occupantPool[math.random(#occupantPool)]
+        end
+    elseif type(candidate) == "table" and type(getAmbientVehicleOccupantModelCandidate) == "function" then
+        occupantSource = true
         occupantModels = getAmbientVehicleOccupantModelCandidate(model, 4)
+    end
+    if type(candidate) == "table" and occupantSource then
         if type(occupantModels) ~= "table" or #occupantModels < 1 then
             candidate = false
             reason = "occupant-model-unavailable"

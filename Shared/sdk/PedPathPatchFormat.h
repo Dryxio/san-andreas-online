@@ -16,11 +16,25 @@ namespace PedPathPatch
     constexpr unsigned MaxLinks = 32768;
     constexpr unsigned DynamicLinks = 192;
     constexpr unsigned MaxFileSize = 4 * 1024 * 1024;
+    // Vehicle (road) data. Navi links store a 10-bit id and a 6-bit area, so a
+    // region can host at most 1024 navi records. FindLinksToGo (0x42B470)
+    // scans 12 link slots of a vehicle node.
+    constexpr unsigned MaxNavi = 1024;
+    constexpr unsigned MaxVehicleLinks = 12;
+    constexpr unsigned NaviSize = 14;
 
     struct Address
     {
         std::uint16_t area{}, node{};
     };
+    inline bool operator<(Address a, Address b)
+    {
+        return a.area != b.area ? a.area < b.area : a.node < b.node;
+    }
+    inline bool operator==(Address a, Address b)
+    {
+        return a.area == b.area && a.node == b.node;
+    }
     struct Link
     {
         Address      to;
@@ -33,11 +47,45 @@ namespace PedPathPatch
         std::uint8_t                width{}, flood{}, enabled{};
         std::vector<Link>           links;
     };
+    // A road link. Both directions of an edge carry the same navi record and
+    // length: GTA's car route search and FollowPath rely on that pairing.
+    struct VehicleLink
+    {
+        Address       to;
+        std::uint8_t  length{};
+        std::uint16_t navi{};  // (id & 0x3FF) | (area << 10)
+    };
+    // Vehicle node identities are fixed to the stock range [0, vehicles): every
+    // native search uses that split, so roads are moved or parked, never added.
+    struct VehicleEdit
+    {
+        std::uint16_t               node{};
+        std::array<std::int16_t, 3> position{};
+        std::uint8_t                width{}, flood{};
+        std::uint8_t                flags{};  // +0x18 bits 4-7 (dead end, switched off, roadblock, water)
+        std::uint8_t                speed{};  // +0x19 bits 4-5 speed class
+        std::uint8_t                spawn{};  // +0x1A spawn probability (low) and behaviour (high)
+        std::vector<VehicleLink>    links;
+    };
+    // CCarPathLink: where cars actually drive on an edge (midpoint, direction
+    // toward attachedTo, lanes each way, traffic light).
+    struct NaviEdit
+    {
+        std::uint16_t               id{};
+        std::array<std::int16_t, 2> position{};
+        Address                     attached;
+        std::array<std::int8_t, 2>  direction{};
+        std::uint8_t                width{}, lanes{};  // bits 0-2 toward attached, 3-5 away, 6 light direction
+        std::uint8_t                light{};           // +0xC bits 0-1
+    };
     struct Area
     {
         unsigned                     id{}, nodes{}, vehicles{}, addresses{}, carLinks{};
         std::array<std::uint8_t, 32> baseDigest{};
         std::vector<Edit>            edits;
+        std::vector<VehicleEdit>     vehicleEdits;
+        std::vector<NaviEdit>        naviEdits;
+        bool                         Changed() const { return !edits.empty() || !vehicleEdits.empty() || !naviEdits.empty(); }
     };
     struct Patch
     {
@@ -84,7 +132,10 @@ namespace PedPathPatch
         Reader r(data, size);
         char   magic[8];
         r.Bytes(magic, 8);
-        if (std::memcmp(magic, "NPEDPAT1", 8))
+        // Version 2 appends road (vehicle node and navi) edits to every area
+        // record; version 1 files remain pedestrian-only and load unchanged.
+        const bool roads = !std::memcmp(magic, "NPEDPAT2", 8);
+        if (!roads && std::memcmp(magic, "NPEDPAT1", 8))
             throw std::runtime_error("unsupported-patch-format");
         const auto count = r.U32();
         if (count != Areas)
@@ -141,7 +192,72 @@ namespace PedPathPatch
                     throw std::runtime_error("too-many-links");
                 a.edits.push_back(std::move(e));
             }
-            changed |= !a.edits.empty();
+            if (roads)
+            {
+                const auto vehicleEdits = r.U32();
+                if (vehicleEdits > a.vehicles)
+                    throw std::runtime_error("invalid-area-header");
+                std::set<unsigned> vehicleSeen;
+                for (unsigned j = 0; j < vehicleEdits; ++j)
+                {
+                    VehicleEdit e;
+                    e.node = r.U16();
+                    for (auto& p : e.position)
+                        p = static_cast<std::int16_t>(r.U16());
+                    e.width = r.U8();
+                    e.flood = r.U8();
+                    e.flags = r.U8();
+                    e.speed = r.U8();
+                    e.spawn = r.U8();
+                    const auto links = r.U8();
+                    // Zero links divides by zero in GenerateCarCreationCoors2;
+                    // unused nodes are parked as linked pairs instead.
+                    if (e.node >= a.vehicles || !vehicleSeen.insert(e.node).second || (e.flags & 0x0F) || e.speed > 3 || !links || links > MaxVehicleLinks ||
+                        e.width > 127)
+                        throw std::runtime_error("invalid-vehicle-node");
+                    std::set<unsigned> targets, navis;
+                    for (unsigned k = 0; k < links; ++k)
+                    {
+                        VehicleLink l;
+                        l.to.area = r.U16();
+                        l.to.node = r.U16();
+                        l.length = r.U8();
+                        l.navi = r.U16();
+                        // Distinct navi per node: GenerateOneRandomCar loops
+                        // until it finds a link with a different navi record.
+                        if (l.to.area >= Areas || !l.length || !targets.insert((unsigned(l.to.area) << 16) | l.to.node).second ||
+                            !navis.insert(l.navi).second || (l.to.area == a.id && l.to.node == e.node))
+                            throw std::runtime_error("invalid-vehicle-link");
+                        e.links.push_back(l);
+                    }
+                    linkCount += links;
+                    if (linkCount > MaxLinks - DynamicLinks)
+                        throw std::runtime_error("too-many-links");
+                    a.vehicleEdits.push_back(std::move(e));
+                }
+                const auto naviEdits = r.U32();
+                if (naviEdits > MaxNavi)
+                    throw std::runtime_error("invalid-area-header");
+                std::set<unsigned> naviSeen;
+                for (unsigned j = 0; j < naviEdits; ++j)
+                {
+                    NaviEdit n;
+                    n.id = r.U16();
+                    for (auto& p : n.position)
+                        p = static_cast<std::int16_t>(r.U16());
+                    n.attached.area = r.U16();
+                    n.attached.node = r.U16();
+                    n.direction[0] = static_cast<std::int8_t>(r.U8());
+                    n.direction[1] = static_cast<std::int8_t>(r.U8());
+                    n.width = r.U8();
+                    n.lanes = r.U8();
+                    n.light = r.U8();
+                    if (n.id >= MaxNavi || !naviSeen.insert(n.id).second || n.attached.area >= Areas || n.width > 127 || n.lanes > 0x7F || n.light > 3)
+                        throw std::runtime_error("invalid-navi-record");
+                    a.naviEdits.push_back(n);
+                }
+            }
+            changed |= a.Changed();
             patch.areas.emplace(a.id, std::move(a));
         }
         if (!changed || !r.Done())
@@ -159,6 +275,16 @@ namespace PedPathPatch
                             targetEdit = &candidate;
                     if ((targetEdit && (!targetEdit->enabled || targetEdit->flood != e.flood)) || (!targetEdit && l.to.node >= target->second.nodes))
                         throw std::runtime_error("invalid-ped-link-target");
+                }
+        // Road links may only target stock vehicle slots of a declared area;
+        // the effective graph is checked again against live data on load.
+        for (const auto& entry : patch.areas)
+            for (const auto& e : entry.second.vehicleEdits)
+                for (const auto& l : e.links)
+                {
+                    const auto target = patch.areas.find(l.to.area);
+                    if (target == patch.areas.end() || l.to.node >= target->second.vehicles || patch.areas.find(l.navi >> 10) == patch.areas.end())
+                        throw std::runtime_error("missing-vehicle-link-dependency");
                 }
         return patch;
     }
