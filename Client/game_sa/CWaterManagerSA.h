@@ -168,8 +168,9 @@ public:
     CWaterVertex* CreateVertex(const CVector& vecPosition);
 
     CWaterPoly* GetPolyAtPoint(const CVector& vecPosition);
-    CWaterPoly* CreateQuad(const CVector& vecBL, const CVector& vecBR, const CVector& vecTL, const CVector& vecTR, bool bShallow = false);
-    CWaterPoly* CreateTriangle(const CVector& vec1, const CVector& vec2, const CVector& vec3, bool bShallow = false);
+    CWaterPoly* CreateQuad(const CVector& vecBL, const CVector& vecBR, const CVector& vecTL, const CVector& vecTR,
+                           unsigned char ucFlags = WaterFlags::Default);
+    CWaterPoly* CreateTriangle(const CVector& vec1, const CVector& vec2, const CVector& vec3, unsigned char ucFlags = WaterFlags::Default);
     bool        DeletePoly(CWaterPoly* pPoly);
 
     bool GetWaterLevel(const CVector& vecPosition, float* pfLevel, bool ignoreDistanceToWaterThreshold, CVector* pvecUnknown);

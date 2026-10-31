@@ -23,13 +23,14 @@ extern CCoreInterface* g_pCore;
 
 extern int ms_iNumNonDefaultAndNonZeroVertices;
 
-#define WATER_VISIBLE 1
-#define WATER_SHALLOW 2
-// SA's own polygon flag bits are bToBeRendered (1), bInvisible (2) and
-// bLimitedDepth (4); water.dat flag 3 (swimming pools) sets bLimitedDepth.
+// SA's own polygon flag bits are bToBeRendered (1, set again every frame for
+// visible polygons), bInvisible (2) and bLimitedDepth (4). water.dat's flag
+// column uses different numbers (see WaterFlags.h); SA converts them when it
+// loads the file, and ToNativePolyFlags below does the same for createWater.
 // The native depth test reads bit 4, so the extended lookup must too:
-// testing WATER_SHALLOW (2) made every pool count as bottomless water, which
-// put tunnels under pools "underwater" (issue #128).
+// testing 2 instead made every pool count as bottomless water, which put
+// tunnels under pools "underwater" (issue #128).
+#define WATER_SA_INVISIBLE     2
 #define WATER_SA_LIMITED_DEPTH 4
 
 using namespace std;
@@ -1005,7 +1006,20 @@ CWaterPoly* CWaterManagerSA::GetPolyAtPoint(const CVector& vecPosition)
     return NULL;
 }
 
-CWaterPoly* CWaterManagerSA::CreateQuad(const CVector& vecBL, const CVector& vecBR, const CVector& vecTL, const CVector& vecTR, bool bShallow)
+// Same conversion SA's AddWaterLevelQuad/AddWaterLevelTriangle (0x6E7EF0 and
+// 0x6E7D40) apply to water.dat's flag column, so scripted water with flag 3
+// behaves exactly like the game's own swimming pools.
+static WORD ToNativePolyFlags(unsigned char ucFlags)
+{
+    WORD wFlags = 0;
+    if (!(ucFlags & WaterFlags::Visible))
+        wFlags |= WATER_SA_INVISIBLE;
+    if (ucFlags & WaterFlags::Shallow)
+        wFlags |= WATER_SA_LIMITED_DEPTH;
+    return wFlags;
+}
+
+CWaterPoly* CWaterManagerSA::CreateQuad(const CVector& vecBL, const CVector& vecBR, const CVector& vecTL, const CVector& vecTR, unsigned char ucFlags)
 {
     if (*(DWORD*)VAR_NumWaterQuads >= NUM_NewWaterQuads)
         return NULL;
@@ -1040,9 +1054,7 @@ CWaterPoly* CWaterManagerSA::CreateQuad(const CVector& vecBL, const CVector& vec
     pInterface->m_wVertexIDs[1] = pV2->GetID();
     pInterface->m_wVertexIDs[2] = pV3->GetID();
     pInterface->m_wVertexIDs[3] = pV4->GetID();  // This is ok
-    pInterface->m_wFlags = WATER_VISIBLE;
-    if (bShallow)
-        pInterface->m_wFlags |= WATER_SHALLOW;
+    pInterface->m_wFlags = ToNativePolyFlags(ucFlags);
 
     WORD                                 wID = (WORD)(pInterface - g_pWaterManager->m_QuadPool);
     std::vector<CWaterZoneSA*>::iterator it;
@@ -1057,7 +1069,7 @@ CWaterPoly* CWaterManagerSA::CreateQuad(const CVector& vecBL, const CVector& vec
     return pPoly;
 }
 
-CWaterPoly* CWaterManagerSA::CreateTriangle(const CVector& vec1, const CVector& vec2, const CVector& vec3, bool bShallow)
+CWaterPoly* CWaterManagerSA::CreateTriangle(const CVector& vec1, const CVector& vec2, const CVector& vec3, unsigned char ucFlags)
 {
     if (*(DWORD*)VAR_NumWaterVertices >= NUM_NewWaterVertices)
         return NULL;
@@ -1088,9 +1100,7 @@ CWaterPoly* CWaterManagerSA::CreateTriangle(const CVector& vec1, const CVector& 
     pInterface->m_wVertexIDs[0] = pV1->GetID();
     pInterface->m_wVertexIDs[1] = pV2->GetID();
     pInterface->m_wVertexIDs[2] = pV3->GetID();
-    pInterface->m_wFlags = WATER_VISIBLE;
-    if (bShallow)
-        pInterface->m_wFlags |= WATER_SHALLOW;
+    pInterface->m_wFlags = ToNativePolyFlags(ucFlags);
 
     WORD                                 wID = (WORD)(pInterface - g_pWaterManager->m_TrianglePool);
     std::vector<CWaterZoneSA*>::iterator it;

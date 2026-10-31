@@ -1117,7 +1117,11 @@ bool CEntityAddPacket::Write(NetBitStreamInterface& BitStream) const
                         BitStream.Write((short)vecVertex.fY);
                         BitStream.Write(vecVertex.fZ);
                     }
-                    BitStream.WriteBit(pWater->IsWaterShallow());
+                    // Shallow then visible, as water.dat flag bits (WaterFlags.h).
+                    // The visible bit is new in netcode 0x1E7.
+                    const unsigned char ucFlags = pWater->GetWaterFlags();
+                    BitStream.WriteBit((ucFlags & WaterFlags::Shallow) != 0);
+                    BitStream.WriteBit((ucFlags & WaterFlags::Visible) != 0);
                     break;
                 }
 

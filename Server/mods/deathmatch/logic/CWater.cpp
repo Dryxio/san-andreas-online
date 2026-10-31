@@ -14,7 +14,7 @@
 #include "CWaterManager.h"
 #include "CLogger.h"
 
-CWater::CWater(CWaterManager* pWaterManager, CElement* pParent, EWaterType waterType, bool bShallow) : CElement(pParent)
+CWater::CWater(CWaterManager* pWaterManager, CElement* pParent, EWaterType waterType, unsigned char ucFlags) : CElement(pParent)
 {
     m_pWaterManager = pWaterManager;
 
@@ -28,7 +28,7 @@ CWater::CWater(CWaterManager* pWaterManager, CElement* pParent, EWaterType water
     if (m_WaterType == QUAD)
         m_Vertices[3] = CVector(10.0f, 10.0f, 0.0f);
 
-    m_bShallow = bShallow;
+    m_ucFlags = ucFlags;
 
     if (m_pWaterManager)
         m_pWaterManager->AddToList(this);
@@ -134,8 +134,23 @@ bool CWater::ReadSpecialData(const int iLine)
         }
     }
 
-    if (!GetCustomDataBool("shallow", m_bShallow, true))
-        m_bShallow = false;
+    // Map files keep the old shallow="true" attribute (invisible water, as in
+    // MTA) and can use flags="0".."3" from water.dat instead, which wins.
+    bool bShallow = false;
+    if (!GetCustomDataBool("shallow", bShallow, true))
+        bShallow = false;
+    m_ucFlags = WaterFlags::FromLegacyShallow(bShallow);
+
+    int iFlags;
+    if (GetCustomDataInt("flags", iFlags, true))
+    {
+        if (!WaterFlags::IsValid(iFlags))
+        {
+            CLogger::ErrorPrintf("Bad 'flags' attribute in <water> (line %d), expected 0 to 3\n", iLine);
+            return false;
+        }
+        m_ucFlags = static_cast<unsigned char>(iFlags);
+    }
 
     RoundVertices();
     if (!Valid())

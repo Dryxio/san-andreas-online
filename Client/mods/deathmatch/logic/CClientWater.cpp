@@ -12,7 +12,7 @@
 
 extern CGame* g_pGame;
 
-CClientWater::CClientWater(CClientManager* pManager, ElementID ID, CVector& vecBL, CVector& vecBR, CVector& vecTL, CVector& vecTR, bool bShallow)
+CClientWater::CClientWater(CClientManager* pManager, ElementID ID, CVector& vecBL, CVector& vecBR, CVector& vecTL, CVector& vecTR, unsigned char ucFlags)
     : ClassInit(this), CClientEntity(ID)
 {
     m_pManager = pManager;
@@ -24,14 +24,14 @@ CClientWater::CClientWater(CClientManager* pManager, ElementID ID, CVector& vecB
     m_Vertices.push_back(vecBR);
     m_Vertices.push_back(vecTL);
     m_Vertices.push_back(vecTR);
-    m_bShallow = bShallow;
+    m_ucFlags = ucFlags;
 
     RelateDimension(m_pManager->GetWaterManager()->GetDimension());
 
     m_pWaterManager->AddToList(this);
 }
 
-CClientWater::CClientWater(CClientManager* pManager, ElementID ID, CVector& vecL, CVector& vecR, CVector& vecTB, bool bShallow)
+CClientWater::CClientWater(CClientManager* pManager, ElementID ID, CVector& vecL, CVector& vecR, CVector& vecTB, unsigned char ucFlags)
     : ClassInit(this), CClientEntity(ID)
 {
     m_pManager = pManager;
@@ -42,7 +42,7 @@ CClientWater::CClientWater(CClientManager* pManager, ElementID ID, CVector& vecL
     m_Vertices.push_back(vecL);
     m_Vertices.push_back(vecR);
     m_Vertices.push_back(vecTB);
-    m_bShallow = bShallow;
+    m_ucFlags = ucFlags;
 
     RelateDimension(m_pManager->GetWaterManager()->GetDimension());
     m_pWaterManager->AddToList(this);
@@ -60,9 +60,9 @@ bool CClientWater::Create()
         return false;
 
     if (m_bTriangle)
-        m_pPoly = g_pGame->GetWaterManager()->CreateTriangle(m_Vertices[0], m_Vertices[1], m_Vertices[2], m_bShallow);
+        m_pPoly = g_pGame->GetWaterManager()->CreateTriangle(m_Vertices[0], m_Vertices[1], m_Vertices[2], m_ucFlags);
     else
-        m_pPoly = g_pGame->GetWaterManager()->CreateQuad(m_Vertices[0], m_Vertices[1], m_Vertices[2], m_Vertices[3], m_bShallow);
+        m_pPoly = g_pGame->GetWaterManager()->CreateQuad(m_Vertices[0], m_Vertices[1], m_Vertices[2], m_Vertices[3], m_ucFlags);
 
 #ifdef MTA_DEBUG
     g_pCore->GetConsole()->Printf("CClientWater::Create %d", GetID());

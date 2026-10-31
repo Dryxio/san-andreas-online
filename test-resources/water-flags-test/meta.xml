@@ -1,0 +1,4 @@
+<meta>
+    <info author="SA:O" name="Water flags test" type="script" version="1.0.0" />
+    <script src="server.lua" type="server" />
+</meta>

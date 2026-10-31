@@ -10,6 +10,7 @@
  *****************************************************************************/
 
 #include "StdInc.h"
+#include <WaterFlags.h>
 
 void CLuaWaterDefs::LoadFunctions()
 {
@@ -68,13 +69,13 @@ void CLuaWaterDefs::AddClass(lua_State* luaVM)
 
 int CLuaWaterDefs::CreateWater(lua_State* luaVM)
 {
-    //  water createWater ( float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3 [, float x4, float y4, float z4 ] [, bool
-    //  bShallow = false ] )
-    CVector v1;
-    CVector v2;
-    CVector v3;
-    CVector v4;
-    bool    bShallow;
+    //  water createWater ( float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3 [, float x4, float y4, float z4 ]
+    //  [, int flags = 1 | bool bShallow = false ] )
+    CVector       v1;
+    CVector       v2;
+    CVector       v3;
+    CVector       v4;
+    unsigned char ucFlags;
 
     CScriptArgReader argStream(luaVM);
     argStream.ReadVector3D(v1);
@@ -85,7 +86,7 @@ int CLuaWaterDefs::CreateWater(lua_State* luaVM)
     {
         argStream.ReadVector3D(v4);
     }
-    argStream.ReadBool(bShallow, false);
+    ucFlags = WaterFlags::ReadArgument(argStream);
 
     if (!argStream.HasErrors())
     {
@@ -96,9 +97,9 @@ int CLuaWaterDefs::CreateWater(lua_State* luaVM)
             CClientWater* pWaterElement;
 
             if (bIsQuad)
-                pWaterElement = CStaticFunctionDefinitions::CreateWater(*pResource, &v1, &v2, &v3, &v4, bShallow);
+                pWaterElement = CStaticFunctionDefinitions::CreateWater(*pResource, &v1, &v2, &v3, &v4, ucFlags);
             else
-                pWaterElement = CStaticFunctionDefinitions::CreateWater(*pResource, &v1, &v2, &v3, NULL, bShallow);
+                pWaterElement = CStaticFunctionDefinitions::CreateWater(*pResource, &v1, &v2, &v3, NULL, ucFlags);
 
             lua_pushelement(luaVM, pWaterElement);
             return 1;

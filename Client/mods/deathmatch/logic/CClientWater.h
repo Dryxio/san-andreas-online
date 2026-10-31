@@ -16,8 +16,9 @@ class CClientWater final : public CClientEntity
 {
     DECLARE_CLASS(CClientWater, CClientEntity)
 public:
-    CClientWater(CClientManager* pManager, ElementID ID, CVector& vecBL, CVector& vecBR, CVector& vecTL, CVector& vecTR, bool bShallow = false);
-    CClientWater(CClientManager* pManager, ElementID ID, CVector& vecL, CVector& vecR, CVector& vecTB, bool bShallow = false);
+    CClientWater(CClientManager* pManager, ElementID ID, CVector& vecBL, CVector& vecBR, CVector& vecTL, CVector& vecTR,
+                 unsigned char ucFlags = WaterFlags::Default);
+    CClientWater(CClientManager* pManager, ElementID ID, CVector& vecL, CVector& vecR, CVector& vecTB, unsigned char ucFlags = WaterFlags::Default);
     ~CClientWater();
 
     bool Create();
@@ -40,7 +41,7 @@ private:
     CWaterPoly*          m_pPoly;
     CClientWaterManager* m_pWaterManager;
     bool                 m_bTriangle;  // Is this water a triangle or a quad type?
-    bool                 m_bShallow;   // Shallow water?
+    unsigned char        m_ucFlags;    // water.dat-style WaterFlags (visible, shallow)
     std::vector<CVector> m_Vertices;   // List of vertices for this water
 
     friend class CClientWaterManager;

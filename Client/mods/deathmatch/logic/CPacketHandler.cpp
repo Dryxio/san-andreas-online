@@ -4338,18 +4338,24 @@ retry:
                         vecVertices[i].fY = sY;
                     }
 
+                    // Shallow then visible, as water.dat flag bits (WaterFlags.h).
+                    // Before netcode 0x1E7 only a "shallow" bit was sent, which
+                    // meant invisible water; that epoch can no longer connect.
                     bool bShallow = false;
+                    bool bVisible = true;
                     bitStream.ReadBit(bShallow);
+                    bitStream.ReadBit(bVisible);
+                    const unsigned char ucFlags = (bVisible ? WaterFlags::Visible : 0) | (bShallow ? WaterFlags::Shallow : 0);
 
                     CClientWater* pWater = NULL;
                     if (ucNumVertices == 3)
                     {
-                        pWater = new CClientWater(g_pClientGame->GetManager(), EntityID, vecVertices[0], vecVertices[1], vecVertices[2], bShallow);
+                        pWater = new CClientWater(g_pClientGame->GetManager(), EntityID, vecVertices[0], vecVertices[1], vecVertices[2], ucFlags);
                     }
                     else
                     {
                         pWater =
-                            new CClientWater(g_pClientGame->GetManager(), EntityID, vecVertices[0], vecVertices[1], vecVertices[2], vecVertices[3], bShallow);
+                            new CClientWater(g_pClientGame->GetManager(), EntityID, vecVertices[0], vecVertices[1], vecVertices[2], vecVertices[3], ucFlags);
                     }
                     if (!pWater->Exists())
                     {

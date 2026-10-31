@@ -69,23 +69,25 @@ int CLuaWaterDefs::CreateWater(lua_State* luaVM)
 
     CVector          v1, v2, v3, v4;
     CVector*         pv4 = NULL;
-    bool             bShallow;
+    unsigned char    ucFlags;
     CScriptArgReader argStream(luaVM);
     argStream.ReadVector3D(v1);
     argStream.ReadVector3D(v2);
     argStream.ReadVector3D(v3);
 
-    if (argStream.NextCouldBeNumber())
+    // Look two arguments ahead (z4), like the client: a triangle followed by a
+    // numeric flags argument would otherwise be read as a quad.
+    if (argStream.NextCouldBeNumber(2))
     {
         argStream.ReadVector3D(v4);
         pv4 = &v4;
     }
 
-    argStream.ReadBool(bShallow, false);
+    ucFlags = WaterFlags::ReadArgument(argStream);
 
     if (!argStream.HasErrors())
     {
-        CWater* pWater = CStaticFunctionDefinitions::CreateWater(pLuaMain->GetResource(), &v1, &v2, &v3, pv4, bShallow);
+        CWater* pWater = CStaticFunctionDefinitions::CreateWater(pLuaMain->GetResource(), &v1, &v2, &v3, pv4, ucFlags);
         if (pWater)
         {
             CElementGroup* pGroup = pLuaMain->GetResource()->GetElementGroup();

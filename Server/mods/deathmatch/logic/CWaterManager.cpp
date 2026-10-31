@@ -30,9 +30,9 @@ CWaterManager::~CWaterManager()
     DeleteAll();
 }
 
-CWater* CWaterManager::Create(CWater::EWaterType waterType, CElement* pParent, bool bShallow)
+CWater* CWaterManager::Create(CWater::EWaterType waterType, CElement* pParent, unsigned char ucFlags)
 {
-    CWater* const pWater = new CWater(this, pParent, waterType, bShallow);
+    CWater* const pWater = new CWater(this, pParent, waterType, ucFlags);
 
     if (pWater->GetID() == INVALID_ELEMENT_ID)
     {

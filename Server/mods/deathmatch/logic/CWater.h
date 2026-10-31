@@ -12,6 +12,7 @@
 #pragma once
 
 #include "CElement.h"
+#include <WaterFlags.h>
 
 class CWaterManager;
 
@@ -24,7 +25,7 @@ public:
         QUAD
     };
 
-    CWater(CWaterManager* pWaterManager, CElement* pParent, EWaterType waterType = QUAD, bool bShallow = false);
+    CWater(CWaterManager* pWaterManager, CElement* pParent, EWaterType waterType = QUAD, unsigned char ucFlags = WaterFlags::Default);
     ~CWater();
 
     bool IsEntity() { return true; }
@@ -36,7 +37,8 @@ public:
 
     void Unlink();
 
-    bool       IsWaterShallow() const { return m_bShallow; }
+    // water.dat-style flags (WaterFlags.h): bit 1 visible, bit 2 shallow.
+    unsigned char GetWaterFlags() const { return m_ucFlags; }
     EWaterType GetWaterType() const { return m_WaterType; }
     int        GetNumVertices() const { return m_WaterType == TRIANGLE ? 3 : 4; }
     bool       GetVertex(int index, CVector& vecPosition) const;
@@ -56,5 +58,5 @@ private:
 
     SFixedArray<CVector, 4> m_Vertices;
     EWaterType              m_WaterType;
-    bool                    m_bShallow;
+    unsigned char           m_ucFlags;
 };

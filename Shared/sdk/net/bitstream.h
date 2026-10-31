@@ -107,6 +107,11 @@ enum class eBitStreamVersion : unsigned short
     NativeTaskAnimationHeadingPresentation = NativeWorldStaticWorldV3ServerSelectedSet,
     NeonEncryptedAssetTransport = NativeWorldStaticWorldV3ServerSelectedSet,
 
+    // Water entities carry a "visible" bit after "shallow", so createWater can
+    // use all four water.dat flags. Carried by netcode epoch 0x1E7.
+    // 2026-10-31
+    NeonWaterDatFlags = NativeWorldStaticWorldV3ServerSelectedSet,
+
     // This allows us to automatically increment the BitStreamVersion when things are added to this enum.
     // Make sure you only add things above this comment.
     Next,
@@ -121,6 +126,7 @@ static_assert(eBitStreamVersion::NativeTaskAnimationPresentation == eBitStreamVe
 static_assert(eBitStreamVersion::NativeTaskDriveByPresentation == eBitStreamVersion::NativeWorldStaticWorldV3ServerSelectedSet);
 static_assert(eBitStreamVersion::NativeTaskAnimationHeadingPresentation == eBitStreamVersion::NativeWorldStaticWorldV3ServerSelectedSet);
 static_assert(eBitStreamVersion::NeonEncryptedAssetTransport == eBitStreamVersion::NativeWorldStaticWorldV3ServerSelectedSet);
+static_assert(eBitStreamVersion::NeonWaterDatFlags == eBitStreamVersion::NativeWorldStaticWorldV3ServerSelectedSet);
 static_assert(eBitStreamVersion::Latest == eBitStreamVersion::NativeWorldStaticWorldV3ServerSelectedSet);
 
 class NetBitStreamInterface : public CRefCountable

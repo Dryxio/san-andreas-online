@@ -22,7 +22,7 @@ public:
     CWaterManager();
     ~CWaterManager();
 
-    CWater* Create(CWater::EWaterType waterType, CElement* pParent, bool bShallow = false);
+    CWater* Create(CWater::EWaterType waterType, CElement* pParent, unsigned char ucFlags = WaterFlags::Default);
     CWater* CreateFromXML(CElement* pParent, CXMLNode& Node, CEvents* pEvents);
     void    DeleteAll();
 
