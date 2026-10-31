@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstring>
@@ -256,6 +257,18 @@ namespace PedPathPatch
                         throw std::runtime_error("invalid-navi-record");
                     a.naviEdits.push_back(n);
                 }
+                // New navi ids above the stock count must be contiguous, like
+                // added nodes: a gap would be an all-zero record that native
+                // code could still index.
+                unsigned added = 0, highest = 0;
+                for (const auto& n : a.naviEdits)
+                    if (n.id >= a.carLinks)
+                    {
+                        ++added;
+                        highest = std::max<unsigned>(highest, n.id + 1);
+                    }
+                if (added && highest != a.carLinks + added)
+                    throw std::runtime_error("non-contiguous-added-navi");
             }
             changed |= a.Changed();
             patch.areas.emplace(a.id, std::move(a));

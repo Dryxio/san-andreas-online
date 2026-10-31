@@ -155,6 +155,20 @@ class WorldTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             checker.check(self.areas, self.stock, patch)
 
+    def test_checker_rejects_dead_end_hint_on_ring(self):
+        # GTA starts the dead-end walk with the other end of a link as the
+        # previous node, so a hint on a branchless ring never terminates.
+        cx, cy = centre(9)
+        ring = [[cx - 20, cy - 20, 1], [cx + 20, cy - 20, 1], [cx + 20, cy + 20, 1], [cx - 20, cy + 20, 1]]
+        spec = {'roads': {'nodes': [{'id': str(i), 'position': p} for i, p in enumerate(ring)],
+                          'edges': [{'a': str(i), 'b': str((i + 1) % 4)} for i in range(4)]}}
+        data, _ = self.compile(spec)
+        patch = checker.parse(data)
+        checker.check(self.areas, self.stock, patch)
+        patch[9]['roads'][0]['flags'] |= 0x10
+        with self.assertRaises(ValueError):
+            checker.check(self.areas, self.stock, patch)
+
     def test_npchlc_arc_and_lanes(self):
         positions = [(0, 0, 0), (10, 10, 0), (0, 10, 0)]
         conn = npchlc.Conn(0, 0, 1, 2, 'cars', 0, 40, 0, 1, 1)

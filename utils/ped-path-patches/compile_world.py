@@ -143,9 +143,25 @@ def compile_world(areas, stock, spec):
     # neighbour left without links cannot stay (zero links divides by zero),
     # so its whole region joins the replacement and the closure repeats.
     stock_roads = {(a, n): stock[a].road(n) for a in range(AREAS) for n in range(areas[a].vehicles)}
+
+    def unsafe_neighbour(key, links):
+        # A neighbour that loses links becomes an edited node, which the client
+        # holds to the derived rules. A few stock nodes break them (17 lie
+        # outside their region; four LS airport tunnel navi hang on a third
+        # node), so such a region is replaced instead of edited.
+        a, n = key
+        x, y = struct.unpack_from('<2h', areas[a].nodes[n], 8)
+        if region_of(x / 8, y / 8) != a:
+            return True
+        for to, _, navi in links:
+            host, nid = navi >> 10, navi & 0x3FF
+            if nid >= len(stock[host].navi) or struct.unpack_from('<HH', stock[host].navi[nid], 4) != min(key, to):
+                return True
+        return False
     while True:
         survivors = {k: [l for l in v if l[0][0] not in replace] for k, v in stock_roads.items() if k[0] not in replace}
         orphaned = {k[0] for k, v in survivors.items() if not v}
+        orphaned |= {k[0] for k, v in survivors.items() if len(v) != len(stock_roads[k]) and unsafe_neighbour(k, v)}
         if not orphaned:
             break
         replace |= orphaned
@@ -350,7 +366,11 @@ def compile_world(areas, stock, spec):
                                    enabled=False, links=[])
 
     validate(areas, stock, vehicle_edits, navi_edits)
-    return emit(areas, ped_edits, vehicle_edits, navi_edits), dict(
+    data = emit(areas, ped_edits, vehicle_edits, navi_edits)
+    # Never hand out a file the client would refuse: repeat its full checks.
+    import check_patch
+    check_patch.check(areas, stock, check_patch.parse(data))
+    return data, dict(
         replaced=sorted(replace), roadNodes=len(roads), roadEdges=len(road_edges), sidewalkNodes=len(walks),
         sidewalkEdges=len(walk_edges), roadNetworks=len(flood_of), sidewalkNetworks=len(ped_flood))
 

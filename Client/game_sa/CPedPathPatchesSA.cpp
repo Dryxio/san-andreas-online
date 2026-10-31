@@ -114,6 +114,7 @@ namespace
         unsigned                  rejectedNaviCount{}, naviHighWater{};
         std::unique_ptr<Navi[]>   navi;
         std::array<bool, MaxNavi> naviEdited{};
+        bool                      roads{};
     };
     struct Lease
     {
@@ -373,12 +374,17 @@ namespace
     void Service::Publish(unsigned a, const Area* patch)
     {
         auto& r = m_regions[a];
-        if (!r.loaded || !r.nodes || r.faulted)
+        if (!r.loaded || !r.nodes || !r.navi || r.faulted)
             return;
+        // GTA sets the bridge/crossing light bit at runtime; keep it for
+        // edited stock records too, which are rebuilt below.
+        std::array<std::uint8_t, MaxNavi> bridge{};
         // Preserve GTA's current vehicle and dynamic-link state. Only the
         // pedestrian records owned by the patch differ from the baseline.
         if (r.published)
         {
+            for (unsigned id = 0; id < r.cars; ++id)
+                bridge[id] = r.navi[id][12] & 0x04;
             for (unsigned id = 0; id < r.count; ++id)
                 if (!r.edited[id])
                     r.originalNodes[id] = r.nodes[id];
@@ -397,6 +403,9 @@ namespace
         std::copy_n(r.originalNodes, r.count, r.nodes.get());
         if (r.cars)
             std::copy_n(r.originalNavi, r.cars, r.navi.get());
+        if (!r.published)
+            for (unsigned id = 0; id < r.cars; ++id)
+                bridge[id] = r.navi[id][12] & 0x04;
         for (unsigned i = r.cars; i < r.naviHighWater; ++i)
         {
             // Retired custom roads keep their geometry for cars still on them
@@ -468,8 +477,7 @@ namespace
             for (const auto& edit : patch->naviEdits)
             {
                 r.naviEdited[edit.id] = true;
-                auto&              v = r.navi[edit.id];
-                const std::uint8_t bridge = edit.id < r.cars ? (v[12] & 0x04) : 0;
+                auto& v = r.navi[edit.id];
                 v[0] = static_cast<std::uint8_t>(edit.position[0] & 255);
                 v[1] = static_cast<std::uint8_t>((static_cast<std::uint16_t>(edit.position[0]) >> 8) & 255);
                 v[2] = static_cast<std::uint8_t>(edit.position[1] & 255);
@@ -482,7 +490,7 @@ namespace
                 v[9] = static_cast<std::uint8_t>(edit.direction[1]);
                 v[10] = edit.width;
                 v[11] = edit.lanes;
-                v[12] = static_cast<std::uint8_t>(edit.light | bridge);
+                v[12] = static_cast<std::uint8_t>(edit.light | bridge[edit.id]);
                 v[13] = 0;
             }
         }
@@ -536,8 +544,11 @@ namespace
         PedCount(a) = r.highWater - r.vehicles;
         r.published = true;
         // Car placement caches starting nodes for a while; drop the cache so
-        // new traffic never starts from a road that was just moved.
-        *reinterpret_cast<std::uint32_t*>(CarCreationCacheTime) = 0;
+        // new traffic never starts from a road that was just moved. Regions
+        // that never carried road edits keep the retail cache behaviour.
+        r.roads |= patch && (!patch->vehicleEdits.empty() || !patch->naviEdits.empty());
+        if (r.roads)
+            *reinterpret_cast<std::uint32_t*>(CarCreationCacheTime) = 0;
     }
     void Service::Unloading(unsigned a)
     {
@@ -816,14 +827,31 @@ namespace
                     if (naviArea != a && naviArea != to.area && naviArea != RegionOf(mx, my))
                         throw std::runtime_error("road-navi-host-region");
                 }
-                if (node.edited && (node.flags & 0x10))
+            }
+        // Second pass, once every link is known to be in range. Car placement
+        // calls ThisNodeWillLeadIntoADeadEnd (0x44D310) on a node carrying the
+        // dead-end hint, with the other end of one of its links as "previous".
+        // It follows the single other neighbour whose behaviour is 0 or >10
+        // and never stops on a branchless ring, so replay it exactly, from
+        // every hinted node (edited or not: editing its neighbours can close a
+        // stock chain into a ring) and in every starting direction.
+        std::size_t roadNodes = 0;
+        for (const auto& area : graph)
+            roadNodes += area.size();
+        std::size_t budget = 8000000;
+        for (unsigned a = 0; a < Areas; ++a)
+            for (unsigned id = 0; id < graph[a].size(); ++id)
+            {
+                const auto& node = graph[a][id];
+                if (!(node.flags & 0x10))
+                    continue;
+                const Address self{static_cast<std::uint16_t>(a), static_cast<std::uint16_t>(id)};
+                for (const auto& first : node.links)
                 {
-                    // ThisNodeWillLeadIntoADeadEnd follows single successors
-                    // and never stops on a branchless ring.
-                    Address prev{0xFFFF, 0xFFFF}, cur = self;
-                    for (unsigned step = 0;; ++step)
+                    Address prev = first.to, cur = self;
+                    for (std::size_t step = 0;; ++step)
                     {
-                        if (step > MaxNodes * 2)
+                        if (step > roadNodes || !budget--)
                             throw std::runtime_error("road-dead-end-hint-on-loop");
                         unsigned next = 0;
                         Address  following{};
@@ -907,6 +935,10 @@ namespace
                     auto naviLinks = std::make_unique<std::uint16_t[]>(MaxLinks);
                     auto lengths = std::make_unique<std::uint8_t[]>(MaxLinks);
                     auto intersections = std::make_unique<std::uint8_t[]>(MaxLinks);
+                    // Allocate the navi copy before adopting any slab, so an
+                    // allocation failure never leaves a half-equipped region.
+                    auto navi = r.navi ? std::move(r.navi) : std::make_unique<Navi[]>(MaxNavi);
+                    r.navi = std::move(navi);
                     r.naviLinks = std::move(naviLinks);
                     r.nodes = std::move(nodes);
                     r.links = std::move(links);

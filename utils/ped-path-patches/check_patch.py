@@ -139,15 +139,26 @@ def check(stock_areas, stock, patch):
                 mid = ((node['pos'][0] + target['pos'][0]) / 16, (node['pos'][1] + target['pos'][1]) / 16)
                 if host[0] not in (a, to[0], world.region_of(*mid)):
                     raise ValueError(f'navi {host} is hosted outside the regions of {key}-{to}')
-        if node['edited'] and node['flags'] & 0x10:
-            prev, cur = None, key
-            for _ in range(10000):
+    # Car placement calls ThisNodeWillLeadIntoADeadEnd (0x44D310) on a hinted
+    # node with the other end of one of its links as "previous"; it follows the
+    # single other neighbour with behaviour 0 or >10 and never stops on a ring.
+    # Replay it from every hinted node, edited or not, in every direction.
+    for key, node in road.items():
+        if not node['flags'] & 0x10:
+            continue
+        for first, _, _ in node['links']:
+            prev, cur = first, key
+            for _ in range(len(road) + 1):
                 nxt = [t for t, _, _ in road[cur]['links'] if t != prev and (road[t]['spawn'] >> 4 == 0 or road[t]['spawn'] >> 4 > 10)]
                 if len(nxt) != 1:
                     break
                 prev, cur = cur, nxt[0]
             else:
                 raise ValueError(f'dead-end hint on {key} loops')
+    for a, p in patch.items():
+        added = sorted(n for n in p['navi'] if n >= p['cars'])
+        if added and added != list(range(p['cars'], p['cars'] + len(added))):
+            raise ValueError(f'region {a} adds non-contiguous navi ids')
     counts = {a: max([p['cars']] + [nid + 1 for nid in p['navi']]) for a, p in patch.items()}
     if max(counts.values()) > 1024:
         raise ValueError('a region exceeds 1024 navi records')
