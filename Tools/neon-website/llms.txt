@@ -19,6 +19,7 @@ Website: https://sanandreasonline.com (English) and https://sanandreasonline.com
 - Maps up to 20 × 20 km (-10,000 to +9,999), more than ten times the area of San Andreas, streamed by GTA's own engine from native IDE/IPL/COL/IMG files.
 - Keeps MTA's Lua scripting and resource system, and opens more of the engine to Lua: native AI tasks, mission audio, vehicle recordings, fire, object physics and fracture, ropes, birds, foliage, model 2DFX lights, runtime collision, custom vehicle audio, larger engine pools (4,096 coronas and 3D markers, 8,192 visible entities). SA-MP maps load directly.
 - Signed automatic updates, a San Andreas-style main menu and server browser, optional Discord sign-in. Installs next to an existing MTA:SA without touching it.
+- Suited to building gamemodes with AI coding assistants (Claude, ChatGPT, Codex and others): the free, local SA:O CLI gives an agent the complete MTA + SA:O Lua API with exact arguments and client/server sides, checks the project for mistakes such as a client function called on the server, and can start a test server and client to confirm the resources really load in game. Human scripters use the same Lua API and docs; the CLI is optional.
 
 ## Status
 
@@ -33,5 +34,6 @@ Website: https://sanandreasonline.com (English) and https://sanandreasonline.com
 - [Download for Windows](https://sanandreasonline.com/download): latest installer
 - [Documentation and Lua API](https://mtasa-neon-wiki.vercel.app/neon)
 - [Full feature comparison with MTA:SA](https://mtasa-neon-wiki.vercel.app/neon/features)
+- [SA:O CLI for AI coding agents](https://mtasa-neon-wiki.vercel.app/neon/cli): API lookup, project checks and in-game tests for agents
 - [Source code and releases](https://github.com/Dryxio/san-andreas-online)
 - [Discord](https://discord.com/invite/mgFRd2AzF8)

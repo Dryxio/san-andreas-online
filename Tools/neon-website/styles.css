@@ -470,6 +470,12 @@ a.lang { display: inline-flex; align-items: center; justify-content: center; tex
 }
 .card__d { display: block; margin: 6px 18px 0; font-size: 14px; color: #c9aeb3; }
 .creators__cta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 44px; }
+/* A side note for people who build with AI coding agents. Kept as plain text under the
+   cards on purpose: it is useful information, not one of the headline features. */
+.creators__ai { max-width: 820px; margin-top: 40px; padding-left: 16px; border-left: 2px solid rgba(242, 140, 24, .6); font-size: 15px; color: #d4b9be; }
+.creators__ai strong { color: var(--sa-white); font-weight: 600; }
+.creators__ai a { color: var(--neon); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.creators__ai a:hover { text-decoration: underline; }
 
 /* ---------- FAQ ---------- */
 .faq { border-top: 1px solid var(--line); }
@@ -496,6 +502,7 @@ a.lang { display: inline-flex; align-items: center; justify-content: center; tex
 .faq details[open] summary::after { transform: translateY(-30%) rotate(90deg); }
 .faq summary:hover { color: var(--sa-blue); }
 .faq details p { padding: 0 48px 24px 0; color: var(--text-dim); }
+.faq details p a { color: var(--neon); font-weight: 600; }
 
 /* ---------- Outro ---------- */
 .outro {
