@@ -10,3 +10,5 @@ Static download page for players. No build step: `index.html`, `styles.css`, `ma
 - `/download` redirects to the latest `MTA-Neon-Setup.exe` release asset (see `vercel.json`).
 
 Deploy: `vercel deploy --prod` from this folder.
+
+Domain: `sanandreasonline.com` (registered at Namecheap, DNS records there point at Vercel). `www.` and the old `mtasa-neon.vercel.app` address redirect to it permanently so search engines index one address; `robots.txt` and `sitemap.xml` name it as well.
