@@ -4687,6 +4687,54 @@ static void __declspec(naked) HOOK_CAutomobile__ProcessEntityCollision_ForkliftC
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
+// Letting AI bicycles leave ghost physics
+//
+// A mission vehicle whose "load collision" flag is cleared (setVehicleLoadCollisionFlag(veh, false),
+// which native traffic applies to every unit) is switched to STATUS_GHOST when the world collision
+// under it is not resident, and back to STATUS_PHYSICS once it is. That switch lives in
+// CCarCtrl::SwitchBetweenPhysicsAndGhost, which only runs from CCarCtrl::SteerAICarWithPhysics.
+//
+// CBike::ProcessAI sends STATUS_GHOST to its STATUS_PHYSICS block, so motorbikes keep steering and
+// recover. CBmx::ProcessAI (BMX, Bike, Mountain Bike) bounds its jump table at status 9, so ghost
+// falls through to the default and never calls the AI again: the rider keeps its last steering
+// angle forever, circling in place without ground contact. Reaching ghost requires a mission
+// vehicle with the load-collision flag cleared, which retail scripts never do for bicycles. Route
+// ghost to the physics block, exactly as CBike does.
+//////////////////////////////////////////////////////////////////////////////////////////
+// >>> 0x6C14A5 | 0F 87 53 05 00 00    | ja      0x6C19FE                     ; status > 9: default
+//     0x6C14AB | FF 24 85 0C 20 6C 00 | jmp     dword ptr [eax * 4 + 0x6C200C]
+#define HOOKPOS_CBmx__ProcessAI_GhostStatus  0x6C14A5
+#define HOOKSIZE_CBmx__ProcessAI_GhostStatus 6
+static const DWORD CONTINUE_CBmx__ProcessAI_GhostStatus = 0x6C14AB;
+static const DWORD DEFAULT_CBmx__ProcessAI_GhostStatus = 0x6C19FE;
+static const DWORD PHYSICS_CBmx__ProcessAI_GhostStatus = 0x6C1C5A;
+
+static void __declspec(naked) HOOK_CBmx__ProcessAI_GhostStatus()
+{
+    MTA_VERIFY_HOOK_LOCAL_SIZE;
+
+    // clang-format off
+    __asm
+    {
+        // eax holds the entity status (byte [esi + 0x36] >> 3). The original "cmp eax, 9" flags are
+        // recomputed so the hook does not depend on them surviving the jump. ebx is still zero, as
+        // the physics block expects.
+        cmp     eax, 9
+        jbe     dispatchTable
+        cmp     eax, 12                 // STATUS_GHOST
+        je      ghostAsPhysics
+        jmp     DEFAULT_CBmx__ProcessAI_GhostStatus
+
+        dispatchTable:
+        jmp     CONTINUE_CBmx__ProcessAI_GhostStatus
+
+        ghostAsPhysics:
+        jmp     PHYSICS_CBmx__ProcessAI_GhostStatus
+    }
+    // clang-format on
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
 //
 // CMultiplayerSA::InitHooks_Vehicles
 //
@@ -4843,4 +4891,5 @@ void CMultiplayerSA::InitHooks_Vehicles()
     EZHookInstall(CVehicle__UpdateTrailerLink_TowTruck);
     EZHookInstall(CVehicle__UpdateTractorLink_TowTruck);
     EZHookInstall(CAutomobile__Constructor_TowTruckBouncingPanel);
+    EZHookInstall(CBmx__ProcessAI_GhostStatus);
 }
