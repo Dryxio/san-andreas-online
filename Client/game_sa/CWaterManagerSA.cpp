@@ -25,6 +25,12 @@ extern int ms_iNumNonDefaultAndNonZeroVertices;
 
 #define WATER_VISIBLE 1
 #define WATER_SHALLOW 2
+// SA's own polygon flag bits are bToBeRendered (1), bInvisible (2) and
+// bLimitedDepth (4); water.dat flag 3 (swimming pools) sets bLimitedDepth.
+// The native depth test reads bit 4, so the extended lookup must too:
+// testing WATER_SHALLOW (2) made every pool count as bottomless water, which
+// put tunnels under pools "underwater" (issue #128).
+#define WATER_SA_LIMITED_DEPTH 4
 
 using namespace std;
 
@@ -206,7 +212,7 @@ namespace
                     *smallWaves = (v1.smallWaves - v0.smallWaves) * xT + (v2.smallWaves - v0.smallWaves) * yT + v0.smallWaves;
                 }
             }
-            limitedDepth = (static_cast<CWaterQuadSA*>(polygon)->GetInterface()->m_wFlags & WATER_SHALLOW) != 0;
+            limitedDepth = (static_cast<CWaterQuadSA*>(polygon)->GetInterface()->m_wFlags & WATER_SA_LIMITED_DEPTH) != 0;
         }
         else
         {
@@ -239,7 +245,7 @@ namespace
                     *smallWaves = (v2.smallWaves - v1.smallWaves) * yT + (v0.smallWaves - v1.smallWaves) * inverseX + v1.smallWaves;
                 }
             }
-            limitedDepth = (static_cast<CWaterTriangleSA*>(polygon)->GetInterface()->m_wFlags & WATER_SHALLOW) != 0;
+            limitedDepth = (static_cast<CWaterTriangleSA*>(polygon)->GetInterface()->m_wFlags & WATER_SA_LIMITED_DEPTH) != 0;
         }
 
         return !bigWaves || TestExtendedWaterLevelHeight(position.fZ, *waterLevel, limitedDepth);
