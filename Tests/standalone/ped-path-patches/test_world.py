@@ -6,6 +6,7 @@ replacement against the real San Andreas graph.
 """
 import copy
 import importlib.util
+import math
 import os
 from pathlib import Path
 import struct
@@ -28,6 +29,7 @@ def load(name):
 world = load('compile_world')
 checker = load('check_patch')
 npchlc = load('npchlc')
+importer = load('import_npchlc')
 
 
 def centre(area):
@@ -177,6 +179,36 @@ class WorldTests(unittest.TestCase):
         self.assertEqual(points[-1], positions[1])
         for p in points:
             self.assertAlmostEqual(((p[0] - 0) ** 2 + (p[1] - 10) ** 2) ** 0.5, 10, places=5)
+
+    def test_junction_loop_becomes_one_node_with_approaches(self):
+        # NPC-HLC junction: a 10 m square of turn connections with three
+        # 50 m roads leaving it. GTA should get one junction node, a node
+        # 10 m up each long approach, and the far ends untouched.
+        square = {'s0': [0, 0, 0], 's1': [10, 0, 0], 's2': [10, 10, 0], 's3': [0, 10, 0]}
+        arms = {'w': [-50, 0, 0], 'e': [60, 0, 0], 'n': [5, 60, 0]}
+        nodes = [dict(id=k, position=p) for k, p in {**square, **arms}.items()]
+        edges = [dict(a=f's{i}', b=f's{(i + 1) % 4}', lanes=[1, 1]) for i in range(4)]
+        edges += [dict(a='w', b='s0', lanes=[1, 1]), dict(a='s1', b='e', lanes=[1, 1]), dict(a='n', b='s2', lanes=[1, 1])]
+        part, merged, skipped = importer.merge_junction_loops(dict(nodes=nodes, edges=edges))
+        self.assertEqual((merged, skipped), (1, 0))
+        junction = [n for n in part['nodes'] if n['id'].startswith('j')]
+        self.assertEqual(len(junction), 1)
+        self.assertEqual(sorted({e['a'] for e in part['edges']} | {e['b'] for e in part['edges']}), sorted(['w', 'e', 'n', junction[0]['id']]))
+        part, added = importer.add_approach_nodes(part)
+        self.assertEqual(added, 3)
+        centre = junction[0]['position']
+        for n in part['nodes']:
+            if n['id'].startswith('a'):
+                self.assertAlmostEqual(math.dist(n['position'][:2], centre[:2]), 10, places=3)
+
+    def test_wide_loop_is_not_a_junction(self):
+        # A 50 m block is a real street loop, not a junction.
+        corners = [[0, 0, 0], [50, 0, 0], [50, 50, 0], [0, 50, 0]]
+        nodes = [dict(id=f'b{i}', position=p) for i, p in enumerate(corners)]
+        edges = [dict(a=f'b{i}', b=f'b{(i + 1) % 4}') for i in range(4)]
+        part, merged, _ = importer.merge_junction_loops(dict(nodes=nodes, edges=edges))
+        self.assertEqual(merged, 0)
+        self.assertEqual(len(part['nodes']), 4)
 
 
 @unittest.skipUnless(os.environ.get('SAO_STOCK_NODES'), 'set SAO_STOCK_NODES to the stock NODES directory')

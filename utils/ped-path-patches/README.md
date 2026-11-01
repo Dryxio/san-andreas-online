@@ -141,6 +141,22 @@ have no GTA equivalent and are reported.
 python3 utils/ped-path-patches/import_npchlc.py weston --output map.json
 ```
 
+Junctions need translating, not copying. NPC-HLC models a junction as a small
+loop of curved turn connections and drives exactly on them; GTA puts each lane
+2.7 m beside a link and curves between link midpoints, so those loops become
+tiny roads that make cars swerve and cut over sidewalks. The importer merges
+every road loop shorter than `--junction-loop` (60 m perimeter, at most 35 m
+across) into one junction node, as GTA's own maps do, and adds a node
+`--junction-approach` (10 m) up each long approach so turns start near the
+junction instead of halfway along a 60 m link. On Othorke's map this merged 64
+junctions; a top-down capture of traffic trails showed the swerving and
+sidewalk cuts gone. Pass `0` to either option to keep the raw geometry.
+
+A patch that adds node or navi addresses reserves them for its own revision
+until the game restarts (`added-node-addresses-reserved-restart-client`). When
+iterating on a map, players must fully restart the game to load a new
+revision; reconnecting is not enough.
+
 ## Tester handoff
 
 Use `test-resources/ped-path-patch-test`. Its synthetic Idlewood detour is a
