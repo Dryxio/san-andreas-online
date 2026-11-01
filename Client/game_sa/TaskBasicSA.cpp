@@ -141,6 +141,24 @@ CTaskSimpleStandStillSA::CTaskSimpleStandStillSA(int iDuration)
     // clang-format on
 }
 
+CTaskSimpleHandsUpSA::CTaskSimpleHandsUpSA(int iDuration)
+{
+    CreateTaskInterface(sizeof(CTaskSimpleHandsUpSAInterface));
+    if (!IsValid())
+        return;
+
+    DWORD dwFunc = FUNC_CTaskSimpleHandsUp__Constructor;
+    DWORD dwThisInterface = reinterpret_cast<DWORD>(GetInterface());
+    // clang-format off
+    __asm
+    {
+        push    iDuration
+        mov     ecx, dwThisInterface
+        call    dwFunc
+    }
+    // clang-format on
+}
+
 void CTaskSimpleAnimSA::GetPresentationDiagnostic(SNamedAnimPresentationDiagnostic& diagnostic) const noexcept
 {
     GetLiveSimpleAnimationDiagnostic(static_cast<const CTaskSimpleAnimSAInterface*>(GetInterface()), diagnostic);

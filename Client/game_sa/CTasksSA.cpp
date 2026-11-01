@@ -535,6 +535,13 @@ CTaskSimpleStandStill* CTasksSA::CreateTaskSimpleStandStill(int iDuration)
     return pTask;
 }
 
+CTaskSimpleHandsUp* CTasksSA::CreateTaskSimpleHandsUp(int iDuration)
+{
+    auto* pTask = NewTask<CTaskSimpleHandsUpSA>(iDuration);
+    m_pTaskManagementSystem->AddTask(pTask);
+    return pTask;
+}
+
 CTaskComplex* CTasksSA::CreateTaskComplexGoToEntityOffset(CPed* pTarget, int iTimeout, float fRadius, float fAngleDegrees, bool bRepeat)
 {
     CTaskComplexSA* pTask = nullptr;

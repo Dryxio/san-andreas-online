@@ -31,6 +31,12 @@ public:
     virtual ~CTaskSimpleStandStill() {};
 };
 
+class CTaskSimpleHandsUp : public virtual CTaskSimple
+{
+public:
+    virtual ~CTaskSimpleHandsUp() {};
+};
+
 struct SNamedAnimPresentationDiagnostic;
 
 class CTaskSimpleAnim : public virtual CTaskSimple

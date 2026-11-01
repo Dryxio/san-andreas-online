@@ -47,6 +47,7 @@ class CTaskSimpleRunAnim;
 class CTaskSimpleRunNamedAnim;
 class CTaskSimpleStealthKill;
 class CTaskSimpleStandStill;
+class CTaskSimpleHandsUp;
 class CTaskSimpleTriggerLookAt;
 class CTaskSimpleUseGun;
 class CTaskComplexInWater;
@@ -124,6 +125,7 @@ public:
     // Appended factories preserve the cross-module CTasks ABI.
     CTaskComplexPartnerChat*     CreateTaskComplexPartnerChat(CPed* pPartner, bool bLeadSpeaker, bool bUpdateDirection);
     CTaskSimpleStandStill*       CreateTaskSimpleStandStill(int iDuration);
+    CTaskSimpleHandsUp*          CreateTaskSimpleHandsUp(int iDuration);
     CTaskComplex*                CreateTaskComplexGoToEntityOffset(CPed* pTarget, int iTimeout, float fRadius, float fAngleDegrees, bool bRepeat);
     CTaskComplexKillPedOnFoot*   CreateTaskComplexKillPedOnFoot(CPed* pTarget);
     bool                         AddPedScriptCommandTask(CPed* pPed, CTask* pTask, bool bAffectsDeadPeds = false);

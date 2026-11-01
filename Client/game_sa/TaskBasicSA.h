@@ -22,6 +22,7 @@ class CObjectSAInterface;
 #define FUNC_CTaskComplexUseMobilePhone__Constructor  0x6348A0
 #define FUNC_CTaskComplexPartnerChat__Constructor     0x684290
 #define FUNC_CTaskSimpleStandStill__Constructor       0x62F310
+#define FUNC_CTaskSimpleHandsUp__Constructor          0x48E970
 #define FUNC_CTaskSimpleRunAnim__Constructor          0x61A900
 #define FUNC_CTaskSimpleRunNamedAnim__Constructor     0x61A990
 #define FUNC_CTaskComplexDie__Constructor             0x630040
@@ -91,6 +92,24 @@ class CTaskSimpleStandStillSA : public virtual CTaskSimpleSA, public virtual CTa
 public:
     CTaskSimpleStandStillSA() {};
     CTaskSimpleStandStillSA(int iDuration);
+};
+
+// CTaskSimpleHandsUp (0x48E970): GTA's CTaskSimpleRunTimedAnim playing
+// ANIM_ID_HANDSUP for a duration. Not interruptable by events (only damage
+// preempts its script-command priority), which is what holding a ped at
+// gunpoint needs; GTA's own gun-aimed-at reaction only holds it 3-5 s.
+class CTaskSimpleHandsUpSAInterface : public CTaskSimpleSAInterface
+{
+private:
+    unsigned char m_opaqueState[0x2C];
+};
+static_assert(sizeof(CTaskSimpleHandsUpSAInterface) == 0x34, "Unexpected CTaskSimpleHandsUpSAInterface size");
+
+class CTaskSimpleHandsUpSA : public virtual CTaskSimpleSA, public virtual CTaskSimpleHandsUp
+{
+public:
+    CTaskSimpleHandsUpSA() {};
+    CTaskSimpleHandsUpSA(int iDuration);
 };
 
 // temporary

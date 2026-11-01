@@ -312,6 +312,7 @@ void CLuaPedDefs::LoadFunctions()
         {"setPedAchieveHeading", ArgumentParser<SetPedAchieveHeading>},
         {"setPedAimAt", ArgumentParser<SetPedAimAt>},
         {"setPedStandStill", ArgumentParser<SetPedStandStill>},
+        {"setPedHandsUp", ArgumentParser<SetPedHandsUp>},
         {"setPedTurnToFace", ArgumentParser<SetPedTurnToFace>},
         {"setPedGoToOffset", ArgumentParser<SetPedGoToOffset>},
         {"setPedKillOnFoot", ArgumentParser<SetPedKillOnFoot>},
@@ -540,6 +541,7 @@ void CLuaPedDefs::AddClass(lua_State* luaVM)
     lua_classfunction(luaVM, "setNavigateTo", "setPedNavigateTo");
     lua_classfunction(luaVM, "setChatWith", "setPedChatWith");
     lua_classfunction(luaVM, "setStandStill", "setPedStandStill");
+    lua_classfunction(luaVM, "setHandsUp", "setPedHandsUp");
     lua_classfunction(luaVM, "setTurnToFace", "setPedTurnToFace");
     lua_classfunction(luaVM, "setGoToOffset", "setPedGoToOffset");
     lua_classfunction(luaVM, "setKillOnFoot", "setPedKillOnFoot");
@@ -3090,6 +3092,23 @@ bool CLuaPedDefs::SetPedStandStill(CClientPed* ped, std::optional<int> duration)
     }
 
     auto* task = g_pGame->GetTasks()->CreateTaskSimpleStandStill(taskDuration);
+    return DispatchPedScriptCommandTask(ped->GetGamePlayer(), task);
+}
+
+// Hold a ped with its hands up (GTA CTaskSimpleHandsUp) for durationMs. GTA's
+// own reaction to a gun aimed at a ped only holds it 3-5 s before it walks
+// away; gameplay that keeps a ped at gunpoint (robbery, hostage) needs it to
+// stay. The task is not interruptable by events; damage still preempts it.
+// Syncer-side like every native task: success means queued, not active.
+bool CLuaPedDefs::SetPedHandsUp(CClientPed* ped, int duration)
+{
+    if (!ped || !ped->IsStreamedIn() || ped->IsDead() || !ped->GetGamePlayer() || (!ped->IsLocalPlayer() && !ped->IsLocalEntity() && !ped->IsSyncing()) ||
+        duration <= 0 || duration > 600000 || ped->GetOccupiedVehicle())
+    {
+        return false;
+    }
+
+    auto* task = g_pGame->GetTasks()->CreateTaskSimpleHandsUp(duration);
     return DispatchPedScriptCommandTask(ped->GetGamePlayer(), task);
 }
 

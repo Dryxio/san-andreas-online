@@ -55,6 +55,7 @@ class CTaskSimpleRunAnim;
 class CTaskSimpleRunNamedAnim;
 class CTaskSimpleStealthKill;
 class CTaskSimpleStandStill;
+class CTaskSimpleHandsUp;
 class CTaskSimpleTriggerLookAt;
 class CTaskSimpleUseGun;
 class CTaskComplexInWater;
@@ -147,6 +148,7 @@ public:
     // preserving every existing vtable index is required for mixed MTA builds.
     virtual CTaskComplexPartnerChat*   CreateTaskComplexPartnerChat(CPed* pPartner, bool bLeadSpeaker, bool bUpdateDirection) = 0;
     virtual CTaskSimpleStandStill*     CreateTaskSimpleStandStill(int iDuration) = 0;
+    virtual CTaskSimpleHandsUp*        CreateTaskSimpleHandsUp(int iDuration) = 0;
     virtual CTaskComplex*              CreateTaskComplexGoToEntityOffset(CPed* pTarget, int iTimeout, float fRadius, float fAngleDegrees, bool bRepeat) = 0;
     virtual CTaskComplexKillPedOnFoot* CreateTaskComplexKillPedOnFoot(CPed* pTarget) = 0;
 
