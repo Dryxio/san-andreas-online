@@ -1368,8 +1368,15 @@ requestCandidate = function(owner, mode, attempt, generation, chainRequestedAt)
         return trace("candidate-aborted", {reason = "owner-missing", mode = mode})
     end
     if mode ~= "production" and mode ~= "density" and mode ~= "spatial" and #ps < 2 then return terminalTestFailure("two-clients-required") end
-    if #ps < 1 then return trace("candidate-aborted", {reason = "no-clients", mode = mode}) end
     attempt = tonumber(attempt) or 1
+    if #ps < 1 then
+        -- A retry still holds its chain's reservation. Release it when the
+        -- chain ends here, otherwise a player who is dead or outside world 0
+        -- while retries are in flight (joining a spawn screen, dying) leaks
+        -- every slot and the spawner never asks for a car again.
+        if attempt > 1 then releaseCandidate(owner, generation) end
+        return trace("candidate-aborted", {reason = "no-clients", mode = mode, attempt = attempt})
+    end
     if attempt == 1 then
         local limit = mode == "production" and PRODUCTION_MAX_CANDIDATES_PER_BUBBLE or 1
         if ownerHasPendingCandidate(owner, limit) then return end
