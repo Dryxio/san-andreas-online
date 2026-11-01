@@ -4736,6 +4736,157 @@ static void __declspec(naked) HOOK_CBmx__ProcessAI_GhostStatus()
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
+// Never follow a disconnected car route
+//
+// A car driving to a destination (MISSION_GOTOCOORDINATES and the other follow-path missions,
+// e.g. setPedDriveTo) keeps its next node at autopilot+0x394 and the rest of its route at +0x3F8
+// (count at +0x418). CCarCtrl::PickNextNodeToFollowPath (0x427740) moves the next node to
+// "current", takes the first route node as the new next one, then looks for it among the current
+// node's links with an unbounded loop:
+//
+//     0x427914..0x42793C: while (links[base + i] != next) i++;
+//
+// It then reads the navi link at the same index and that navi node (0x42793E..0x4279E4). GTA's
+// own route search always starts the route from the next node, so retail never breaks the
+// assumption. When the first route node is not linked anyway, the scan runs past the area's link
+// table into the {0xFFFF, 0} padding the loader appends (0x452AE3); a stale or empty route entry
+// of that value matches there, the navi link read beyond its table yields garbage, and the navi
+// node read faults: crash at gta_sa.exe+0x279E4, seen on Neon RPG with route-driving NPCs in
+// Idlewood (area 14, node 316, base link 680).
+//
+// Check the link before GTA relies on it, at both places a first route node comes from: the
+// stored route (call site 0x432C32, the function's only caller) and a fresh search inside the
+// function (call 0x42780B). A disconnected stored route is dropped so GTA searches again from the
+// next node; a disconnected fresh route makes GTA return without changing nodes, and the physics
+// caller then drives the car straight to its target (missions 8 and 12), as when a search fails.
+// Each drop is reported with the car's state, to find out which code leaves such a route. Same
+// bytes in the compact and full 1.0 US executables. The same unbounded scan also exists in
+// PickNextNodeToChaseCar (0x4270F4) and the racing follow-path steering (0x435C20); not covered.
+//////////////////////////////////////////////////////////////////////////////////////////
+namespace
+{
+    constexpr DWORD ADDR_ThePaths = 0x96F050;
+    constexpr DWORD FUNC_CCarCtrl_PickNextNodeToFollowPath = 0x427740;
+    // Main-map and interior areas, the size of every per-area array in CPathFind.
+    constexpr unsigned int PATH_AREAS = 72;
+
+    struct SRouteNodeAddress
+    {
+        unsigned short area;
+        unsigned short node;
+    };
+
+    bool AreRoadNodesLinked(SRouteNodeAddress from, SRouteNodeAddress to)
+    {
+        if (from.area >= PATH_AREAS || to.area >= PATH_AREAS)
+            return false;
+        const auto* const* nodes = reinterpret_cast<const unsigned char* const*>(ADDR_ThePaths + 0x804);
+        const auto* const* links = reinterpret_cast<const SRouteNodeAddress* const*>(ADDR_ThePaths + 0xA44);
+        const auto*        vehicleNodeCounts = reinterpret_cast<const unsigned int*>(ADDR_ThePaths + 0x10C4);
+        const auto*        addressCounts = reinterpret_cast<const unsigned int*>(ADDR_ThePaths + 0x1424);
+        if (!nodes[from.area] || !links[from.area] || from.node >= vehicleNodeCounts[from.area])
+            return false;
+        const unsigned char* node = nodes[from.area] + from.node * 0x1C;
+        const int            base = *reinterpret_cast<const short*>(node + 0x10);
+        const unsigned int   count = node[0x18] & 0x0F;
+        // Nodes with dynamic (interior) links have their base in the spare link space past the
+        // count; only ped and interior nodes get those, and GTA's navi read would overrun for
+        // them too, so treating them as unlinked is the safe answer.
+        if (base < 0 || base + count > addressCounts[from.area])
+            return false;
+        for (unsigned int i = 0; i < count; ++i)
+        {
+            const SRouteNodeAddress linked = links[from.area][base + i];
+            if (linked.area == to.area && linked.node == to.node)
+                return true;
+        }
+        return false;
+    }
+
+    void ReportDroppedCarRoute(const unsigned char* vehicle, const char* where, SRouteNodeAddress next, SRouteNodeAddress first, short count)
+    {
+        // First few in full, then a sample, so a broken script cannot flood the report log.
+        static unsigned int reports = 0;
+        if (++reports > 5 && reports % 100 != 0)
+            return;
+        const auto*  matrix = *reinterpret_cast<const unsigned char* const*>(vehicle + 0x14);
+        const float* position = reinterpret_cast<const float*>(matrix ? matrix + 0x30 : vehicle + 0x04);
+        AddReportLog(8546,
+                     SString("Dropped disconnected car route (%s, #%u): model=%u mission=%u next=%u/%u first=%u/%u count=%d "
+                             "pos=%.1f,%.1f,%.1f target=%.1f,%.1f,%.1f",
+                             where, reports, *reinterpret_cast<const unsigned short*>(vehicle + 0x22), vehicle[0x3BA], next.area, next.node, first.area,
+                             first.node, count, position[0], position[1], position[2], *reinterpret_cast<const float*>(vehicle + 0x3EC),
+                             *reinterpret_cast<const float*>(vehicle + 0x3F0), *reinterpret_cast<const float*>(vehicle + 0x3F4)),
+                     5);
+    }
+
+    // The stored route: GTA takes route[0] as the next node of the current next node (+0x394).
+    bool __cdecl PickNextNodeToFollowPath_CheckStoredRoute(CVehicleSAInterface* vehicleInterface)
+    {
+        auto* const vehicle = reinterpret_cast<unsigned char*>(vehicleInterface);
+        auto&       count = *reinterpret_cast<short*>(vehicle + 0x418);
+        const auto  next = *reinterpret_cast<const SRouteNodeAddress*>(vehicle + 0x394);
+        const auto  first = *reinterpret_cast<const SRouteNodeAddress*>(vehicle + 0x3F8);
+        if (count >= 1 && !AreRoadNodesLinked(next, first))
+        {
+            ReportDroppedCarRoute(vehicle, "stored", next, first, count);
+            count = 0;  // GTA searches a new route from the next node instead
+        }
+        using PickNextNodeToFollowPath = bool(__cdecl*)(CVehicleSAInterface*);
+        return reinterpret_cast<PickNextNodeToFollowPath>(FUNC_CCarCtrl_PickNextNodeToFollowPath)(vehicleInterface);
+    }
+
+    // A fresh route: GTA drops up to two leading copies of the next node when it found at least
+    // two nodes, then uses the first remaining one. Mirror that and drop the route when that node
+    // is not linked to the next node; with fewer than two nodes GTA returns without using it.
+    void __cdecl PickNextNodeToFollowPath_CheckSearchedRoute(unsigned char* vehicle)
+    {
+        auto&                   count = *reinterpret_cast<short*>(vehicle + 0x418);
+        const auto*             route = reinterpret_cast<const SRouteNodeAddress*>(vehicle + 0x3F8);
+        const SRouteNodeAddress next = *reinterpret_cast<const SRouteNodeAddress*>(vehicle + 0x394);
+        if (count < 2 || count > 8)
+            return;
+        int skip = 0;
+        while (skip < 2 && skip < count && route[skip].area == next.area && route[skip].node == next.node)
+            ++skip;
+        if (skip < count && !AreRoadNodesLinked(next, route[skip]))
+        {
+            ReportDroppedCarRoute(vehicle, "searched", next, route[skip], count);
+            count = 0;
+        }
+    }
+}
+
+// Referenced from the naked hook below, so plain statics with storage, as inline asm needs.
+static const DWORD FUNC_CPathFind_DoPathSearch = 0x4515D0;
+static const DWORD RETURN_PickNextNodeToFollowPath_DoPathSearch = 0x427810;
+
+// >>> 0x42780B | E8 C0 9D 02 00 | call CPathFind::DoPathSearch   ; ecx = ThePaths, 0x4C bytes of args
+//     0x427810 | 66 83 3B 02    | cmp word ptr [ebx], 2          ; ebx = route count, esi = vehicle
+static void __declspec(naked) HOOK_PickNextNodeToFollowPath_DoPathSearch()
+{
+    MTA_VERIFY_HOOK_LOCAL_SIZE;
+
+    // clang-format off
+    __asm
+    {
+        // Run the search on the caller's arguments: drop our return address (always 0x427810) so
+        // they sit where the callee expects them under its own return address. DoPathSearch
+        // cleans them (ret 0x4C) and preserves esi and ebx; ecx still holds ThePaths.
+        add     esp, 4
+        call    dword ptr [FUNC_CPathFind_DoPathSearch]
+        pushad
+        push    esi
+        call    PickNextNodeToFollowPath_CheckSearchedRoute
+        add     esp, 4
+        popad
+        jmp     RETURN_PickNextNodeToFollowPath_DoPathSearch
+    }
+    // clang-format on
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//
 // CMultiplayerSA::InitHooks_Vehicles
 //
 // Setup hooks
@@ -4892,4 +5043,8 @@ void CMultiplayerSA::InitHooks_Vehicles()
     EZHookInstall(CVehicle__UpdateTractorLink_TowTruck);
     EZHookInstall(CAutomobile__Constructor_TowTruckBouncingPanel);
     EZHookInstall(CBmx__ProcessAI_GhostStatus);
+    // 0x432C32: call CCarCtrl::PickNextNodeToFollowPath, its only caller (in
+    // PickNextNodeAccordingStrategy). 0x42780B: its route search.
+    HookInstallCall(0x432C32, (DWORD)PickNextNodeToFollowPath_CheckStoredRoute);
+    HookInstallCall(0x42780B, (DWORD)HOOK_PickNextNodeToFollowPath_DoPathSearch);
 }
