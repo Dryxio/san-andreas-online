@@ -36,10 +36,20 @@ namespace
             case 2318:
             case 2320:
             case 2322:  // TVs.
+            case 1582:  // pizzabox: delivery couriers set it down at a door.
                 return true;
             default:
                 return false;
         }
+    }
+
+    // Objects the immediate "box" hold accepts: GTA's CTaskSimpleHoldEntity
+    // places them from their own collision bounds, so small flat props hold
+    // as naturally as the crate. The pizza box lets ambient pizza couriers
+    // carry an order from their scooter to a front door.
+    bool IsCarryModel(unsigned short model)
+    {
+        return model == 1271 || model == 1582;
     }
 
     const char* StateName(int state)
@@ -90,7 +100,7 @@ const char* CClientCargoManager::GetState(CClientPed* ped) const
 bool CClientCargoManager::Start(CLuaMain* owner, CClientPed* ped, CClientObject* object, bool pickup)
 {
     if (!owner || !CanExecute(ped) || !ped->IsOnGround() || Find(ped) || !object || object->IsBeingDeleted() || !object->IsStreamedIn() ||
-        !object->GetGameObject() || object->GetAttachedTo() || (pickup ? !IsPickupModel(object->GetModel()) : object->GetModel() != 1271) ||
+        !object->GetGameObject() || object->GetAttachedTo() || (pickup ? !IsPickupModel(object->GetModel()) : !IsCarryModel(object->GetModel())) ||
         ped->GetDimension() != object->GetDimension() || ped->GetInterior() != object->GetInterior())
         return false;
     CVector scale;
