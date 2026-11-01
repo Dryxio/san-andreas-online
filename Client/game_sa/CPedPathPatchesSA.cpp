@@ -196,27 +196,81 @@ namespace
         FlushInstructionCache(GetCurrentProcess(), code, N + 5);
         return code;
     }
+    // The full 1.0 US executable most players run (14,383,616 bytes) keeps
+    // these CPathFind functions in its SecuROM section and leaves only a
+    // 5-byte jmp at the documented address; the compact executable has the
+    // body in place. Follow such a jmp so both layouts are hooked at the real
+    // body, which also covers callers that jump to the body directly. A
+    // target outside gta_sa.exe (another program's detour) is not followed,
+    // so the prologue check below still fails closed on it.
+    std::uintptr_t FunctionBody(std::uintptr_t address)
+    {
+        const auto* code = reinterpret_cast<const BYTE*>(address);
+        if (code[0] != 0xE9)
+            return address;
+        std::int32_t displacement;
+        std::memcpy(&displacement, code + 1, sizeof(displacement));
+        const auto  target = address + 5 + displacement;
+        const auto  base = reinterpret_cast<std::uintptr_t>(GetModuleHandle(nullptr));
+        const auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+        const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(base + dos->e_lfanew);
+        if (target < base || target >= base + nt->OptionalHeader.SizeOfImage)
+            return address;
+        return target;
+    }
+    // MTA's MemCpy only unprotects the classic code range (0x401000-0x8A4000)
+    // and asserts elsewhere, but the SecuROM bodies sit above it. Unprotect
+    // the exact pages here so both executable layouts are written the same way.
+    bool WriteCode(std::uintptr_t address, const void* data, std::size_t size)
+    {
+        DWORD oldProtect;
+        if (!VirtualProtect(reinterpret_cast<void*>(address), size, PAGE_EXECUTE_READWRITE, &oldProtect))
+            return false;
+        std::memcpy(reinterpret_cast<void*>(address), data, size);
+        DWORD unused;
+        VirtualProtect(reinterpret_cast<void*>(address), size, oldProtect, &unused);
+        FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(address), size);
+        return true;
+    }
+    template <typename Handler>
+    bool HookAt(std::uintptr_t address, Handler handler, std::size_t size)
+    {
+        BYTE jump[MAX_JUMPCODE_SIZE];
+        std::memset(jump, 0x90, sizeof(jump));
+        if (!CreateJump(static_cast<DWORD>(address), reinterpret_cast<DWORD>(FunctionPointerToVoidP(handler)), jump))
+            return false;
+        return WriteCode(address, jump, size);
+    }
     bool Service::Install(std::string& error)
     {
         if (m_hooks)
             return true;
-        // These whole-instruction prologues were checked in compact 1.0 US.
-        // Fail closed on a different executable or a competing detour.
+        // These whole-instruction prologues were checked in both 1.0 US
+        // layouts (see FunctionBody). Fail closed on a different executable
+        // or a competing detour.
         constexpr std::array<BYTE, 5> loadBytes{{0x53, 0x8B, 0x5C, 0x24, 0x08}};
         constexpr std::array<BYTE, 7> unloadBytes{{0x53, 0x56, 0x57, 0x8B, 0x7C, 0x24, 0x10}};
         constexpr std::array<BYTE, 8> dynamicBytes{{0x83, 0xEC, 0x0C, 0x0F, 0xB7, 0x44, 0x24, 0x10}};
-        if (pGame->GetGameVersion() != VERSION_US_10 || std::memcmp(reinterpret_cast<void*>(0x4529F0), loadBytes.data(), loadBytes.size()) ||
-            std::memcmp(reinterpret_cast<void*>(0x44D0F0), unloadBytes.data(), unloadBytes.size()) ||
-            std::memcmp(reinterpret_cast<void*>(0x44E000), dynamicBytes.data(), dynamicBytes.size()))
+        if (pGame->GetGameVersion() != VERSION_US_10)
         {
             error = "unsupported-pathfinder-hooks";
             return false;
         }
-        auto* load = Gateway(0x4529F0, loadBytes);
+        const std::uintptr_t loadAt = FunctionBody(0x4529F0);
+        const std::uintptr_t unloadAt = FunctionBody(0x44D0F0);
+        const std::uintptr_t dynamicAt = FunctionBody(0x44E000);
+        if (std::memcmp(reinterpret_cast<void*>(loadAt), loadBytes.data(), loadBytes.size()) ||
+            std::memcmp(reinterpret_cast<void*>(unloadAt), unloadBytes.data(), unloadBytes.size()) ||
+            std::memcmp(reinterpret_cast<void*>(dynamicAt), dynamicBytes.data(), dynamicBytes.size()))
+        {
+            error = "unsupported-pathfinder-hooks";
+            return false;
+        }
+        auto* load = Gateway(loadAt, loadBytes);
         void* unload = nullptr;
         try
         {
-            unload = Gateway(0x44D0F0, unloadBytes);
+            unload = Gateway(unloadAt, unloadBytes);
         }
         catch (...)
         {
@@ -226,7 +280,7 @@ namespace
         void* dynamic = nullptr;
         try
         {
-            dynamic = Gateway(0x44E000, dynamicBytes);
+            dynamic = Gateway(dynamicAt, dynamicBytes);
         }
         catch (...)
         {
@@ -237,12 +291,12 @@ namespace
         g_dynamic = reinterpret_cast<DynamicFn>(dynamic);
         g_load = reinterpret_cast<LoadFn>(load);
         g_unload = reinterpret_cast<UnloadFn>(unload);
-        if (!HookInstall(0x4529F0, &LoadHook, loadBytes.size()) || !HookInstall(0x44D0F0, &UnloadHook, unloadBytes.size()) ||
-            !HookInstall(0x44E000, &DynamicHook, dynamicBytes.size()))
+        if (!HookAt(loadAt, &LoadHook, loadBytes.size()) || !HookAt(unloadAt, &UnloadHook, unloadBytes.size()) ||
+            !HookAt(dynamicAt, &DynamicHook, dynamicBytes.size()))
         {
-            MemCpy(reinterpret_cast<void*>(0x4529F0), loadBytes.data(), loadBytes.size());
-            MemCpy(reinterpret_cast<void*>(0x44D0F0), unloadBytes.data(), unloadBytes.size());
-            MemCpy(reinterpret_cast<void*>(0x44E000), dynamicBytes.data(), dynamicBytes.size());
+            WriteCode(loadAt, loadBytes.data(), loadBytes.size());
+            WriteCode(unloadAt, unloadBytes.data(), unloadBytes.size());
+            WriteCode(dynamicAt, dynamicBytes.data(), dynamicBytes.size());
             VirtualFree(dynamic, 0, MEM_RELEASE);
             VirtualFree(load, 0, MEM_RELEASE);
             VirtualFree(unload, 0, MEM_RELEASE);

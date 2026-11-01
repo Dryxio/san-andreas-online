@@ -180,3 +180,7 @@ engine: `CPedPathPatchesSA.cpp`; bounded decoder: `PedPathPatchFormat.h`.
 Native reference: compact US 1.0 SHA-256
 `72ae59e44c761389e354a50dc6215e964fe771121e2f4b1877273a493ceecc9b`.
 Load entry `0x4529F0`, unload entry `0x44D0F0`, CPathFind `0x96F050`.
+In the full 1.0 US executable (14,383,616 bytes, the one most players run)
+these entries, and dynamic link `0x44E000`, are 5-byte jumps into the SecuROM
+section (`0x156F750`, `0x1563FB0`, `0x1560C20`); the client follows them and
+hooks the bodies, which carry the same prologues.
