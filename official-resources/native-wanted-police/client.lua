@@ -99,9 +99,26 @@ local function drive(ped)
     end
 end
 
+-- Every MTA ped is a CPlayerPed. Unless it is a mission actor, MTA's shot
+-- sync makes CWeapon::Fire take the player branch of FireInstantHit
+-- (CPed::IsPlayer at 0x74034C), which aims through the camera/replicated
+-- player aim instead of the target the AI task chose. A cop running
+-- setPedKillOnFoot never fills that aim, so its bullets went into the air
+-- or sideways and never hit. Mission actors keep the native ped branch
+-- (0x7407C1), as GTA's own cops do. This is local state, so every client
+-- sets it: the cop shoots straight whichever client runs it after a handoff.
+local function makeMissionActor(ped)
+    if isPedMissionActor(ped) then return end
+    if not setPedMissionActor(ped, true) then
+        outputDebugString('[native-wanted-police] cop refused as mission actor', 2)
+    end
+end
+
 setTimer(function()
     for _, ped in ipairs(getElementsByType('ped', root, true)) do
-        if getElementData(ped, 'neon:police') == true and isElementSyncer(ped) then
+        local cop = getElementData(ped, 'neon:police') == true
+        if cop then makeMissionActor(ped) end
+        if cop and isElementSyncer(ped) then
             drive(ped)
         else
             applied[ped] = nil -- owner changed: the next owner gives the task again
