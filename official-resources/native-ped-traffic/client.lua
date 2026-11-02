@@ -2860,6 +2860,8 @@ local function pulsePedObstacleAvoidance()
                     wasFleeing = false,
                     originalFleeHeading = nil,
                     threatPos = nil,
+                    threatTarget = nil,
+                    detourStartPos = nil,
                 }
                 pedObstacleStates[ped] = state
             end
@@ -2879,63 +2881,73 @@ local function pulsePedObstacleAvoidance()
                                                  moveState == "powerwalk")
 
             if state.evading then
-                local targetDist = state.evadeTarget and getDistanceBetweenPoints2D(px, py, state.evadeTarget.x, state.evadeTarget.y) or 0
                 local elapsed = now - state.evadeStartedAt
-                local arrived = targetDist <= 0.7
-                local timedOut = elapsed >= state.evadeTimeout
+                local detourTravelDist = state.detourStartPos and
+                    getDistanceBetweenPoints2D(px, py, state.detourStartPos.x, state.detourStartPos.y) or 0
 
-                -- Check if the corridor along the flee vector is now clear of the obstacle
+                -- Check if the corridor along the original flee line is now clear of the obstacle
                 local corridorClear = false
-                if state.originalFleeHeading and elapsed >= 800 then
+                if state.originalFleeHeading and elapsed >= 250 then
                     local fRad = math.rad(state.originalFleeHeading)
                     local fDirX, fDirY = -math.sin(fRad), math.cos(fRad)
                     corridorClear = not processLineOfSight(
                         px, py, pz + 0.4,
-                        px + fDirX * 2.5, py + fDirY * 2.5, pz + 0.4,
+                        px + fDirX * 3.0, py + fDirY * 3.0, pz + 0.4,
                         true, true, false, true, true, false, false, false, ped
                     )
                 end
 
-                if arrived or timedOut or corridorClear then
+                -- Transition early while the ped is still running at full speed.
+                -- Never wait until arrival at the detour point, because arrival triggers
+                -- GTA's terminal StandStill task which plays idle animations.
+                local shouldTransition = (detourTravelDist >= 0.85 and corridorClear) or
+                                         (detourTravelDist >= 1.6) or
+                                         (elapsed >= 1500)
+
+                if shouldTransition then
                     state.evading = false
                     state.stuckTicks = 0
                     state.lastX, state.lastY, state.lastZ = px, py, pz
                     state.lastSampleAt = now
 
                     if state.wasFleeing then
-                        -- Resume fleeing away from the threat now that obstacle has been bypassed
-                        local threatX, threatY
-                        if state.threatPos then
-                            threatX, threatY = state.threatPos.x, state.threatPos.y
-                        else
-                            local threatRad = math.rad((state.originalFleeHeading + 180) % 360)
-                            threatX = px - math.sin(threatRad) * 15.0
-                            threatY = py + math.cos(threatRad) * 15.0
+                        -- Identify threat entity or position
+                        local threatPed = state.threatTarget
+                        if not threatPed or not isElement(threatPed) then
+                            local combatCtx = nativeCombatContexts[ped]
+                            if combatCtx and isElement(combatCtx.attacker) then
+                                threatPed = combatCtx.attacker
+                            elseif isElement(localPlayer) and
+                                getDistanceBetweenPoints3D(px, py, pz, getElementPosition(localPlayer)) <= 50 then
+                                threatPed = localPlayer
+                            end
                         end
 
-                        local escapeVecX = px - threatX
-                        local escapeVecY = py - threatY
-                        local escapeLen = math.sqrt(escapeVecX * escapeVecX + escapeVecY * escapeVecY)
-                        if escapeLen > 0.1 then
-                            escapeVecX = escapeVecX / escapeLen
-                            escapeVecY = escapeVecY / escapeLen
-                            local escapeX = px + escapeVecX * 22.0
-                            local escapeY = py + escapeVecY * 22.0
-                            local groundZ = getGroundPosition(escapeX, escapeY, pz + 1.0) or pz
-                            local escapeBlocked = processLineOfSight(
-                                px, py, pz + 0.4,
-                                escapeX, escapeY, groundZ + 0.4,
-                                true, true, false, true, true, false, false, false, ped
-                            )
-                            if not escapeBlocked and type(setPedGoTo) == "function" then
-                                setPedGoTo(ped, Vector3(escapeX, escapeY, groundZ), "run", 1.0, 3.0, 8000)
-                            elseif type(setPedWander) == "function" then
-                                setPedWander(ped, "run", math.random(0, 7), true)
+                        -- Resume running flee without stopping or idling
+                        if threatPed and isElement(threatPed) and type(setPedTaskSequence) == "function" then
+                            setPedTaskSequence(ped, {
+                                {
+                                    task = "smart_flee",
+                                    target = threatPed,
+                                    safeDistance = 80.0,
+                                    duration = 15000,
+                                }
+                            })
+                        elseif type(setPedWander) == "function" then
+                            local threatX, threatY
+                            if state.threatPos then
+                                threatX, threatY = state.threatPos.x, state.threatPos.y
+                            elseif threatPed and isElement(threatPed) then
+                                threatX, threatY = getElementPosition(threatPed)
+                            else
+                                local threatRad = math.rad((state.originalFleeHeading + 180) % 360)
+                                threatX = px - math.sin(threatRad) * 15.0
+                                threatY = py + math.cos(threatRad) * 15.0
                             end
-                        else
-                            if type(setPedWander) == "function" then
-                                setPedWander(ped, "walk", math.random(0, 7), true)
-                            end
+                            local escapeAngle = math.deg(math.atan2(-(px - threatX), py - threatY))
+                            if escapeAngle < 0 then escapeAngle = escapeAngle + 360 end
+                            local escapeDir = math.floor((escapeAngle + 22.5) / 45) % 8
+                            setPedWander(ped, "run", escapeDir, true)
                         end
                     else
                         if type(setPedWander) == "function" then
@@ -2947,7 +2959,7 @@ local function pulsePedObstacleAvoidance()
                 end
             else
                 local dt = now - state.lastSampleAt
-                if dt >= 350 then
+                if dt >= 300 then
                     local disp = getDistanceBetweenPoints2D(px, py, state.lastX, state.lastY)
                     if isMovingIntent and disp < 0.14 then
                         state.stuckTicks = state.stuckTicks + 1
@@ -2958,7 +2970,7 @@ local function pulsePedObstacleAvoidance()
                     state.lastSampleAt = now
                 end
 
-                -- If blocked for at least ~700ms while intending to move forward, check obstacle collision
+                -- If blocked for at least ~600ms while intending to move forward, check obstacle collision
                 if state.stuckTicks >= 2 then
                     local _, _, heading = getElementRotation(ped)
                     local rad = math.rad(heading)
@@ -2983,9 +2995,15 @@ local function pulsePedObstacleAvoidance()
                         local bestScore = -999999
 
                         local threatX, threatY
+                        local threatEntity = nil
                         local combatCtx = nativeCombatContexts[ped]
                         if combatCtx and isElement(combatCtx.attacker) then
+                            threatEntity = combatCtx.attacker
                             threatX, threatY = getElementPosition(combatCtx.attacker)
+                        elseif isElement(localPlayer) and
+                            getDistanceBetweenPoints3D(px, py, pz, getElementPosition(localPlayer)) <= 50 then
+                            threatEntity = localPlayer
+                            threatX, threatY = getElementPosition(localPlayer)
                         else
                             local threatRad = math.rad((heading + 180) % 360)
                             threatX = px - math.sin(threatRad) * 12.0
@@ -2996,7 +3014,7 @@ local function pulsePedObstacleAvoidance()
                             local candHeading = (heading + offset) % 360
                             local cRad = math.rad(candHeading)
                             local cDirX, cDirY = -math.sin(cRad), math.cos(cRad)
-                            local probeDist = 2.2
+                            local probeDist = 3.2
                             local probeEndX = px + cDirX * probeDist
                             local probeEndY = py + cDirY * probeDist
 
@@ -3035,15 +3053,20 @@ local function pulsePedObstacleAvoidance()
 
                         if bestCandidate and type(setPedGoTo) == "function" then
                             local moveMode = isMovingIntent and "run" or "walk"
-                            local ok = setPedGoTo(ped, Vector3(bestCandidate.x, bestCandidate.y, bestCandidate.z), moveMode, 0.4, 1.5, 2500)
+                            -- Use matching radius and slowdownRadius (0.4, 0.4) so GTA does not decelerate
+                            -- ahead of time into a walk or stand-still. The target is projected 3.2m ahead
+                            -- so the ped stays in full stride while navigating around the obstacle.
+                            local ok = setPedGoTo(ped, Vector3(bestCandidate.x, bestCandidate.y, bestCandidate.z), moveMode, 0.4, 0.4, 2500)
                             if ok then
                                 state.evading = true
                                 state.evadeTarget = Vector3(bestCandidate.x, bestCandidate.y, bestCandidate.z)
+                                state.detourStartPos = {x = px, y = py}
                                 state.evadeStartedAt = now
                                 state.evadeTimeout = 2500
                                 state.wasFleeing = isFleeTask or false
                                 state.originalFleeHeading = heading
                                 state.threatPos = {x = threatX, y = threatY}
+                                state.threatTarget = threatEntity
                                 state.stuckTicks = 0
                                 log(("obstacle-evasion id=%s model=%d offset=%.1f target=(%.2f,%.2f,%.2f) fleeing=%s"):format(
                                     tostring(getElementData(ped, "neon:ambientPedTrafficId")),
@@ -3065,7 +3088,7 @@ local function pulsePedObstacleAvoidance()
     end
 end
 
-setTimer(pulsePedObstacleAvoidance, 250, 0)
+setTimer(pulsePedObstacleAvoidance, 150, 0)
 
 setTimer(function()
     if not debugEnabled then
