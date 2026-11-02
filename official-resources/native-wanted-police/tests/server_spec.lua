@@ -14,7 +14,7 @@ unpack = unpack or table.unpack
 local T = 0
 local handlers, timers, clientEvents, serverEvents, elements = {}, {}, {}, {}, {}
 local cancelled = {}
-root, resourceRoot = {kind = 'root', data = {}}, {kind = 'resource', data = {}}
+root, resourceRoot = {kind = 'root', data = {}}, {kind = 'resource', data = {}, name = 'native-wanted-police'}
 
 local function element(kind, fields)
     local e = fields or {}
@@ -27,7 +27,11 @@ local function element(kind, fields)
     return e
 end
 
-function get(name) return false end
+-- Settings: the version 1 sections run with police cars off (foot cops at
+-- every level); section 14 turns them on through onSettingChange.
+local settings = {policeCars = 'false'}
+function get(name) return settings[name] or false end
+function getThisResource() return resourceRoot end
 function getTickCount() return T end
 function isElement(e) return type(e) == 'table' and e.kind ~= nil and e.alive == true end
 function getElementType(e) return e.kind end
@@ -85,6 +89,36 @@ function destroyElement(e) e.alive = false end
 function createPed(model, x, y, z, rot)
     return element('ped', {model = model, x = x, y = y, z = z, rot = rot})
 end
+function createVehicle(model, x, y, z, rx, ry, rz)
+    return element('vehicle', {model = model, x = x, y = y, z = z, rot = rz, occupants = {}, health = 1000})
+end
+function warpPedIntoVehicle(ped, vehicle, seat)
+    ped.vehicle, ped.seat = vehicle, seat
+    vehicle.occupants[seat] = ped
+    if seat == 0 then vehicle.driver = ped end
+    return true
+end
+function removePedFromVehicle(ped)
+    local vehicle = ped.vehicle
+    if vehicle then
+        if vehicle.occupants then vehicle.occupants[ped.seat] = nil end
+        if vehicle.driver == ped then vehicle.driver = nil end
+    end
+    ped.vehicle, ped.seat = nil, nil
+    ped.removedFromVehicle = true
+    return true
+end
+function getPedOccupiedVehicleSeat(ped) return ped.seat end
+function getVehicleOccupant(vehicle, seat)
+    local ped = vehicle.occupants and vehicle.occupants[seat or 0]
+    if ped and ped.vehicle == vehicle then return ped end
+    return false
+end
+function getVehicleHandling() return {maxVelocity = 200} end
+function setVehicleEngineState() return true end
+function setVehicleSirensOn(vehicle, on) vehicle.siren = on; return true end
+function getElementHealth(e) return e.health or 100 end
+function getElementMatrix(e) return {{1, 0, 0}, {0, 1, 0}, {0, 0, e.upZ or 1}, {e.x, e.y, e.z}} end
 function setTimer(fn, interval, times, ...) timers[#timers + 1] = {fn = fn, interval = interval, times = times, args = {...}} end
 function addEvent() end
 function addEventHandler(name, _, fn) handlers[name] = handlers[name] or {}; table.insert(handlers[name], fn) end
@@ -457,5 +491,128 @@ exports['native-ped-traffic'].releaseTrafficCop = function(_, ped) releaseReques
 local asked = #releaseRequests
 recruit.fn(); recruit.fn()
 check('a traffic build without the export is asked once', #releaseRequests == asked + 1 and older.data['neon:police'] == nil)
+
+-- 14. Police cars (version 2), in Las Venturas far from everyone else.
+settings.policeCars = 'true'
+fire('onSettingChange', root, nil, '*native-wanted-police.policeCars')
+local frank = element('player', {x = 2200, y = 2200, z = 10, money = 5000})
+fire('neonPolice:ready', resourceRoot, frank)
+local function probesTo(player, name, from)
+    local list = {}
+    for i = (from or 0) + 1, #clientEvents do
+        local e = clientEvents[i]
+        if e.name == name and e.target == player then list[#list + 1] = e end
+    end
+    return list
+end
+local mark = #clientEvents
+setNativeWantedLevel(frank, 1)
+step(10000)
+check('1 star: no police car and no foot cop spawned', #probesTo(frank, 'neonPolice:carProbe', mark) == 0 and
+    #probesTo(frank, 'neonPolice:spawnProbe', mark) == 0)
+setNativeWantedLevel(frank, 2)
+step(250)
+local carProbes = probesTo(frank, 'neonPolice:carProbe', mark)
+check('2 stars: a police car is asked for at once', #carProbes == 1)
+check('LV: an LVPD cruiser', carProbes[1].args[2] == 598)
+fire('neonPolice:carCandidate', resourceRoot, bob, carProbes[1].args[1], 2200, 2280, 10, 180)
+check('a candidate from another client is ignored', #getNativePoliceCars(frank) == 0)
+fire('neonPolice:carCandidate', resourceRoot, frank, carProbes[1].args[1], 2200, 2280, 10, 180)
+local cruisers = getNativePoliceCars(frank)
+check('the car is created', #cruisers == 1)
+local cruiser = cruisers[1]
+local driver, passenger = getVehicleOccupant(cruiser, 0), getVehicleOccupant(cruiser, 1)
+check('driver and passenger, LV cops', driver and passenger and driver.model == 282 and passenger.model == 282)
+check('the crew are units chasing Frank', driver.data['neon:police'] == true and passenger.data['neon:policeSuspect'] == frank)
+check('car, driver and passenger run on one client', cruiser.syncer == frank and driver.syncer == frank and passenger.syncer == frank)
+check('2 stars: speed 34, a mission chosen', cruiser.data['neon:policeCarSpeed'] == 34 and
+    (cruiser.data['neon:policeCarMission'] == 'ram' or cruiser.data['neon:policeCarMission'] == 'block'))
+check('crew armed with the pistol', driver.weapon == 22 and passenger.weapons[3] == 1)
+check('a cop driving a law car counts as police nearby', getNativeWantedState(frank).cars == 1)
+cruiser.vx = 0.3 -- the owner drives it (GTA's AI is not simulated here)
+mark = #clientEvents
+step(7000)
+check('2 stars: no second car within 8 s', #probesTo(frank, 'neonPolice:carProbe', mark) == 0)
+step(1500)
+check('a second car after 8 s', #probesTo(frank, 'neonPolice:carProbe', mark) == 1)
+-- Leave that request unanswered and a second one too: foot cops stand in.
+step(3000)
+step(9000)
+local footMark = #clientEvents
+step(5000)
+check('two missed car placements: a foot cop is asked for', #probesTo(frank, 'neonPolice:spawnProbe', footMark) >= 1 or
+    #probesTo(frank, 'neonPolice:spawnProbe', mark) >= 1)
+
+-- The car reaches Frank on foot: the passenger gets out at once, the driver
+-- after 3-5 s.
+cruiser.x, cruiser.y = frank.x + 6, frank.y
+driver.x, driver.y, passenger.x, passenger.y = cruiser.x, cruiser.y, cruiser.x, cruiser.y
+step(250)
+check('within 10 m of a suspect on foot: the car stops', cruiser.data['neon:policeCarPhase'] == 'bail')
+check('the siren is on up close', cruiser.siren == true)
+check('the passenger is ordered out at once', passenger.data['neon:policeOrder'] == 'exit' and driver.data['neon:policeOrder'] == nil)
+removePedFromVehicle(passenger)
+step(2500)
+check('the driver still waits', driver.data['neon:policeOrder'] == nil)
+step(2750)
+check('then the driver gets out too', driver.data['neon:policeOrder'] == 'exit')
+removePedFromVehicle(driver)
+step(250)
+check('empty car: parked, orders done', cruiser.data['neon:policeCarPhase'] == 'parked' and driver.data['neon:policeOrder'] == nil)
+check('out of the car they chase on foot', not getPedOccupiedVehicle(driver) and driver.data['neon:policePhase'] == 'pursue')
+
+-- Frank drives off: only the driver goes back to his car.
+local getaway = element('vehicle', {model = 400, x = frank.x, y = frank.y, z = 10, vx = 0.5, occupants = {}})
+warpPedIntoVehicle(frank, getaway, 0)
+driver.x, driver.y = cruiser.x + 3, cruiser.y
+passenger.x, passenger.y = cruiser.x + 4, cruiser.y
+step(250)
+check('the driver is sent back to his car', driver.data['neon:policeOrder'] == 'enter' and cruiser.data['neon:policeCarPhase'] == 'boarding')
+check('never the passenger', passenger.data['neon:policeOrder'] == nil)
+warpPedIntoVehicle(driver, cruiser, 0)
+step(250)
+check('back at the wheel: the chase goes on', cruiser.data['neon:policeCarPhase'] == 'chase' and driver.data['neon:policeOrder'] == nil)
+
+-- Frank stops his car next to the cop on foot: pulled out and arrested.
+getaway.vx = 0
+passenger.x, passenger.y = frank.x + 2, frank.y
+cruiser.x, cruiser.y = frank.x + 30, frank.y
+driver.x, driver.y = cruiser.x, cruiser.y
+-- Ramming the police car is damaging a cop's vehicle (crime 8, queued).
+local chaos8 = getNativeWantedState(frank).chaos
+cruiser.x = frank.x + 15
+fire('neonPolice:vehicleDamage', resourceRoot, frank, cruiser, getaway, 49)
+cruiser.x = frank.x + 30
+step(2250)
+check('hitting a police car with a cop inside: crime 8 (+5)', getNativeWantedState(frank).chaos == chaos8 + 5)
+step(750)
+check('a car stopped 2.5 s with a cop at the door: the arrest starts', getNativeWantedState(frank).arrest == true)
+check('the suspect is told to get out', lastClientEvent('neonPolice:arrest', frank).args[3] == 'car')
+step(3250)
+check('still inside after 3 s: taken out', frank.removedFromVehicle == true and not getPedOccupiedVehicle(frank))
+step(250)
+check('then hands up on foot', lastClientEvent('neonPolice:arrest', frank).args[3] == 'foot')
+local arrestsBeforeFrank = countServerEvents('onNativePlayerArrested')
+step(4250)
+check('busted', countServerEvents('onNativePlayerArrested') == arrestsBeforeFrank + 1)
+check('the car is retired with the chase', cruiser.data['neon:policeCarPhase'] == 'retire')
+
+-- A player who takes a parked police car keeps it.
+setNativeWantedLevel(frank, 3)
+mark = #clientEvents
+step(250)
+local probe3 = probesTo(frank, 'neonPolice:carProbe', mark)[1]
+check('3 stars: a new car', probe3 ~= nil)
+fire('neonPolice:carCandidate', resourceRoot, frank, probe3.args[1], 2200, 2120, 10, 0)
+local second = getNativePoliceCars(frank)[1]
+check('created', second ~= nil and second ~= cruiser)
+removePedFromVehicle(getVehicleOccupant(second, 1))
+removePedFromVehicle(getVehicleOccupant(second, 0))
+step(250)
+warpPedIntoVehicle(frank, second, 0)
+second.driver = frank
+step(250)
+check('stolen: no longer a police car of this resource', getNativePoliceCars(frank)[1] == nil and second.alive and
+    second.data['neon:policeCar'] == nil)
 
 print(('server_spec: %d checks passed'):format(passed))

@@ -5,8 +5,10 @@
 --   chases whom, and arrests. GTA's wanted system cannot hold several network
 --   suspects (every Neon ped points at the local player's CWanted), so each
 --   player gets an independent ledger from rules.lua.
--- - Cops come from two places, as in solo: street cops already walking in
---   native-ped-traffic join the chase, and new cops are created out of view.
+-- - Cops come from three places, as in solo: street cops already walking in
+--   native-ped-traffic join the chase, police cars are sent from 2 stars
+--   (version 2), and, where no car can reach the suspect, cops on foot are
+--   created out of view.
 --   Two resources must never drive the same NPC, so a street cop is first
 --   released by the traffic resource (releaseTrafficCop) and then belongs to
 --   this resource only.
@@ -41,16 +43,25 @@ local function loadSettings()
     cfg.overheadStars = setting('overheadStars', true)
     cfg.bustedText = setting('bustedText', true)
     cfg.streetCops = setting('streetCops', true)
-    -- Multiplayer choice: solo has no foot-cop spawner during a chase (cops
-    -- are ambient walkers plus car crews). Version 1 has no police cars, so
-    -- foot units arrive at roughly the rate solo sends cars: 2 stars one car
-    -- every 8 s, 3 stars every 5 s, 4+ without delay (issue #91).
+    cfg.policeCars = setting('policeCars', true)
+    cfg.maxCars = setting('maxCars', 12)
+    cfg.maxCarsPerSuspect = setting('maxCarsPerSuspect', 3)
+    -- Cops on foot created out of view. Solo has no such spawner during a
+    -- chase: new cops come in cars from 2 stars, and at 1 star only cops
+    -- already on the street come. With policeCars on, foot cops are only a
+    -- fallback where no car can be placed (no road nearby, off-road, a client
+    -- without the road placement API). With policeCars off, version 1's
+    -- dispatch runs at every level, at about the rate solo sends cars.
     cfg.dispatchDelay = {[1] = 6000, [2] = 4000, [3] = 2500, [4] = 1500, [5] = 1500, [6] = 1500}
 end
 loadSettings()
+addEventHandler('onSettingChange', root, function(name)
+    if type(name) == 'string' and name:find(getResourceName(getThisResource()), 1, true) then loadSettings() end
+end)
 
 local suspects = {}   -- player -> suspect state
 local units = {}      -- ped -> unit
+local cars = {}       -- vehicle -> police car (version 2)
 local ready = {}      -- player -> true once client.lua is running
 local pendingSpawns = {}
 local nextRequestId, nextUnitId = 0, 0
@@ -80,8 +91,8 @@ end
 local function suspectOf(player)
     local s = suspects[player]
     if not s and isPlayer(player) then
-        s = {player = player, w = R.new(now()), enabled = true, units = {}, lastDispatch = 0,
-             published = 0, backoffUntil = 0, still = false}
+        s = {player = player, w = R.new(now()), enabled = true, units = {}, cars = {}, lastDispatch = 0,
+             published = 0, backoffUntil = 0, still = false, carFailures = 0}
         suspects[player] = s
     end
     return s
@@ -132,6 +143,40 @@ local function aliveUnits(s)
     return list
 end
 
+-- A crew member still sitting in his police car. Its car, not the ped,
+-- carries ownership and the watchdog then.
+local function inCar(unit)
+    return unit.car ~= nil and isElement(unit.car.vehicle) and isElement(unit.ped) and
+        getPedOccupiedVehicle(unit.ped) == unit.car.vehicle
+end
+
+-- Cops chasing on foot: solo's pursuit list (CWanted+0x18) that the cops
+-- cap applies to. Crews still in their car are counted as cars.
+local function footUnits(s)
+    local list = {}
+    for _, unit in ipairs(aliveUnits(s)) do
+        if not inCar(unit) then list[#list + 1] = unit end
+    end
+    return list
+end
+
+local function activeCars(s)
+    local list = {}
+    for _, vehicle in ipairs(s.cars) do
+        local car = cars[vehicle]
+        if car and car.phase ~= 'retire' and isElement(vehicle) then list[#list + 1] = car end
+    end
+    return list
+end
+
+local function countCars()
+    local n = 0
+    for _, car in pairs(cars) do
+        if car.phase ~= 'retire' then n = n + 1 end
+    end
+    return n
+end
+
 local function setPhase(unit, phase)
     if unit.phase == phase then return end
     unit.phase = phase
@@ -141,7 +186,11 @@ local function setPhase(unit, phase)
     end
 end
 
+local retireCar -- defined with the police cars below
 local function dismissUnits(s, reason)
+    for _, vehicle in ipairs(s.cars) do
+        if cars[vehicle] then retireCar(cars[vehicle], reason) end
+    end
     for _, ped in ipairs(s.units) do
         local unit = units[ped]
         if unit then
@@ -353,9 +402,12 @@ end)
 
 -- Vehicle damage the server cannot see. Collisions are symmetric, so a
 -- driver's report about his own vehicle is never used. Accepted: the
--- attacker reporting himself, or the syncer of an empty vehicle.
--- Only two things follow: punching a vehicle (crime 21, CTaskSimpleFight
--- 0x61D0B0) and who to blame if the vehicle is destroyed (0x6D7C90).
+-- attacker reporting himself, or the syncer of an empty vehicle or of a
+-- vehicle a cop drives (police cars: the player who runs the cops).
+-- What follows: punching a vehicle (crime 21, CTaskSimpleFight 0x61D0B0),
+-- damaging a vehicle a cop sits in (crime 8, queued: the cop's
+-- CEventVehicleDamage 0x4B50B0), and who to blame if the vehicle is
+-- destroyed (0x6D7C90).
 addEvent('neonPolice:vehicleDamage', true)
 addEventHandler('neonPolice:vehicleDamage', resourceRoot, function(vehicle, attacker, weapon)
     if not spend(client) or not isElement(vehicle) or getElementType(vehicle) ~= 'vehicle' then return end
@@ -363,10 +415,17 @@ addEventHandler('neonPolice:vehicleDamage', resourceRoot, function(vehicle, atta
     local controller = getVehicleController(vehicle)
     if not offender or controller == offender or client == controller then return end
     local selfReport = client == offender
-    if not selfReport and not (client == getElementSyncer(vehicle) and not isElement(controller)) then return end
+    local copDriven = isElement(controller) and isCopPed(controller)
+    if not selfReport and not (client == getElementSyncer(vehicle) and (not isElement(controller) or copDriven)) then return end
     if not plausibleHit(offender, vehicle, weapon) then return end
     if selfReport then lastVehicleAttacker[vehicle] = {player = offender, at = now()} end
     if weapon == 0 then reportCrime(offender, R.crime.PUNCH_VEHICLE, vehicle, 'vehicle-damage') end
+    local copInside = copDriven
+    for seat = 1, 3 do
+        local occupant = getVehicleOccupant(vehicle, seat)
+        if occupant and isCopPed(occupant) then copInside = true end
+    end
+    if copInside then reportCrime(offender, R.crime.DAMAGE_COP_CAR, vehicle, 'vehicle-damage', true) end
 end)
 
 ------------------------------------------------------------------------
@@ -412,29 +471,54 @@ local function chooseOwner(unit)
     return unit.owner
 end
 
-local function assignOwner(unit, owner)
-    if not isPlayer(owner) or owner == unit.owner then return end
-    if setElementSyncer(unit.ped, owner, true) then
-        unit.owner = owner
-        unit.epoch = unit.epoch + 1
-        setData(unit.ped, 'neon:policeEpoch', unit.epoch)
+local function setUnitOwner(unit, owner)
+    if owner == unit.owner then return true end
+    if not setElementSyncer(unit.ped, owner, true) then return false end
+    unit.owner = owner
+    unit.epoch = unit.epoch + 1
+    setData(unit.ped, 'neon:policeEpoch', unit.epoch)
+    return true
+end
+
+-- A police car and everyone sitting in it have one owner: GTA's drive task
+-- changes the vehicle's autopilot, so the client that runs the driver must
+-- also sync the vehicle (setPedDriveMission refuses otherwise).
+local function assignCarOwner(car, owner)
+    if not isPlayer(owner) or owner == car.owner or not isElement(car.vehicle) then return end
+    if not setElementSyncer(car.vehicle, owner, true) then return end
+    car.owner = owner
+    for _, ped in ipairs(car.crew) do
+        local unit = units[ped]
+        if unit and inCar(unit) then setUnitOwner(unit, owner) end
     end
 end
 
+local function assignOwner(unit, owner)
+    if not isPlayer(owner) then return end
+    if inCar(unit) then return assignCarOwner(unit.car, owner) end
+    setUnitOwner(unit, owner)
+end
+
 local function avoidOwner(unit)
+    if inCar(unit) then unit = unit.car end
     if isPlayer(unit.owner) then
         unit.avoid = unit.avoid or {}
         unit.avoid[unit.owner] = now() + 20000
     end
-    assignOwner(unit, chooseOwner(unit))
+    if unit.vehicle then
+        assignCarOwner(unit, chooseOwner(unit))
+    else
+        assignOwner(unit, chooseOwner(unit))
+    end
 end
 
 -- Make `ped` a unit chasing `s`: shared by cops this resource spawns and
 -- street cops taken over from native-ped-traffic.
-local function registerUnit(s, ped, tier, street)
+local function registerUnit(s, ped, tier, street, car)
     nextUnitId = nextUnitId + 1
     local unit = {id = nextUnitId, ped = ped, suspect = s.player, phase = 'pursue', epoch = 0, createdAt = now(),
-                  progressAt = now(), bestDistance = math.huge, stalls = 0, tier = tier, street = street, avoid = {}}
+                  progressAt = now(), bestDistance = math.huge, stalls = 0, tier = tier, street = street, avoid = {},
+                  car = car}
     units[ped] = unit
     s.units[#s.units + 1] = ped
     setData(ped, 'neon:police', true)
@@ -444,7 +528,8 @@ local function registerUnit(s, ped, tier, street)
     setData(ped, 'neon:policePhase', 'pursue')
     unit.lastX, unit.lastY, unit.lastZ = getElementPosition(ped)
     unit.lastAt = now()
-    assignOwner(unit, chooseOwner(unit))
+    -- A car crew gets its owner with the car, once every seat is filled.
+    if not car then assignOwner(unit, chooseOwner(unit)) end
     triggerEvent('onNativePoliceUnitStateChange', ped, s.player, 'pursue')
     return unit
 end
@@ -476,7 +561,7 @@ end
 
 local function canDispatch(s)
     local active = countUnits()
-    return s.w.level > 0 and #aliveUnits(s) < pursuitCap(s) and active < cfg.maxCops
+    return s.w.level > 0 and #footUnits(s) < pursuitCap(s) and active < cfg.maxCops
 end
 
 -- A suspect cops may go after: the same conditions tickSuspect uses, which
@@ -574,7 +659,7 @@ local function recruitStreetCops()
         local pursuers, list = {}, {}
         for _, ped in ipairs(s.units) do
             local unit = units[ped]
-            if unit and unit.phase ~= 'disengage' then
+            if unit and unit.phase ~= 'disengage' and not inCar(unit) then
                 list[#list + 1] = unit
                 pursuers[#pursuers + 1] = {distance = isElement(ped) and distance3(ped, s.player) or math.huge,
                                            alive = isElement(ped) and not isPedDead(ped)}
@@ -601,6 +686,8 @@ end
 addEventHandler('onResourceStart', root, function(resource)
     if getResourceName(resource) == 'native-ped-traffic' then trafficLacksRelease = false end
 end)
+
+local createPoliceCar -- defined with the police cars below
 
 local function requestSpawn(s)
     nextRequestId = nextRequestId + 1
@@ -664,11 +751,16 @@ addEventHandler('neonPolice:spawnVetoResult', resourceRoot, function(id, visible
         pendingSpawns[id] = nil
         if s and s.spawnPending == id then s.spawnPending = false end
     end
-    if visible == false and veto.waiting <= 0 and s and canDispatch(s) and inMainWorld(s.player) then
-        createUnit(s, veto.x, veto.y, veto.z)
+    if visible == false and veto.waiting <= 0 and s and inMainWorld(s.player) then
+        if pending.car then
+            createPoliceCar(s, veto.x, veto.y, veto.z, pending.car)
+        elseif canDispatch(s) then
+            createUnit(s, veto.x, veto.y, veto.z)
+        end
     end
 end)
 
+local destroyCar -- defined below
 local function destroyUnit(ped)
     local unit = units[ped]
     units[ped] = nil
@@ -679,8 +771,365 @@ local function destroyUnit(ped)
                 if other == ped then table.remove(s.units, index); break end
             end
         end
+        -- A crew member removed in his seat takes the car with him: both are
+        -- out of everyone's view, and an empty police car must not be left
+        -- on the road.
+        if unit.car and isElement(ped) and getPedOccupiedVehicle(ped) == unit.car.vehicle then destroyCar(unit.car) end
     end
     if isElement(ped) then destroyElement(ped) end
+end
+
+------------------------------------------------------------------------
+-- Police cars (version 2). Solo's rules are in rules.lua; here the server
+-- sends cars, keeps their crews, and decides when they get out or back in.
+-- The owning client only executes: drive mission, stop, exit, enter.
+------------------------------------------------------------------------
+
+local function distance2(a, b)
+    local ax, ay = getElementPosition(a)
+    local bx, by = getElementPosition(b)
+    return math.sqrt((ax - bx) ^ 2 + (ay - by) ^ 2)
+end
+
+local function speedUnits(element)
+    local vx, vy, vz = getElementVelocity(element)
+    return math.sqrt(vx * vx + vy * vy + vz * vz)
+end
+
+-- up.z < -0.9 (CVehicle 0x6D1D90): the car is on its roof.
+local function upsideDown(vehicle)
+    local matrix = getElementMatrix and getElementMatrix(vehicle)
+    return type(matrix) == 'table' and type(matrix[3]) == 'table' and (matrix[3][3] or 1) < -0.9
+end
+
+local function setCarPhase(car, phase)
+    if car.phase == phase then return end
+    car.phase = phase
+    if isElement(car.vehicle) then setData(car.vehicle, 'neon:policeCarPhase', phase) end
+end
+
+local function order(ped, what)
+    if isElement(ped) and getElementData(ped, 'neon:policeOrder') ~= what then
+        if what then setData(ped, 'neon:policeOrder', what) else removeElementData(ped, 'neon:policeOrder') end
+    end
+end
+
+local function crewInside(car)
+    local list = {}
+    for _, ped in ipairs(car.crew) do
+        local unit = units[ped]
+        if unit and not isPedDead(ped) and inCar(unit) then list[#list + 1] = unit end
+    end
+    return list
+end
+
+local function setSiren(car, on)
+    if car.siren == on or not isElement(car.vehicle) then return end
+    car.siren = on
+    if setVehicleSirensOn then setVehicleSirensOn(car.vehicle, on) end
+end
+
+-- The suspect stops being chased by this car: the crew still inside drives
+-- away and leaves once unseen; cops already on foot carry on as foot cops.
+retireCar = function(car, reason)
+    if car.phase == 'retire' then return end
+    setCarPhase(car, 'retire')
+    car.retiredAt = now()
+    car.retireReason = reason
+    setSiren(car, false)
+    for _, unit in ipairs(crewInside(car)) do
+        unit.retireReason = reason
+        unit.retiredAt = unit.retiredAt or now()
+        setPhase(unit, 'disengage')
+    end
+end
+
+-- Forget a car without removing it (a player took it).
+local function releaseCar(car)
+    cars[car.vehicle] = nil
+    local s = suspects[car.suspect]
+    if s then
+        for index, vehicle in ipairs(s.cars) do
+            if vehicle == car.vehicle then table.remove(s.cars, index); break end
+        end
+    end
+    for _, ped in ipairs(car.crew) do
+        if units[ped] then units[ped].car = nil end
+    end
+    if isElement(car.vehicle) then
+        removeElementData(car.vehicle, 'neon:policeCar')
+        removeElementData(car.vehicle, 'neon:policeCarPhase')
+        setElementSyncer(car.vehicle, true)
+    end
+end
+
+destroyCar = function(car)
+    if not cars[car.vehicle] then return end
+    local vehicle = car.vehicle
+    releaseCar(car)
+    for _, ped in ipairs(car.crew) do
+        local unit = units[ped]
+        if unit and isElement(ped) and getPedOccupiedVehicle(ped) == vehicle then destroyUnit(ped) end
+    end
+    if isElement(vehicle) then destroyElement(vehicle) end
+end
+
+local function wantCar(s, t)
+    if not cfg.policeCars or countCars() >= cfg.maxCars then return false end
+    if #activeCars(s) >= cfg.maxCarsPerSuspect or countUnits() >= cfg.maxCops then return false end
+    return R.canDispatchCar(s.w.level, #activeCars(s), #footUnits(s), t - (s.lastCarAt or -math.huge))
+end
+
+-- Ask the suspect's client for GTA's road placement of this model. The
+-- model and crew follow the suspect's area, as GTA's follow the player's.
+local function requestCar(s)
+    local px, py = getElementPosition(s.player)
+    local mapLevel = R.mapLevel(px, py)
+    local model = R.policeCarModel(s.w.level, mapLevel, math.random(0, 2), math.random() < 0.5)
+    nextRequestId = nextRequestId + 1
+    pendingSpawns[nextRequestId] = {player = s.player, at = now(), car = {model = model, mapLevel = mapLevel}}
+    s.spawnPending = nextRequestId
+    triggerClientEvent(s.player, 'neonPolice:carProbe', resourceRoot, nextRequestId, model)
+end
+
+-- The suspect's client answers with a road point out of its view (or false).
+-- Like a foot cop, it is then checked off-screen by every other player
+-- within 160 m.
+addEvent('neonPolice:carCandidate', true)
+addEventHandler('neonPolice:carCandidate', resourceRoot, function(id, x, y, z, rotation)
+    local pending = pendingSpawns[id]
+    if not pending or pending.player ~= client or pending.veto or not pending.car then return end
+    local s = suspects[client]
+    local function refuse(failed)
+        pendingSpawns[id] = nil
+        if s and s.spawnPending == id then s.spawnPending = false end
+        -- Two misses in a row (no road, off-road, an older client): foot
+        -- cops stand in until a car can be placed again.
+        if s and failed then s.carFailures = s.carFailures + 1; s.carRetryAt = now() + 1000 end
+    end
+    if not s then return refuse(false) end
+    if type(x) ~= 'number' or type(y) ~= 'number' or type(z) ~= 'number' or type(rotation) ~= 'number' or
+        x ~= x or y ~= y or z ~= z or rotation ~= rotation then
+        return refuse(true)
+    end
+    if s.w.level < 2 or not inMainWorld(client) or isPedDead(client) then return refuse(false) end
+    local px, py, pz = getElementPosition(client)
+    local d = getDistanceBetweenPoints3D(px, py, pz, x, y, z)
+    if d < 25 or d > 170 or math.abs(pz - z) > 40 then return refuse(true) end
+    local watchers = {}
+    for _, player in ipairs(getElementsByType('player')) do
+        if player ~= client and inMainWorld(player) then
+            local ox, oy, oz = getElementPosition(player)
+            local od = getDistanceBetweenPoints3D(ox, oy, oz, x, y, z)
+            if od < 25 then return refuse(true) end
+            if od < 160 and ready[player] then watchers[#watchers + 1] = player end
+        end
+    end
+    pending.car.rotation = rotation
+    if #watchers == 0 then
+        refuse(false)
+        createPoliceCar(s, x, y, z, pending.car)
+        return
+    end
+    local set = {}
+    for _, player in ipairs(watchers) do set[player] = true end
+    pending.veto = {x = x, y = y, z = z, waiting = #watchers, watchers = set}
+    pending.at = now()
+    triggerClientEvent(watchers, 'neonPolice:spawnVeto', resourceRoot, id, x, y, z)
+end)
+
+local function armCrewMember(ped, level, model, shotgun)
+    -- SWAT, FBI and army keep their tier weapon (R.copLoadout); city cops
+    -- the pistol and nightstick. 0x5E89B0 adds the shotgun on top.
+    local tier = model == 285 and 4 or model == 286 and 5 or model == 287 and 6
+    if tier then
+        local loadout = R.copLoadout(tier, true)
+        giveWeapon(ped, loadout.weapon, loadout.ammo, not shotgun)
+        if loadout.armor > 0 then setPedArmor(ped, loadout.armor) end
+    else
+        giveWeapon(ped, 3, 1, false)
+        giveWeapon(ped, 22, 1000, not shotgun)
+    end
+    if shotgun then giveWeapon(ped, 25, 1000, true) end
+    return tier ~= false
+end
+
+createPoliceCar = function(s, x, y, z, spec)
+    local t = now()
+    if not wantCar(s, t) then return false end
+    local level = s.w.level
+    -- Lifted 0.9 m above the road point, as native-vehicle-traffic does: on a
+    -- steep road a long car created at the surface can start wedged in it.
+    z = z + 0.9
+    local vehicle = createVehicle(spec.model, x, y, z, 0, 0, spec.rotation or 0)
+    if not vehicle then return false end
+    local seats, pedModel = R.policeCarCrew(spec.model, spec.mapLevel)
+    local shotgunSeat = R.policeCarShotgunSeat(level, spec.model, math.random(), math.random())
+    local crew = {}
+    for _, seat in ipairs(seats) do
+        local ped = createPed(pedModel, x, y, z + 1, spec.rotation or 0)
+        if ped then warpPedIntoVehicle(ped, vehicle, seat) end
+        if not ped or getPedOccupiedVehicle(ped) ~= vehicle then
+            -- All or nothing: a half-filled car is worse than no car.
+            if ped then destroyElement(ped) end
+            for _, other in ipairs(crew) do destroyElement(other.ped) end
+            destroyElement(vehicle)
+            return false
+        end
+        crew[#crew + 1] = {ped = ped, seat = seat}
+    end
+    local handling = getVehicleHandling and getVehicleHandling(vehicle)
+    local car = {
+        vehicle = vehicle, ped = vehicle, model = spec.model, suspect = s.player, crew = {}, phase = 'chase',
+        createdAt = t, progressAt = t, bestDistance = math.huge, stalls = 0, avoid = {}, reentered = false,
+        maxVelocity = type(handling) == 'table' and tonumber(handling.maxVelocity) or 160,
+        -- 0x41C9D0 picks ram or block once, when the chase starts.
+        mission = R.policeCarMission(level, math.random(0, 3)),
+        -- A Rhino crew only bails out when its random seed is above 10000.
+        rhinoBails = math.random(0, 32767) > 10000,
+    }
+    car.speed = R.policeCarSpeed(level, car.maxVelocity)
+    cars[vehicle] = car
+    s.cars[#s.cars + 1] = vehicle
+    s.lastCarAt = t
+    s.carFailures = 0
+    setVehicleEngineState(vehicle, true)
+    setData(vehicle, 'neon:policeCar', true)
+    setData(vehicle, 'neon:policeSuspect', s.player)
+    setData(vehicle, 'neon:policeCarPhase', 'chase')
+    setData(vehicle, 'neon:policeCarMission', car.mission)
+    setData(vehicle, 'neon:policeCarSpeed', car.speed)
+    -- GTA's first entry into a vehicle is car theft: these are not the
+    -- suspect's to steal from yet, so they stay counted as police vehicles.
+    for _, member in ipairs(crew) do
+        local tier = armCrewMember(member.ped, level, pedModel, member.seat == shotgunSeat)
+        setData(member.ped, 'neon:policeCarVehicle', vehicle)
+        local unit = registerUnit(s, member.ped, tier, false, car)
+        unit.keepWeapon = member.seat == shotgunSeat
+        car.crew[#car.crew + 1] = member.ped
+        if member.seat == 0 then car.driver = member.ped end
+    end
+    assignCarOwner(car, chooseOwner(car))
+    return true
+end
+
+-- The car watchdog, every server tick (250 ms). Rules are solo's
+-- (rules.lua); positions and speeds are the synced ones.
+local function watchCar(s, car)
+    local vehicle = car.vehicle
+    if not isElement(vehicle) then releaseCar(car); return end
+    if car.phase == 'retire' then return end
+    local t = now()
+    -- A player took the car: it is his now.
+    if isPlayer(getVehicleController(vehicle)) then releaseCar(car); return end
+    if isVehicleBlown(vehicle) or getElementHealth(vehicle) <= 250 then return retireCar(car, 'wrecked') end
+    local player = s.player
+    local d2, d3 = distance2(vehicle, player), distance3(vehicle, player)
+    if d3 > cfg.copLostDistance then return retireCar(car, 'lost') end
+    -- UpdateCarAI writes the cruise speed from the current level.
+    local speed = R.policeCarSpeed(s.w.level, car.maxVelocity)
+    if speed ~= car.speed then car.speed = speed; setData(vehicle, 'neon:policeCarSpeed', speed) end
+    -- The siren follows the close / far mission switch (0x41DC6D, 0x41DD8A).
+    if d2 < R.carCloseDistance then setSiren(car, true) elseif d2 > R.carFarDistance then setSiren(car, false) end
+    local suspectVehicle = getPedOccupiedVehicle(player)
+    local suspectSpeed = suspectVehicle and speedUnits(suspectVehicle) or 0
+    local inside = crewInside(car)
+    local driverUnit = car.driver and units[car.driver]
+
+    if car.phase == 'chase' then
+        if not driverUnit or not inCar(driverUnit) then
+            for _, unit in ipairs(inside) do order(unit.ped, 'exit') end
+            setCarPhase(car, 'parked')
+            return
+        end
+        -- Progress: the car keeps moving or closes in. A car that sits
+        -- still far from the suspect has an owner that does not run it.
+        local moving = speedUnits(vehicle) > 0.04
+        if moving or d3 < car.bestDistance - 2 or d2 < R.bailDistance + 5 then
+            car.progressAt, car.bestDistance = t, math.min(car.bestDistance, d3)
+        elseif t - car.progressAt > 8000 then
+            car.stalls = car.stalls + 1
+            car.progressAt, car.bestDistance = t, d3
+            if car.stalls >= 3 then
+                -- Never ran: the crew gets out and chases on foot.
+                for _, unit in ipairs(inside) do order(unit.ped, 'exit') end
+                setCarPhase(car, 'parked')
+                return
+            end
+            avoidOwner(car)
+        end
+        local slowFor = s.slowSince and t - s.slowSince or 0
+        local bail = R.shouldBail(d2, not suspectVehicle, suspectVehicle and upsideDown(suspectVehicle), slowFor)
+        if bail and (car.model ~= 432 or car.rhinoBails) then
+            setCarPhase(car, 'bail')
+            car.driverExitAt = t + R.driverExitDelay(car.reentered, math.random())
+            for _, unit in ipairs(inside) do
+                if unit.ped ~= car.driver then order(unit.ped, 'exit') end
+            end
+        end
+    elseif car.phase == 'bail' then
+        -- The driver keeps the wheel while the suspect's car gets away
+        -- (0x68FEF7): the chase goes on.
+        if suspectVehicle and R.suspectCarGetsAway(suspectSpeed, d3) then
+            setCarPhase(car, 'chase')
+            car.progressAt, car.bestDistance = t, d3
+        elseif t >= car.driverExitAt then
+            for _, unit in ipairs(inside) do order(unit.ped, 'exit') end
+            if #inside == 0 then setCarPhase(car, 'parked') end
+        end
+    elseif car.phase == 'parked' then
+        -- Only the driver gets back in (0x68FD50 case 1103): the suspect is
+        -- in another vehicle that moves or is far, the cop is within 16 m,
+        -- the car is upright and not wrecked, and its seat is free.
+        local driver = car.driver
+        if driverUnit and driverUnit.phase == 'pursue' and not s.arrest and isElement(driver) and
+            not getPedOccupiedVehicle(driver) and suspectVehicle and suspectVehicle ~= vehicle and
+            R.suspectCarGetsAway(suspectSpeed, d3) and distance3(driver, vehicle) < R.reenterDistance and
+            not upsideDown(vehicle) and not getVehicleOccupant(vehicle, 0) then
+            setCarPhase(car, 'boarding')
+            car.boardingAt = t
+            -- The car goes to the driver's client, so it can drive it.
+            if isPlayer(driverUnit.owner) and setElementSyncer(vehicle, driverUnit.owner, true) then car.owner = driverUnit.owner end
+            order(driver, 'enter')
+        end
+    elseif car.phase == 'boarding' then
+        if driverUnit and inCar(driverUnit) and getPedOccupiedVehicleSeat(car.driver) == 0 then
+            order(car.driver, nil)
+            car.reentered = true
+            car.progressAt, car.bestDistance, car.stalls = t, d3, 0
+            setCarPhase(car, 'chase')
+        elseif not driverUnit or isPedDead(car.driver) or t - car.boardingAt > 8000 then
+            order(car.driver, nil)
+            setCarPhase(car, 'parked')
+        end
+    end
+    -- Same owner preference as foot cops: another player near the car rather
+    -- than the suspect, re-checked every 3 s.
+    if (car.phase == 'chase' or car.phase == 'bail') and t - (car.ownerCheckedAt or 0) > 3000 then
+        car.ownerCheckedAt = t
+        local owner = car.owner
+        local valid = isPlayer(owner) and ready[owner] and inMainWorld(owner) and distance3(owner, vehicle) <= cfg.ownerRange + 20
+        if not valid or owner == player then assignCarOwner(car, chooseOwner(car)) end
+    end
+    -- A cop who has left the car has done what the exit order asked.
+    for _, ped in ipairs(car.crew) do
+        if isElement(ped) and getElementData(ped, 'neon:policeOrder') == 'exit' and not getPedOccupiedVehicle(ped) then
+            order(ped, nil)
+        end
+    end
+end
+
+-- Cars nobody needs any more: retired, or parked with no crew left to come
+-- back to them.
+local function carRemovable(car)
+    if car.phase == 'retire' then return true end
+    if not suspects[car.suspect] then return true end
+    if car.phase ~= 'parked' then return false end
+    for _, ped in ipairs(car.crew) do
+        local unit = units[ped]
+        if unit and unit.phase ~= 'disengage' and isElement(ped) and not isPedDead(ped) then return false end
+    end
+    return true
 end
 
 -- Retired cops leave only when nobody can see them disappear.
@@ -690,7 +1139,6 @@ local function probeRetired()
     for ped, unit in pairs(units) do
         if unit.phase == 'disengage' or not isElement(ped) or isPedDead(ped) then retiring[#retiring + 1] = ped end
     end
-    if #retiring == 0 then return end
     local t = now()
     -- Hard ceiling: if too many cops are waiting to leave unseen (a watcher
     -- that always answers "visible", say), the oldest go anyway.
@@ -700,6 +1148,28 @@ local function probeRetired()
             return ((units[a] and units[a].retiredAt) or 0) < ((units[b] and units[b].retiredAt) or 0)
         end)
         for index = 1, #retiring - ceiling do destroyUnit(retiring[index]) end
+    end
+    for vehicle, car in pairs(cars) do
+        if carRemovable(car) then
+            car.retiredAt = car.retiredAt or t
+            local x, y, z = isElement(vehicle) and getElementPosition(vehicle)
+            local watchers = {}
+            if x then
+                for _, player in ipairs(getElementsWithinRange(x, y, z, 150, 'player')) do
+                    if ready[player] then watchers[#watchers + 1] = player end
+                end
+            end
+            if not x or #watchers == 0 or t - car.retiredAt > 120000 then
+                destroyCar(car)
+            elseif not car.visibilityCheck then
+                nextVisibilityId = nextVisibilityId + 1
+                car.visibilityCheck = nextVisibilityId
+                visibilityChecks[nextVisibilityId] = {ped = vehicle, car = true, waiting = #watchers, visible = false, at = t,
+                                                      watchers = {}}
+                for _, player in ipairs(watchers) do visibilityChecks[nextVisibilityId].watchers[player] = true end
+                triggerClientEvent(watchers, 'neonPolice:visibilityProbe', resourceRoot, nextVisibilityId, vehicle)
+            end
+        end
     end
     for _, ped in ipairs(retiring) do
         local unit = units[ped]
@@ -729,6 +1199,7 @@ local function probeRetired()
         if t - check.at > 3000 then
             visibilityChecks[id] = nil
             if units[check.ped] then units[check.ped].visibilityCheck = nil end
+            if cars[check.ped] then cars[check.ped].visibilityCheck = nil end
         end
     end
 end
@@ -742,6 +1213,14 @@ addEventHandler('neonPolice:visibilityResult', resourceRoot, function(id, visibl
     if visible == true then check.visible = true end
     if check.waiting <= 0 then
         visibilityChecks[id] = nil
+        if check.car then
+            local car = cars[check.ped]
+            if car then
+                car.visibilityCheck = nil
+                if not check.visible then destroyCar(car) end
+            end
+            return
+        end
         local unit = units[check.ped]
         if unit then
             unit.visibilityCheck = nil
@@ -763,6 +1242,13 @@ local function watchUnit(s, unit)
     end
     local t = now()
     local x, y, z = getElementPosition(ped)
+    -- In its car the cop is watched as part of the car (watchCar). Walking
+    -- back to it on an "enter" order is not chasing, so it is not a stall.
+    if inCar(unit) or getElementData(ped, 'neon:policeOrder') == 'enter' then
+        unit.lastX, unit.lastY, unit.lastZ, unit.lastAt = x, y, z, t
+        unit.progressAt, unit.bestDistance = t, math.huge
+        return
+    end
     local moved = getDistanceBetweenPoints3D(x, y, z, unit.lastX, unit.lastY, unit.lastZ)
     local elapsed = math.max(1, t - unit.lastAt)
     unit.lastX, unit.lastY, unit.lastZ, unit.lastAt = x, y, z, t
@@ -798,7 +1284,7 @@ local function watchUnit(s, unit)
         if not valid or owner == s.player then assignOwner(unit, chooseOwner(unit)) end
     end
     -- 1-star rule: nightstick unless the suspect carries a gun.
-    if not unit.tier then
+    if not unit.tier and not unit.keepWeapon then
         local wantGun = s.w.level >= 2 or R.isArmedWeapon(getPedWeapon(s.player))
         local slot = wantGun and 2 or 1
         if getPedWeaponSlot(ped) ~= slot then setPedWeaponSlot(ped, slot) end
@@ -813,7 +1299,7 @@ local function nearestArrestingCop(s, maxDistance)
     local best, bestDistance
     for _, unit in ipairs(aliveUnits(s)) do
         local d, dz = distance3(unit.ped, s.player)
-        if d <= maxDistance and math.abs(dz) <= 2 and (not bestDistance or d < bestDistance) then best, bestDistance = unit, d end
+        if not inCar(unit) and d <= maxDistance and math.abs(dz) <= 2 and (not bestDistance or d < bestDistance) then best, bestDistance = unit, d end
     end
     return best, bestDistance
 end
@@ -855,14 +1341,14 @@ local function bust(s)
     end, 3000, 1)
 end
 
-local function beginArrest(s, unit)
+local function beginArrest(s, unit, fromCar)
     if not triggerEvent('onNativePlayerArrestAttempt', s.player, unit.ped) then
         s.arrestCooldownUntil = now() + 3000
         return
     end
-    s.arrest = {cop = unit.ped, at = now()}
+    s.arrest = {cop = unit.ped, at = now(), fromCar = fromCar == true}
     for _, other in ipairs(aliveUnits(s)) do setPhase(other, 'arrest') end
-    triggerClientEvent(s.player, 'neonPolice:arrest', resourceRoot, unit.ped, 4000)
+    triggerClientEvent(s.player, 'neonPolice:arrest', resourceRoot, unit.ped, 4000, fromCar and 'car' or 'foot')
 end
 
 -- Solo arrests once the suspect is knocked down within 3 m (|dz| <= 2 m), and
@@ -877,6 +1363,22 @@ local function updateArrest(s)
         local cop = s.arrest.cop
         local d, dz = 999, 0
         if isElement(cop) and not isPedDead(cop) then d, dz = distance3(cop, player) end
+        if s.arrest.fromCar then
+            -- Pulled out of the car (solo's ArrestPed drags the driver out of
+            -- a stopped car, 0x6907A0). The suspect's client leaves the car
+            -- with GTA's exit; one that does not is taken out after 3 s.
+            -- Once out, the usual 4 s with hands up.
+            if isPedDead(player) or d > 6 then
+                endArrest(s, false)
+            elseif not getPedOccupiedVehicle(player) then
+                s.arrest.fromCar = false
+                s.arrest.at = t
+                triggerClientEvent(player, 'neonPolice:arrest', resourceRoot, cop, 4000, 'foot')
+            elseif t - s.arrest.at >= 3000 then
+                removePedFromVehicle(player)
+            end
+            return
+        end
         if isPedDead(player) or getPedOccupiedVehicle(player) or d > 4 or math.abs(dz) > 2 then
             endArrest(s, false)
         elseif t - s.arrest.at >= 4000 then
@@ -884,8 +1386,20 @@ local function updateArrest(s)
         end
         return
     end
-    if s.w.level == 0 or isPedDead(player) or getPedOccupiedVehicle(player) or (s.arrestCooldownUntil or 0) > t then
+    if s.w.level == 0 or isPedDead(player) or (s.arrestCooldownUntil or 0) > t then
         s.stillSince = nil
+        return
+    end
+    local vehicle = getPedOccupiedVehicle(player)
+    if vehicle then
+        s.stillSince = nil
+        -- A car that has stood still for 2.5 s (the bail-out rule) with a cop
+        -- on foot at the door: the arrest starts in the car. Not on its roof
+        -- (solo shoots instead, 0x6907A0).
+        if s.slowSince and t - s.slowSince > R.bailSlowTime and not upsideDown(vehicle) then
+            local unit = nearestArrestingCop(s, 4)
+            if unit then beginArrest(s, unit, true) end
+        end
         return
     end
     local unit, d = nearestArrestingCop(s, 3)
@@ -938,6 +1452,18 @@ local function tickSuspect(s)
         if #aliveUnits(s) > 0 then dismissUnits(s, 'inactive') end
         return
     end
+    -- How long the suspect's vehicle has been slower than 0.05 per step
+    -- (solo's 2.5 s bail-out timer, vehicle+0x4DC).
+    local vehicle = getPedOccupiedVehicle(player)
+    if vehicle and speedUnits(vehicle) < R.bailSlowSpeed then
+        s.slowSince = s.slowSince or t
+    else
+        s.slowSince = nil
+    end
+    for index = #s.cars, 1, -1 do
+        local car = cars[s.cars[index]]
+        if car then watchCar(s, car) end
+    end
     for _, ped in ipairs(s.units) do
         local unit = units[ped]
         if unit and unit.phase ~= 'disengage' then watchUnit(s, unit) end
@@ -947,11 +1473,23 @@ local function tickSuspect(s)
     -- the next dispatch.
     local pending = s.spawnPending and pendingSpawns[s.spawnPending]
     if s.spawnPending and (not pending or t - pending.at > 2500) then
+        if pending and pending.car and not pending.veto then s.carFailures = s.carFailures + 1 end
         pendingSpawns[s.spawnPending] = nil
         s.spawnPending = false
     end
-    if not s.spawnPending and not s.arrest and ready[player] and canDispatch(s) and
-        t - s.lastDispatch >= (cfg.dispatchDelay[level] or 2000) then
+    if s.spawnPending or s.arrest or not ready[player] then return end
+    if cfg.policeCars then
+        -- Solo: cars from 2 stars. Foot cops only stand in when two car
+        -- placements in a row failed.
+        if (s.carRetryAt or 0) <= t and wantCar(s, t) and s.carFailures < 2 then
+            requestCar(s)
+        elseif level >= 2 and s.carFailures >= 2 and canDispatch(s) and
+            t - s.lastDispatch >= (cfg.dispatchDelay[level] or 2000) then
+            -- Try a car again after this foot cop.
+            s.carFailures = 0
+            requestSpawn(s)
+        end
+    elseif canDispatch(s) and t - s.lastDispatch >= (cfg.dispatchDelay[level] or 2000) then
         requestSpawn(s)
     end
 end
@@ -1019,6 +1557,9 @@ addEventHandler('onResourceStop', resourceRoot, function()
     for ped in pairs(units) do
         if isElement(ped) then destroyElement(ped) end
     end
+    for vehicle in pairs(cars) do
+        if isElement(vehicle) then destroyElement(vehicle) end
+    end
     for player, s in pairs(suspects) do
         if isElement(player) and s.published > 0 then
             setPlayerWantedLevel(player, 0)
@@ -1042,7 +1583,7 @@ function getNativeWantedState(player)
     if not s then return false end
     return {
         level = s.w.level, chaos = s.w.chaos, maximum = s.w.maximum, enabled = s.enabled,
-        units = #aliveUnits(s), arrest = s.arrest ~= nil, parole = s.w.paroleAt ~= false,
+        units = #aliveUnits(s), cars = #activeCars(s), arrest = s.arrest ~= nil, parole = s.w.paroleAt ~= false,
         backoff = s.backoffUntil > now(),
     }
 end
@@ -1093,6 +1634,16 @@ function getNativePoliceUnits(player)
     local list = {}
     if s then
         for _, unit in ipairs(aliveUnits(s)) do list[#list + 1] = unit.ped end
+    end
+    return list
+end
+
+-- The police cars chasing that player (version 2).
+function getNativePoliceCars(player)
+    local s = isPlayer(player) and suspects[player]
+    local list = {}
+    if s then
+        for _, car in ipairs(activeCars(s)) do list[#list + 1] = car.vehicle end
     end
     return list
 end

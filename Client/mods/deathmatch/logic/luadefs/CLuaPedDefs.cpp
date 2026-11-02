@@ -3590,6 +3590,10 @@ bool CLuaPedDefs::SetPedDriveMission(CClientPed* ped, CClientVehicle* vehicle, C
     {
         if (stricmp(name->c_str(), "escort_left") == 0)
             missionId = 29;
+        else if (stricmp(name->c_str(), "ram_car") == 0)
+            missionId = 15;
+        else if (stricmp(name->c_str(), "block_car") == 0)
+            missionId = 17;
     }
     else
     {
@@ -3597,8 +3601,24 @@ bool CLuaPedDefs::SetPedDriveMission(CClientPed* ped, CClientVehicle* vehicle, C
     }
 
     // Each target contract is admitted individually after binary and runtime
-    // validation. INTRO1 currently proves only MISSION_ESCORT_LEFT (29).
-    if (missionId != 29)
+    // validation. INTRO1 proves MISSION_ESCORT_LEFT (29).
+    //
+    // Police cars chase with ram and block missions. Solo gives a police car
+    // MISSION_RAMPLAYER_FARAWAY (2) or MISSION_BLOCKPLAYER_FARAWAY (4)
+    // (CCarAI::FindPoliceCarMissionForWantedLevel 0x41C9D0), but those read
+    // FindPlayerVehicle, the local player, so in multiplayer they would chase
+    // whoever runs the cop instead of the suspect. The car-target versions
+    // take the suspect's vehicle explicitly: RAMCAR_FARAWAY (15) and
+    // BLOCKCAR_FARAWAY (17), the values CCarAI::TellCarToRamOtherCar 0x41C8A0
+    // and TellCarToBlockOtherCar 0x41C900 write. Far away, 2/4/15/17 share the
+    // same road follower (0x436A90 -> 0x434900). Up close BLOCKCAR_CLOSE (18)
+    // steers exactly like BLOCKPLAYER_CLOSE (5) (both 0x4335E0); RAMCAR_CLOSE
+    // (16) uses the plain intercept 0x433280, without the side offset that
+    // RAMPLAYER_CLOSE (3) adds. CCarAI::UpdateCarAI switches FARAWAY/CLOSE by
+    // itself and falls back to cruising if the target reference is cleared
+    // (target destroyed or streamed out), so only the FARAWAY entries are
+    // admitted.
+    if (missionId != 29 && missionId != 15 && missionId != 17)
         return false;
 
     int style = DRIVING_STYLE_STOP_FOR_CARS;
@@ -4307,8 +4327,8 @@ int CLuaPedDefs::RestorePedNativeVehicleResponse(lua_State* luaVM)
                                    ? static_cast<unsigned int>(tokenValue)
                                    : 0;
     bool               valid = ped && ped->GetType() == CCLIENTPED && ped->IsSyncing() && !ped->IsDead() && ped->GetGamePlayer() && resource &&
-                 resource->IsPedNativeEventProfileActive(ped, token) && lua_istable(luaVM, 2);
-    const size_t count = valid ? lua_objlen(luaVM, 2) : 0;
+                               resource->IsPedNativeEventProfileActive(ped, token) && lua_istable(luaVM, 2);
+    const size_t       count = valid ? lua_objlen(luaVM, 2) : 0;
     valid = valid && count > 0 && count <= 8;
     std::vector<SPedNativeVehicleTask> descriptions;
     for (size_t i = 0; valid && i < count; ++i)

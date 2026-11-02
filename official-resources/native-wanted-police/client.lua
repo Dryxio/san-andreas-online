@@ -6,6 +6,10 @@
 --   server named (setPedKillOnFoot / setPedGoTo). Other clients just see the
 --   result through normal ped sync. No retail police task is ever used: they
 --   read the local wanted level and expect a real CCopPed (see server.lua).
+-- - Police cars (version 2). The client that syncs the car runs its driver:
+--   GTA's ram or block mission on the suspect's vehicle (setPedDriveMission),
+--   or a drive to a suspect on foot. The server decides when the crew stops,
+--   gets out or gets back in; this client only carries the orders out.
 -- - Spawn points. The suspect's client finds an off-screen ped-path point
 --   with GTA's own population placement (getAmbientPedSpawnCandidate), so a
 --   cop never pops into view.
@@ -38,6 +42,109 @@ end
 -- Cop AI on the owning client.
 ------------------------------------------------------------------------
 
+-- Streaming leases keep a car and its driver simulated on the client that
+-- runs them, even at the edge of its streaming range.
+local leases = {}
+local function holdStreaming(element)
+    if leases[element] or type(acquireElementStreamingLease) ~= 'function' then return end
+    local lease = acquireElementStreamingLease(element)
+    if lease then leases[element] = lease end
+end
+
+local function releaseStreaming(element)
+    local lease = leases[element]
+    leases[element] = nil
+    if lease and type(releaseElementStreamingLease) == 'function' then releaseElementStreamingLease(lease) end
+end
+
+local function speedOf(element)
+    local vx, vy, vz = getElementVelocity(element)
+    return math.sqrt(vx * vx + vy * vy + vz * vz)
+end
+
+-- The driver of a police car, on the client that syncs both.
+local function driveCar(ped, vehicle, phase, suspect, epoch, state, t)
+    if getPedOccupiedVehicleSeat(ped) ~= 0 then return end -- passengers ride
+    -- GTA's drive tasks change the vehicle's autopilot: wait until the car
+    -- has been handed to this client as well.
+    if not isElementSyncer(vehicle) then return end
+    holdStreaming(vehicle)
+    holdStreaming(ped)
+    if not state or state.vehicle ~= vehicle then
+        -- A mission car: a ghost instead of falling through the world where
+        -- collision is not loaded, back on the road once it is.
+        if type(setVehicleLoadCollisionFlag) == 'function' then setVehicleLoadCollisionFlag(vehicle, false) end
+        -- Being warped in leaves GTA's in-car task in the script slot.
+        killPedTask(ped, 'primary', 3, false)
+        state = {vehicle = vehicle}
+    end
+    local carPhase = getElementData(vehicle, 'neon:policeCarPhase')
+    local key, issue
+    if phase == 'disengage' or carPhase == 'retire' then
+        key = 'wander'
+        issue = function() return setPedDriveWander(ped, vehicle, 20, 'stop_for_cars') end
+    elseif phase == 'arrest' or carPhase ~= 'chase' then
+        -- Solo sets mission 0 and speed 0: the car brakes where it is.
+        local x, y, z = getElementPosition(vehicle)
+        key = 'stop'
+        issue = function() return setPedDriveTo(ped, vehicle, Vector3(x, y, z), 0, 'accurate', 'stop_for_cars') end
+    elseif isElement(suspect) then
+        local suspectVehicle = getPedOccupiedVehicle(suspect)
+        local level = tonumber(getElementData(suspect, 'neon:wantedLevel')) or 2
+        local speed = tonumber(getElementData(vehicle, 'neon:policeCarSpeed')) or 34
+        local cx, cy, cz = getElementPosition(vehicle)
+        local px, py, pz = getElementPosition(suspect)
+        local d2 = getDistanceBetweenPoints2D(cx, cy, px, py)
+        -- GTA's close / far mission switch (20 m / 50 m).
+        if d2 < NativeWantedRules.carCloseDistance then
+            state.close = true
+        elseif d2 > NativeWantedRules.carFarDistance then
+            state.close = false
+        end
+        if state.close then
+            speed = NativeWantedRules.policeCarCloseSpeed(level, speed, not suspectVehicle,
+                                                          getDistanceBetweenPoints3D(cx, cy, cz, px, py, pz),
+                                                          speedOf(suspectVehicle or suspect))
+        end
+        local useMission = suspectVehicle and isElementStreamedIn(suspectVehicle) and not isVehicleBlown(suspectVehicle) and
+            type(setPedDriveMission) == 'function' and (state.missionRefusedAt or 0) + 3000 < t
+        if useMission then
+            local mission = getElementData(vehicle, 'neon:policeCarMission') == 'ram' and 'ram' or 'block'
+            -- A suspect on a bike is blocked, never rammed (0x41FDE0).
+            local vehicleType = getVehicleType(suspectVehicle)
+            if vehicleType == 'Bike' or vehicleType == 'BMX' then mission = 'block' end
+            key = 'mission:' .. mission .. ':' .. tostring(suspectVehicle) .. ':' .. speed
+            issue = function()
+                local ok = setPedDriveMission(ped, vehicle, suspectVehicle, mission .. '_car', speed, 'avoid_cars')
+                -- Builds before ram/block were admitted refuse: drive to
+                -- the suspect instead, and try again a little later.
+                if not ok then state.missionRefusedAt = t end
+                return ok
+            end
+        else
+            key = 'goto:' .. speed
+            issue = function() return setPedDriveTo(ped, vehicle, Vector3(px, py, pz), speed, 'normal', 'avoid_cars') end
+        end
+    end
+    if not key then return end
+    local refresh = false
+    if state.key == key and state.epoch == epoch then
+        if key:sub(1, 5) == 'goto:' then
+            refresh = t - state.at > 1500
+        elseif key:sub(1, 8) == 'mission:' then
+            -- Re-issue only once GTA has dropped the mission task.
+            refresh = t - state.at > 3000 and not hasTask(ped, 'TASK_COMPLEX_CAR_DRIVE_MISSION')
+        end
+        if not refresh then applied[ped] = state; return end
+    end
+    if issue() then
+        state.key, state.epoch, state.at = key, epoch, t
+    else
+        state.key = nil
+    end
+    applied[ped] = state
+end
+
 local function drive(ped)
     local phase = getElementData(ped, 'neon:policePhase')
     local suspect = getElementData(ped, 'neon:policeSuspect')
@@ -45,6 +152,28 @@ local function drive(ped)
     local state = applied[ped]
     local t = now()
     if isPedDead(ped) then return end
+    local vehicle = getPedOccupiedVehicle(ped)
+    local orderGiven = getElementData(ped, 'neon:policeOrder')
+    if vehicle then
+        if orderGiven == 'exit' then
+            -- GTA's own exit (door, animation). Asked again if refused.
+            if not state or state.exit ~= vehicle or t - state.at > 2000 then
+                setPedExitVehicle(ped)
+                applied[ped] = {exit = vehicle, at = t}
+            end
+            return
+        end
+        return driveCar(ped, vehicle, phase, suspect, epoch, state, t)
+    end
+    if orderGiven == 'enter' then
+        -- The driver goes back to his car, as driver (task 701).
+        local car = getElementData(ped, 'neon:policeCarVehicle')
+        if isElement(car) and (not state or state.enter ~= car or t - state.at > 3000) then
+            setPedEnterVehicle(ped, car, 0)
+            applied[ped] = {enter = car, at = t}
+        end
+        return
+    end
     if phase == 'disengage' then
         if not state or state.phase ~= 'disengage' then
             setPedWander(ped, 'walk')
@@ -127,6 +256,10 @@ setTimer(function()
     for ped in pairs(applied) do
         if not isElement(ped) then applied[ped] = nil end
     end
+    -- Leases only while this client runs the element.
+    for element in pairs(leases) do
+        if not isElement(element) or not isElementSyncer(element) then releaseStreaming(element) end
+    end
 end, 400, 0)
 
 ------------------------------------------------------------------------
@@ -175,6 +308,48 @@ addEventHandler('neonPolice:spawnProbe', resourceRoot, function(id)
             end
         end
     end
+end)
+
+-- Police cars: GTA's own road placement for a car of this model near the
+-- suspect (GenerateCarCreationCoors2, lane offset and ground check), the
+-- same oracle native-vehicle-traffic uses. The C++ reads the model's
+-- collision, so the model is held loaded while it runs.
+addEvent('neonPolice:carProbe', true)
+addEventHandler('neonPolice:carProbe', resourceRoot, function(id, model)
+    local function answer(candidate)
+        if candidate then
+            triggerServerEvent('neonPolice:carCandidate', resourceRoot, id, candidate.x, candidate.y, candidate.z,
+                               candidate.rotation)
+        else
+            triggerServerEvent('neonPolice:carCandidate', resourceRoot, id, false)
+        end
+    end
+    model = tonumber(model)
+    if not model or type(getAmbientVehicleSpawnCandidate) ~= 'function' then return answer(false) end
+    local px, py, pz = getElementPosition(localPlayer)
+    if type(updateAmbientPedPopulationModels) == 'function' then updateAmbientPedPopulationModels(px, py, pz) end
+    local held = false
+    if type(engineStreamingRequestModel) == 'function' and type(engineStreamingGetModelLoadState) == 'function' then
+        held = pcall(engineStreamingRequestModel, model, true, true)
+        local ok, state = pcall(engineStreamingGetModelLoadState, model)
+        if held and not (ok and state == 'loaded') then
+            pcall(engineStreamingReleaseModel, model, true)
+            return answer(false)
+        end
+    end
+    local found
+    for _ = 1, 4 do
+        local candidate = getAmbientVehicleSpawnCandidate(px, py, pz, model)
+        if type(candidate) == 'table' then
+            local d = getDistanceBetweenPoints3D(px, py, pz, candidate.x, candidate.y, candidate.z)
+            if d >= 30 and d <= 150 and hiddenFromCamera(candidate.x, candidate.y, candidate.z) then
+                found = candidate
+                break
+            end
+        end
+    end
+    if held then pcall(engineStreamingReleaseModel, model, true) end
+    answer(found)
 end)
 
 -- Another player's check before a cop appears near them.
@@ -300,8 +475,14 @@ end
 local handsUpAnimation = false
 
 addEvent('neonPolice:arrest', true)
-addEventHandler('neonPolice:arrest', resourceRoot, function(_, duration)
+addEventHandler('neonPolice:arrest', resourceRoot, function(_, duration, kind)
     lockControls()
+    if kind == 'car' then
+        -- Pulled out of a stopped car: GTA's own exit. The server takes the
+        -- suspect out itself if this does not happen, then sends 'foot'.
+        if getPedOccupiedVehicle(localPlayer) and type(setPedExitVehicle) == 'function' then setPedExitVehicle(localPlayer) end
+        return
+    end
     duration = math.max(1000, math.min(tonumber(duration) or 4000, 6000))
     -- setPedHandsUp (GTA's hands-up task) only exists in builds after
     -- 2026-11-01; older clients play the same stock animation instead.

@@ -1,7 +1,8 @@
 <meta>
-    <info author="San Andreas Online" name="Native wanted and police" version="1.0.0" type="script"
-          description="Server-authoritative wanted levels with GTA's own crime rules, foot cops and arrests" />
-    <script src="rules.lua" type="server" />
+    <info author="San Andreas Online" name="Native wanted and police" version="2.0.0" type="script"
+          description="Server-authoritative wanted levels with GTA's own crime rules, police cars, foot cops and arrests" />
+    <!-- Shared: the client reads the close-range speed rules for police cars. -->
+    <script src="rules.lua" type="shared" cache="false" />
     <script src="server.lua" type="server" />
     <script src="client.lua" type="client" cache="false" />
 
@@ -21,6 +22,13 @@
         <setting name="*bustedText" value="true" />
         <!-- Street cops from native-ped-traffic join the chase, as in solo. -->
         <setting name="*streetCops" value="true" />
+        <!-- Police cars from 2 stars, as in solo (version 2). Off: version 1's
+             foot cops at every level. -->
+        <setting name="*policeCars" value="true" />
+        <!-- Police cars at once on the whole server, and per wanted player
+             (solo's own cap per level, 1-3, applies under this). -->
+        <setting name="*maxCars" value="12" />
+        <setting name="*maxCarsPerSuspect" value="3" />
     </settings>
 
     <export function="reportNativeCrime" type="server" />
@@ -30,5 +38,6 @@
     <export function="setNativeWantedLevel" type="server" />
     <export function="setNativeWantedMaximum" type="server" />
     <export function="getNativePoliceUnits" type="server" />
+    <export function="getNativePoliceCars" type="server" />
     <export function="requestNativePoliceBackoff" type="server" />
 </meta>

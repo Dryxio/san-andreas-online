@@ -122,6 +122,139 @@ function R.footCopCanTarget(distance, vehicleSpeedSquared)
     return vehicleSpeedSquared * distance * distance < R.pursuitVehicleLimit
 end
 
+-- Police car mission (CCarAI::FindPoliceCarMissionForWantedLevel 0x41C9D0):
+-- 2 = ram, 4 = block, from rand() & 3. 0-1 star always block; 2 stars block
+-- unless the roll is 3 (3 in 4); 3 stars block on 0-1 (1 in 2); 4-6 stars
+-- block only on 0 (1 in 4). Solo's 2/4 target the local player, so Neon
+-- sends the car-target equivalents (15/17, see setPedDriveMission).
+-- roll: an integer 0-3.
+function R.policeCarMission(level, roll)
+    roll = roll % 4
+    if level == 2 then return roll < 3 and 'block' or 'ram' end
+    if level == 3 then return roll < 2 and 'block' or 'ram' end
+    if level >= 4 and level <= 6 then return roll == 0 and 'block' or 'ram' end
+    return 'block'
+end
+
+------------------------------------------------------------------------
+-- Police cars (version 2). Read in the binary:
+--   CCarCtrl::GenerateOneRandomCar 0x430050 (police branch 0x43016A-0x430223)
+--   police car model 0x421980, default cop car 0x407C50 (tables 0x8A5A8C /
+--   0x8A5AA0), occupants CCarAI::AddPoliceCarOccupants 0x41C070, cruise
+--   speed 0x41CAA0, mission 0x41C9D0, chase CCarAI::UpdateCarAI 0x41DA30,
+--   close-range slowdown 0x41D3D0, CTaskComplexCopInCar 0x68FA50/0x68FD50.
+------------------------------------------------------------------------
+
+-- Dispatch: never below 2 stars. A new car needs fewer cars in pursuit than
+-- the cap (R.caps.cars), fewer cops in pursuit than R.caps.cops, and time
+-- since the last police car: more than 8 s at 2 stars, 5 s at 3, none at 4+.
+R.carDispatchDelay = {[2] = 8000, [3] = 5000}
+function R.canDispatchCar(level, carsInPursuit, copsInPursuit, sinceLastCar)
+    if level < 2 or level > 6 then return false end
+    if carsInPursuit >= R.caps[level].cars or copsInPursuit >= R.caps[level].cops then return false end
+    return sinceLastCar > (R.carDispatchDelay[level] or -1)
+end
+
+-- Default cop car by map level (0x8A5A8C): Ranger in the countryside,
+-- LSPD, SFPD, LVPD; the matching cop is R.levelCopModel (0x8A5AA0).
+R.areaCopCar = {[0] = 599, [1] = 596, [2] = 597, [3] = 598}
+
+-- 0x421980: at 4 stars (SWAT) an Enforcer when rand(0,3) == 2, else the
+-- default car; at 5 (FBI) always the FBI Rancher; at 6 (army) Barracks when
+-- rand() < 0x3FFF, else the Rhino. roll3: 0-2, rollHalf: boolean.
+function R.policeCarModel(level, mapLevel, roll3, rollHalf)
+    if level == 4 and roll3 == 2 then return 427 end
+    if level == 5 then return 490 end
+    if level == 6 then return rollHalf and 433 or 432 end
+    return R.areaCopCar[mapLevel] or 599
+end
+
+-- 0x41C070: who rides in each model (MTA seats; 0 is the driver) and which
+-- cop. Enforcer and FBI Rancher fill four seats; the Rhino only a driver;
+-- cop cars and the Barracks a driver and a front passenger (above 1 star,
+-- always the case for a dispatched car).
+function R.policeCarCrew(model, mapLevel)
+    if model == 427 then return {0, 1, 2, 3}, 285 end
+    if model == 490 then return {0, 1, 2, 3}, 286 end
+    if model == 432 then return {0}, 287 end
+    if model == 433 then return {0, 1}, 287 end
+    return {0, 1}, R.levelCopModel[mapLevel] or 280
+end
+
+-- Above 2 stars, cop cars and the Barracks: a 25 % roll gives the driver a
+-- shotgun (25, 1000 rounds, 0x5E89B0); if it fails, a second 25 % roll gives
+-- it to the passenger. Returns the seat that gets it, or nil.
+function R.policeCarShotgunSeat(level, model, rollDriver, rollPassenger)
+    if level <= 2 or not (model == 433 or (model >= 596 and model <= 599)) then return nil end
+    if rollDriver < 0.25 then return 0 end
+    if rollPassenger < 0.25 then return 1 end
+    return nil
+end
+
+-- Cruise speed (0x41CAA0): 25 at 1 star, 34 at 2; at 3-6 the car's
+-- handling top speed (fMaxVelocity km/h, stored as km/h / 180) times 54,
+-- 72, 75, 78. UpdateCarAI writes it again every frame during a chase.
+R.carSpeedFactor = {[3] = 54, [4] = 72, [5] = 75, [6] = 78}
+function R.policeCarSpeed(level, maxVelocityKmh)
+    if level <= 1 then return 25 end
+    if level == 2 then return 34 end
+    local speed = (maxVelocityKmh or 160) / 180 * (R.carSpeedFactor[math.min(level, 6)] or 54)
+    return math.max(1, math.min(speed, 254))
+end
+
+-- 0x41D3D0, only once the car is in close range: at 1-2 stars the car slows
+-- down near the suspect (3D distance). Any level: a suspect on foot moving
+-- slower than 0.07 within 30 m caps the speed at 10. speedUnits is the
+-- suspect's speed in GTA units per step (getElementVelocity).
+function R.policeCarCloseSpeed(level, speed, onFoot, distance, speedUnits)
+    if level == 1 or level == 2 then
+        local far = level == 1 and 25 or 34
+        if onFoot then
+            if distance < 20 then speed = 5 elseif distance < 40 then speed = level == 1 and 13 or 18 else speed = far end
+        else
+            if distance < 10 then speed = level == 1 and 15 or 27 elseif distance < 20 then speed = level == 1 and 22 or 30 else speed = far end
+        end
+    end
+    if onFoot and (speedUnits or 0) < 0.07 and distance < 30 then speed = math.min(speed, 10) end
+    return speed
+end
+
+-- The autopilot switches to the close mission under 20 m (vehicle+0x3DD
+-- default) and back above 50 m for police (0x41BF70, 0x858B40).
+R.carCloseDistance = 20
+R.carFarDistance = 50
+
+-- Cops get out (UpdateCarAI, close missions, then 0x41C760) when the car is
+-- within 10 m (2D) of the suspect and the suspect is on foot, his vehicle is
+-- upside down (up.z < -0.9), or it has stayed slower than 0.05 per step
+-- (about 2.5 m/s) for more than 2.5 s. Not from a Rhino, unless its random
+-- seed is above 10000.
+R.bailDistance = 10
+R.bailSlowSpeed = 0.05
+R.bailSlowTime = 2500
+function R.shouldBail(distance2D, onFoot, upsideDown, slowFor)
+    if distance2D >= R.bailDistance then return false end
+    return onFoot or upsideDown or (slowFor or 0) > R.bailSlowTime
+end
+
+-- CTaskComplexCopInCar 0x68FD50: the passenger leaves at once; the driver
+-- waits 3000 + rand(0, 2000) ms (250 + rand(0, 1250) once he has driven
+-- again after getting out). He stays at the wheel and resumes the chase if
+-- the suspect's vehicle is moving (|speed| x 50 > 1, about 1 m/s) or is more
+-- than 100 m away. The same test lets the driver (never a passenger) get
+-- back in: suspect in another, moving or far vehicle, cop within 16 m of
+-- his car, car upright and not wrecked.
+function R.driverExitDelay(reentered, roll)
+    if reentered then return 250 + math.floor(roll * 1250) end
+    return 3000 + math.floor(roll * 2000)
+end
+R.suspectCarMovingSpeed = 0.02
+R.suspectCarFarDistance = 100
+R.reenterDistance = 16
+function R.suspectCarGetsAway(speedUnits, distance)
+    return speedUnits * 50 > 1.0 or distance > R.suspectCarFarDistance
+end
+
 R.queueSize = 16
 R.queueReportDelay = 500
 R.queueLifetime = 10000
