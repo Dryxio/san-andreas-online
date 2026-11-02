@@ -38,6 +38,16 @@ profile, but only the current syncer may turn a potential encounter into
 observers keep collision, ground and animation processing while presenting the
 owner's synchronized detour.
 
+The obstacle avoidance and stuck recovery system resolves a classic GTA:SA limitation
+where fleeing or wandering pedestrians run directly into static collision obstacles
+(such as tree trunks, telephone poles, streetlights, or walls) without pathfinding
+around them. While vanilla GTA provides tasks for other pedestrians and vehicles, it
+lacks static world collision avoidance for fleeing pedestrians. The owner detects forward
+displacement blockage via line-of-sight raycasting, searches candidate lateral angles for
+clear corridors with ground support, and dispatches a transient script navigation task
+around the obstacle. Once clear, the pedestrian smoothly resumes escape away from the
+threat without getting stuck in place.
+
 The second behavior checkpoint admits GTA's stock gun-aimed-at, gunshot and
 damage events on the owner. Ordinary bullet sync already recreates shot, whizz,
 health and death processing. A client-observed `aim_weapon` transition, checked

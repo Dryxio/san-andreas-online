@@ -18,6 +18,7 @@ local vehicleReactionStates = {}
 local airTestSessions = {}
 local climbTestSessions = {}
 local healthStates = {}
+local pedObstacleStates = {}
 local observedAimTargets = {}
 local nativeDamageObservations = {}
 local nativeDamageTraceTimes = {}
@@ -296,6 +297,7 @@ local function releaseTrafficEventProfile(ped)
     nativeDamageObservations[ped] = nil
     nativeCombatContexts[ped] = nil
     nativeDamageTraceTimes[ped] = nil
+    pedObstacleStates[ped] = nil
 end
 
 local function getAvoidanceState(ped)
@@ -2425,7 +2427,7 @@ setTimer(function()
             not task or not task.accepted or task.epoch ~= context.epoch then
             nativeCombatContexts[ped] = nil
         elseif getTickCount() - context.at >= 1000 then
-            local reacting = getThreatState(ped) or hasDealerFightingControl(ped)
+            local reacting = getThreatState(ped) or hasDealerFightingControl(ped) or (pedObstacleStates[ped] and pedObstacleStates[ped].evading and pedObstacleStates[ped].wasFleeing)
             if reacting and getElementHealth(ped) > 0 and getElementHealth(context.attacker) > 0 then
                 triggerServerEvent("pedTraffic:combatContext", resourceRoot, ped, context.attacker, context.epoch, context.weapon, context.bodypart)
             else
@@ -2801,6 +2803,269 @@ setTimer(function()
                 stats.groupFailures, formatReasons(stats.missReasons)))
     end
 end, 10000, 0)
+
+
+addEventHandler("onClientElementStreamOut", root, function()
+    if pedObstacleStates[source] then
+        pedObstacleStates[source] = nil
+    end
+end)
+
+-- Obstacle avoidance and stuck recovery system
+-- In vanilla GTA:SA, CTaskComplexFleeEntity and CTaskComplexWanderStandard only
+-- avoid other peds (TASK_COMPLEX_AVOID_OTHER_PED_WHILE_WANDERING) and cars
+-- (TASK_COMPLEX_WALK_ROUND_CAR), but have no handling for static world colliders
+-- such as trees, lampposts, telephone poles, and walls. When fleeing a threat,
+-- pedestrians calculate a straight-line vector directly away from the attacker.
+-- If an obstacle lies in this path, the pedestrian runs into it indefinitely.
+--
+-- This system monitors locally-synced pedestrians for forward progress blockage.
+-- When a pedestrian attempts to move but remains stationary against a solid
+-- obstacle confirmed via line-of-sight raycasting, a lateral evasion vector is
+-- calculated. The candidate angles probe left and right to find a clear corridor
+-- with stable ground, prioritizing routes that maximize distance from the threat.
+-- A transient setPedGoTo task steers the pedestrian around the obstacle, after
+-- which the flee or wander task is cleanly resumed along the clear vector.
+
+local function isPedInPhysicalAirOrClimb(ped)
+    return airTestSessions[ped] ~= nil or climbTestSessions[ped] ~= nil
+end
+
+local function pulsePedObstacleAvoidance()
+    if not enabled or type(processLineOfSight) ~= "function" then
+        return
+    end
+
+    local now = getTickCount()
+
+    for ped, token in pairs(nativeEventProfiles) do
+        if isElement(ped) and isElementStreamedIn(ped) and isElementSyncer(ped) and
+            isPedNativeEventProfileActive(ped, token) and not isPedDead(ped) and
+            getElementHealth(ped) > 0 and not isPedInVehicle(ped) and
+            not isPedInPhysicalAirOrClimb(ped) then
+
+            local px, py, pz = getElementPosition(ped)
+            local state = pedObstacleStates[ped]
+            if not state then
+                state = {
+                    lastX = px,
+                    lastY = py,
+                    lastZ = pz,
+                    lastSampleAt = now,
+                    stuckTicks = 0,
+                    evading = false,
+                    evadeTarget = nil,
+                    evadeStartedAt = 0,
+                    evadeTimeout = 0,
+                    wasFleeing = false,
+                    originalFleeHeading = nil,
+                    threatPos = nil,
+                }
+                pedObstacleStates[ped] = state
+            end
+
+            local threatRoot, threatLeaf = getThreatState(ped)
+            local isFleeTask = threatRoot == "TASK_COMPLEX_FLEE_ENTITY" or
+                               threatRoot == "TASK_COMPLEX_SMART_FLEE_ENTITY" or
+                               threatRoot == "TASK_COMPLEX_FLEE_ANY_MEANS" or
+                               threatLeaf == "TASK_COMPLEX_FLEE_ENTITY" or
+                               threatLeaf == "TASK_COMPLEX_SMART_FLEE_ENTITY" or
+                               threatLeaf == "TASK_COMPLEX_FLEE_ANY_MEANS" or
+                               threatRoot == "TASK_COMPLEX_REACT_TO_GUN_AIMED_AT"
+
+            local moveState = type(getPedMoveState) == "function" and getPedMoveState(ped) or false
+            local isMovingIntent = isFleeTask or (moveState == "run" or moveState == "sprint" or
+                                                 moveState == "walk" or moveState == "jog" or
+                                                 moveState == "powerwalk")
+
+            if state.evading then
+                local targetDist = state.evadeTarget and getDistanceBetweenPoints2D(px, py, state.evadeTarget.x, state.evadeTarget.y) or 0
+                local elapsed = now - state.evadeStartedAt
+                local arrived = targetDist <= 0.7
+                local timedOut = elapsed >= state.evadeTimeout
+
+                -- Check if the corridor along the flee vector is now clear of the obstacle
+                local corridorClear = false
+                if state.originalFleeHeading and elapsed >= 800 then
+                    local fRad = math.rad(state.originalFleeHeading)
+                    local fDirX, fDirY = -math.sin(fRad), math.cos(fRad)
+                    corridorClear = not processLineOfSight(
+                        px, py, pz + 0.4,
+                        px + fDirX * 2.5, py + fDirY * 2.5, pz + 0.4,
+                        true, true, false, true, true, false, false, false, ped
+                    )
+                end
+
+                if arrived or timedOut or corridorClear then
+                    state.evading = false
+                    state.stuckTicks = 0
+                    state.lastX, state.lastY, state.lastZ = px, py, pz
+                    state.lastSampleAt = now
+
+                    if state.wasFleeing then
+                        -- Resume fleeing away from the threat now that obstacle has been bypassed
+                        local threatX, threatY
+                        if state.threatPos then
+                            threatX, threatY = state.threatPos.x, state.threatPos.y
+                        else
+                            local threatRad = math.rad((state.originalFleeHeading + 180) % 360)
+                            threatX = px - math.sin(threatRad) * 15.0
+                            threatY = py + math.cos(threatRad) * 15.0
+                        end
+
+                        local escapeVecX = px - threatX
+                        local escapeVecY = py - threatY
+                        local escapeLen = math.sqrt(escapeVecX * escapeVecX + escapeVecY * escapeVecY)
+                        if escapeLen > 0.1 then
+                            escapeVecX = escapeVecX / escapeLen
+                            escapeVecY = escapeVecY / escapeLen
+                            local escapeX = px + escapeVecX * 22.0
+                            local escapeY = py + escapeVecY * 22.0
+                            local groundZ = getGroundPosition(escapeX, escapeY, pz + 1.0) or pz
+                            local escapeBlocked = processLineOfSight(
+                                px, py, pz + 0.4,
+                                escapeX, escapeY, groundZ + 0.4,
+                                true, true, false, true, true, false, false, false, ped
+                            )
+                            if not escapeBlocked and type(setPedGoTo) == "function" then
+                                setPedGoTo(ped, Vector3(escapeX, escapeY, groundZ), "run", 1.0, 3.0, 8000)
+                            elseif type(setPedWander) == "function" then
+                                setPedWander(ped, "run", math.random(0, 7), true)
+                            end
+                        else
+                            if type(setPedWander) == "function" then
+                                setPedWander(ped, "walk", math.random(0, 7), true)
+                            end
+                        end
+                    else
+                        if type(setPedWander) == "function" then
+                            local task = assignments[ped]
+                            local dir = (task and task.direction) or math.random(0, 7)
+                            setPedWander(ped, "walk", dir, true)
+                        end
+                    end
+                end
+            else
+                local dt = now - state.lastSampleAt
+                if dt >= 350 then
+                    local disp = getDistanceBetweenPoints2D(px, py, state.lastX, state.lastY)
+                    if isMovingIntent and disp < 0.14 then
+                        state.stuckTicks = state.stuckTicks + 1
+                    else
+                        state.stuckTicks = 0
+                    end
+                    state.lastX, state.lastY, state.lastZ = px, py, pz
+                    state.lastSampleAt = now
+                end
+
+                -- If blocked for at least ~700ms while intending to move forward, check obstacle collision
+                if state.stuckTicks >= 2 then
+                    local _, _, heading = getElementRotation(ped)
+                    local rad = math.rad(heading)
+                    local fwdX, fwdY = -math.sin(rad), math.cos(rad)
+
+                    local hitObstacle = processLineOfSight(
+                        px, py, pz + 0.4,
+                        px + fwdX * 1.35, py + fwdY * 1.35, pz + 0.4,
+                        true,  -- checkBuildings
+                        true,  -- checkVehicles
+                        false, -- checkPeds
+                        true,  -- checkObjects
+                        true,  -- checkDummies
+                        false, false, false,
+                        ped
+                    )
+
+                    if hitObstacle then
+                        -- Obstacle confirmed directly ahead. Probe lateral angles for a clear detour corridor.
+                        local probeOffsets = { 45, -45, 65, -65, 85, -85, 110, -110 }
+                        local bestCandidate = nil
+                        local bestScore = -999999
+
+                        local threatX, threatY
+                        local combatCtx = nativeCombatContexts[ped]
+                        if combatCtx and isElement(combatCtx.attacker) then
+                            threatX, threatY = getElementPosition(combatCtx.attacker)
+                        else
+                            local threatRad = math.rad((heading + 180) % 360)
+                            threatX = px - math.sin(threatRad) * 12.0
+                            threatY = py + math.cos(threatRad) * 12.0
+                        end
+
+                        for _, offset in ipairs(probeOffsets) do
+                            local candHeading = (heading + offset) % 360
+                            local cRad = math.rad(candHeading)
+                            local cDirX, cDirY = -math.sin(cRad), math.cos(cRad)
+                            local probeDist = 2.2
+                            local probeEndX = px + cDirX * probeDist
+                            local probeEndY = py + cDirY * probeDist
+
+                            local blocked = processLineOfSight(
+                                px, py, pz + 0.4,
+                                probeEndX, probeEndY, pz + 0.4,
+                                true, true, false, true, true, false, false, false, ped
+                            )
+
+                            if not blocked then
+                                local groundZ = getGroundPosition(probeEndX, probeEndY, pz + 1.0)
+                                if groundZ and math.abs(groundZ - pz) <= 1.2 then
+                                    local lowBlocked = processLineOfSight(
+                                        px, py, pz + 0.15,
+                                        probeEndX, probeEndY, groundZ + 0.15,
+                                        true, true, false, true, true, false, false, false, ped
+                                    )
+                                    if not lowBlocked then
+                                        local distToThreat = getDistanceBetweenPoints2D(probeEndX, probeEndY, threatX, threatY)
+                                        local anglePenalty = math.abs(offset) * 0.05
+                                        local score = distToThreat * 2.0 - anglePenalty
+
+                                        if score > bestScore then
+                                            bestScore = score
+                                            bestCandidate = {
+                                                x = probeEndX,
+                                                y = probeEndY,
+                                                z = groundZ,
+                                                heading = candHeading
+                                            }
+                                        end
+                                    end
+                                end
+                            end
+                        end
+
+                        if bestCandidate and type(setPedGoTo) == "function" then
+                            local moveMode = isMovingIntent and "run" or "walk"
+                            local ok = setPedGoTo(ped, Vector3(bestCandidate.x, bestCandidate.y, bestCandidate.z), moveMode, 0.4, 1.5, 2500)
+                            if ok then
+                                state.evading = true
+                                state.evadeTarget = Vector3(bestCandidate.x, bestCandidate.y, bestCandidate.z)
+                                state.evadeStartedAt = now
+                                state.evadeTimeout = 2500
+                                state.wasFleeing = isFleeTask or false
+                                state.originalFleeHeading = heading
+                                state.threatPos = {x = threatX, y = threatY}
+                                state.stuckTicks = 0
+                                log(("obstacle-evasion id=%s model=%d offset=%.1f target=(%.2f,%.2f,%.2f) fleeing=%s"):format(
+                                    tostring(getElementData(ped, "neon:ambientPedTrafficId")),
+                                    getElementModel(ped),
+                                    bestCandidate.heading - heading,
+                                    bestCandidate.x, bestCandidate.y, bestCandidate.z,
+                                    tostring(state.wasFleeing)
+                                ), 3)
+                            end
+                        end
+                    end
+                end
+            end
+        else
+            if pedObstacleStates[ped] then
+                pedObstacleStates[ped] = nil
+            end
+        end
+    end
+end
+
+setTimer(pulsePedObstacleAvoidance, 250, 0)
 
 setTimer(function()
     if not debugEnabled then
