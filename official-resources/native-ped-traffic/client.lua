@@ -2831,6 +2831,36 @@ local function isPedInPhysicalAirOrClimb(ped)
     return airTestSessions[ped] ~= nil or climbTestSessions[ped] ~= nil
 end
 
+-- Multi-height collision probe for front-facing obstacles.
+-- Detects low crates, cardboard boxes, benches, planters (shin/waist level),
+-- as well as tall trees, light poles, walls, and vehicles (chest/eye level).
+local function checkPedFrontObstacle(ped, px, py, pz, heading)
+    local heights = { 0.25, 0.60, 1.00 }
+    local angles = { 0, -25, 25 }
+    local dist = 1.55
+    for _, angleOffset in ipairs(angles) do
+        local r = math.rad((heading + angleOffset) % 360)
+        local dx, dy = -math.sin(r), math.cos(r)
+        for _, h in ipairs(heights) do
+            local hit = processLineOfSight(
+                px, py, pz + h,
+                px + dx * dist, py + dy * dist, pz + h,
+                true,  -- checkBuildings
+                true,  -- checkVehicles
+                false, -- checkPeds
+                true,  -- checkObjects (crates, boxes, benches, barriers)
+                true,  -- checkDummies (trees, poles, lamp posts)
+                false, false, false,
+                ped
+            )
+            if hit then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 local function pulsePedObstacleAvoidance()
     if not enabled or type(processLineOfSight) ~= "function" then
         return
@@ -2859,6 +2889,7 @@ local function pulsePedObstacleAvoidance()
                     evadeTimeout = 0,
                     wasFleeing = false,
                     originalFleeHeading = nil,
+                    detourHeading = nil,
                     threatPos = nil,
                     threatTarget = nil,
                     detourStartPos = nil,
@@ -2875,51 +2906,41 @@ local function pulsePedObstacleAvoidance()
                                threatLeaf == "TASK_COMPLEX_FLEE_ANY_MEANS" or
                                threatRoot == "TASK_COMPLEX_REACT_TO_GUN_AIMED_AT"
 
-            local moveState = type(getPedMoveState) == "function" and getPedMoveState(ped) or false
-            local isMovingIntent = isFleeTask or (moveState == "run" or moveState == "sprint" or
-                                                 moveState == "walk" or moveState == "jog" or
-                                                 moveState == "powerwalk")
-
-            -- Active suppression of road-crossing and look-around pauses:
-            -- In vanilla GTA:SA, crossing from sidewalk to street triggers
-            -- TASK_COMPLEX_CROSS_ROAD_LOOK_AND_ACHIEVE_HEADING and TASK_SIMPLE_LOOK_ABOUT
-            -- (stopping to look left and right for traffic). When in a threat or flee
-            -- state, we proactively cancel this polite pause so the ped sprints continuously.
-            if isFleeTask or state.wasFleeing then
-                if type(isPedDoingTask) == "function" and
-                    (isPedDoingTask(ped, "TASK_COMPLEX_CROSS_ROAD_LOOK_AND_ACHIEVE_HEADING") or
-                     isPedDoingTask(ped, "TASK_SIMPLE_LOOK_ABOUT")) then
-                    local _, _, currHeading = getElementRotation(ped)
-                    local fleeDir = math.floor((currHeading + 22.5) / 45) % 8
-                    if type(setPedWander) == "function" then
-                        setPedWander(ped, "run", fleeDir, false)
-                    end
-                end
-            end
+            -- Intentional passive reactions: do not disturb peds that are intentionally
+            -- cowering, holding hands up at gunpoint, or ducking under fire.
+            local isPassiveReaction = threatLeaf == "TASK_SIMPLE_COWER" or
+                                      threatLeaf == "TASK_SIMPLE_HANDS_UP" or
+                                      threatLeaf == "TASK_SIMPLE_DUCK" or
+                                      threatRoot == "TASK_SIMPLE_COWER" or
+                                      threatRoot == "TASK_SIMPLE_HANDS_UP" or
+                                      threatRoot == "TASK_SIMPLE_DUCK"
 
             if state.evading then
                 local elapsed = now - state.evadeStartedAt
                 local detourTravelDist = state.detourStartPos and
                     getDistanceBetweenPoints2D(px, py, state.detourStartPos.x, state.detourStartPos.y) or 0
 
-                -- Check if the corridor along the original flee line is now clear of the obstacle
-                local corridorClear = false
-                if state.originalFleeHeading and elapsed >= 200 then
-                    local fRad = math.rad(state.originalFleeHeading)
-                    local fDirX, fDirY = -math.sin(fRad), math.cos(fRad)
-                    corridorClear = not processLineOfSight(
-                        px, py, pz + 0.4,
-                        px + fDirX * 3.0, py + fDirY * 3.0, pz + 0.4,
-                        true, true, false, true, true, false, false, false, ped
-                    )
+                local shouldTransition = false
+                if state.wasFleeing then
+                    -- Check if corridor along original flee heading is clear of the obstacle
+                    local corridorClear = false
+                    if state.originalFleeHeading and elapsed >= 200 then
+                        local fRad = math.rad(state.originalFleeHeading)
+                        local fDirX, fDirY = -math.sin(fRad), math.cos(fRad)
+                        corridorClear = not processLineOfSight(
+                            px, py, pz + 0.5,
+                            px + fDirX * 3.0, py + fDirY * 3.0, pz + 0.5,
+                            true, true, false, true, true, false, false, false, ped
+                        )
+                    end
+                    -- In-stride transition: never wait for terminal standstill blending
+                    shouldTransition = (detourTravelDist >= 0.8 and corridorClear) or
+                                       (detourTravelDist >= 1.5) or
+                                       (elapsed >= 1400)
+                else
+                    -- Wandering detour transition: clear the local obstacle zone
+                    shouldTransition = (detourTravelDist >= 1.2) or (elapsed >= 1600)
                 end
-
-                -- Transition early while the ped is still running at full speed.
-                -- Never wait until arrival at the detour point, because arrival triggers
-                -- GTA's terminal StandStill task which plays idle animations.
-                local shouldTransition = (detourTravelDist >= 0.8 and corridorClear) or
-                                         (detourTravelDist >= 1.5) or
-                                         (elapsed >= 1400)
 
                 if shouldTransition then
                     state.evading = false
@@ -2928,7 +2949,6 @@ local function pulsePedObstacleAvoidance()
                     state.lastSampleAt = now
 
                     if state.wasFleeing then
-                        -- Identify threat entity or position
                         local threatPed = state.threatTarget
                         if not threatPed or not isElement(threatPed) then
                             local combatCtx = nativeCombatContexts[ped]
@@ -2954,24 +2974,40 @@ local function pulsePedObstacleAvoidance()
                         if escapeAngle < 0 then escapeAngle = escapeAngle + 360 end
                         local escapeDir = math.floor((escapeAngle + 22.5) / 45) % 8
 
-                        -- Resume running flee without stopping, idling, or waiting for road crossings.
-                        -- Setting wanderSensibly = false disables GTA's road-crossing pauses entirely.
+                        -- Resume running flee without stopping or idling
                         if type(setPedWander) == "function" then
                             setPedWander(ped, "run", escapeDir, false)
                         end
                     else
                         if type(setPedWander) == "function" then
-                            local task = assignments[ped]
-                            local dir = (task and task.direction) or math.random(0, 7)
-                            setPedWander(ped, "walk", dir, true)
+                            -- Resume wandering in the direction of the detour corridor to avoid backtracking into the obstacle
+                            local resumeHeading = state.detourHeading or getElementRotation(ped)
+                            local resumeDir = math.floor((resumeHeading + 22.5) / 45) % 8
+                            setPedWander(ped, "walk", resumeDir, true)
                         end
                     end
                 end
             else
+                -- While not evading: cancel polite road-crossing pauses when in active flight out in the open
+                if isFleeTask and not isPassiveReaction then
+                    if type(isPedDoingTask) == "function" and
+                        isPedDoingTask(ped, "TASK_COMPLEX_CROSS_ROAD_LOOK_AND_ACHIEVE_HEADING") then
+                        local _, _, currHeading = getElementRotation(ped)
+                        local fleeDir = math.floor((currHeading + 22.5) / 45) % 8
+                        if type(setPedWander) == "function" then
+                            setPedWander(ped, "run", fleeDir, false)
+                        end
+                    end
+                end
+
                 local dt = now - state.lastSampleAt
                 if dt >= 250 then
                     local disp = getDistanceBetweenPoints2D(px, py, state.lastX, state.lastY)
-                    if isMovingIntent and disp < 0.14 then
+                    -- If ped is stationary (disp < 0.14m) and not in a passive reaction, track stuck ticks.
+                    -- Note: In GTA:SA, when a ped collides with an obstacle (boxes, trees, walls),
+                    -- GTA's subtask switches to TASK_SIMPLE_LOOK_ABOUT or STAND_STILL, returning "stand".
+                    -- We must evaluate stationary peds regardless of moveState so obstacle evasion triggers.
+                    if not isPassiveReaction and disp < 0.14 then
                         state.stuckTicks = state.stuckTicks + 1
                     else
                         state.stuckTicks = 0
@@ -2980,27 +3016,17 @@ local function pulsePedObstacleAvoidance()
                     state.lastSampleAt = now
                 end
 
-                -- If blocked for at least ~500ms while intending to move forward, check obstacle collision
-                if state.stuckTicks >= 2 then
+                -- If stationary for at least ~500ms, check for obstacle or idle look-about blockage
+                if state.stuckTicks >= 2 and not isPassiveReaction then
                     local _, _, heading = getElementRotation(ped)
-                    local rad = math.rad(heading)
-                    local fwdX, fwdY = -math.sin(rad), math.cos(rad)
+                    local isFrontBlocked = checkPedFrontObstacle(ped, px, py, pz, heading)
+                    local isIdleStuck = state.stuckTicks >= 4 and type(isPedDoingTask) == "function" and
+                        (isPedDoingTask(ped, "TASK_SIMPLE_LOOK_ABOUT") or isPedDoingTask(ped, "TASK_SIMPLE_STAND_STILL"))
 
-                    local hitObstacle = processLineOfSight(
-                        px, py, pz + 0.4,
-                        px + fwdX * 1.35, py + fwdY * 1.35, pz + 0.4,
-                        true,  -- checkBuildings
-                        true,  -- checkVehicles
-                        false, -- checkPeds
-                        true,  -- checkObjects
-                        true,  -- checkDummies
-                        false, false, false,
-                        ped
-                    )
-
-                    if hitObstacle then
-                        -- Obstacle confirmed directly ahead. Probe lateral angles for a clear detour corridor.
-                        local probeOffsets = { 45, -45, 65, -65, 85, -85, 110, -110 }
+                    if isFrontBlocked or isIdleStuck then
+                        -- Obstacle or idle blockage confirmed. Probe angles including turnaround angles (up to 180 deg)
+                        -- so peds can navigate out of U-shaped box clusters, narrow alleys, and corners.
+                        local probeOffsets = { 45, -45, 65, -65, 85, -85, 110, -110, 135, -135, 160, -160, 180 }
                         local bestCandidate = nil
                         local bestScore = -999999
 
@@ -3024,17 +3050,23 @@ local function pulsePedObstacleAvoidance()
                             local candHeading = (heading + offset) % 360
                             local cRad = math.rad(candHeading)
                             local cDirX, cDirY = -math.sin(cRad), math.cos(cRad)
-                            local probeDist = 3.0
+                            local probeDist = 2.8
                             local probeEndX = px + cDirX * probeDist
                             local probeEndY = py + cDirY * probeDist
 
-                            local blocked = processLineOfSight(
-                                px, py, pz + 0.4,
-                                probeEndX, probeEndY, pz + 0.4,
+                            -- Check clearance at both chest/waist (pz + 0.6) and knee/shin (pz + 0.25) heights
+                            local blockedChest = processLineOfSight(
+                                px, py, pz + 0.6,
+                                probeEndX, probeEndY, pz + 0.6,
+                                true, true, false, true, true, false, false, false, ped
+                            )
+                            local blockedWaist = not blockedChest and processLineOfSight(
+                                px, py, pz + 0.25,
+                                probeEndX, probeEndY, pz + 0.25,
                                 true, true, false, true, true, false, false, false, ped
                             )
 
-                            if not blocked then
+                            if not blockedChest and not blockedWaist then
                                 local groundZ = getGroundPosition(probeEndX, probeEndY, pz + 1.0)
                                 if groundZ and math.abs(groundZ - pz) <= 1.2 then
                                     local lowBlocked = processLineOfSight(
@@ -3043,12 +3075,17 @@ local function pulsePedObstacleAvoidance()
                                         true, true, false, true, true, false, false, false, ped
                                     )
                                     if not lowBlocked then
-                                        local distToThreat = getDistanceBetweenPoints2D(probeEndX, probeEndY, threatX, threatY)
                                         local anglePenalty = math.abs(offset) * 0.05
-                                        -- Bonus for staying on the flat sidewalk level (avoiding stepping down into the roadway)
                                         local sidewalkBonus = (math.abs(groundZ - pz) <= 0.08) and 6.0 or 0.0
                                         local roadPenalty = (groundZ < pz - 0.10) and 4.0 or 0.0
-                                        local score = distToThreat * 2.0 - anglePenalty + sidewalkBonus - roadPenalty
+                                        local score = 0
+
+                                        if isFleeTask or state.wasFleeing then
+                                            local distToThreat = getDistanceBetweenPoints2D(probeEndX, probeEndY, threatX, threatY)
+                                            score = distToThreat * 2.0 - anglePenalty + sidewalkBonus - roadPenalty
+                                        else
+                                            score = -anglePenalty + sidewalkBonus - roadPenalty
+                                        end
 
                                         if score > bestScore then
                                             bestScore = score
@@ -3065,14 +3102,13 @@ local function pulsePedObstacleAvoidance()
                         end
 
                         if bestCandidate and type(setPedGoTo) == "function" then
-                            local moveMode = isMovingIntent and "run" or "walk"
-                            -- Use matching radius and slowdownRadius (0.4, 0.4) so GTA does not decelerate
-                            -- ahead of time into a walk or stand-still.
+                            local moveMode = (isFleeTask or state.wasFleeing) and "run" or "walk"
                             local ok = setPedGoTo(ped, Vector3(bestCandidate.x, bestCandidate.y, bestCandidate.z), moveMode, 0.4, 0.4, 2500)
                             if ok then
                                 state.evading = true
                                 state.evadeTarget = Vector3(bestCandidate.x, bestCandidate.y, bestCandidate.z)
                                 state.detourStartPos = {x = px, y = py}
+                                state.detourHeading = bestCandidate.heading
                                 state.evadeStartedAt = now
                                 state.evadeTimeout = 2500
                                 state.wasFleeing = isFleeTask or false
