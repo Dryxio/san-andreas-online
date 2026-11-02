@@ -2836,8 +2836,8 @@ end
 -- as well as tall trees, light poles, walls, and vehicles (chest/eye level).
 local function checkPedFrontObstacle(ped, px, py, pz, heading)
     local heights = { 0.25, 0.60, 1.00 }
-    local angles = { 0, -25, 25 }
-    local dist = 1.55
+    local angles = { 0, -20, 20, -35, 35 }
+    local dist = 1.60
     for _, angleOffset in ipairs(angles) do
         local r = math.rad((heading + angleOffset) % 360)
         local dx, dy = -math.sin(r), math.cos(r)
@@ -2889,7 +2889,6 @@ local function pulsePedObstacleAvoidance()
                     evadeTimeout = 0,
                     wasFleeing = false,
                     originalFleeHeading = nil,
-                    detourHeading = nil,
                     threatPos = nil,
                     threatTarget = nil,
                     detourStartPos = nil,
@@ -2920,27 +2919,22 @@ local function pulsePedObstacleAvoidance()
                 local detourTravelDist = state.detourStartPos and
                     getDistanceBetweenPoints2D(px, py, state.detourStartPos.x, state.detourStartPos.y) or 0
 
-                local shouldTransition = false
-                if state.wasFleeing then
-                    -- Check if corridor along original flee heading is clear of the obstacle
-                    local corridorClear = false
-                    if state.originalFleeHeading and elapsed >= 200 then
-                        local fRad = math.rad(state.originalFleeHeading)
-                        local fDirX, fDirY = -math.sin(fRad), math.cos(fRad)
-                        corridorClear = not processLineOfSight(
-                            px, py, pz + 0.5,
-                            px + fDirX * 3.0, py + fDirY * 3.0, pz + 0.5,
-                            true, true, false, true, true, false, false, false, ped
-                        )
-                    end
-                    -- In-stride transition: never wait for terminal standstill blending
-                    shouldTransition = (detourTravelDist >= 0.8 and corridorClear) or
-                                       (detourTravelDist >= 1.5) or
-                                       (elapsed >= 1400)
-                else
-                    -- Wandering detour transition: clear the local obstacle zone
-                    shouldTransition = (detourTravelDist >= 1.2) or (elapsed >= 1600)
+                -- Check if corridor along original flee heading is clear of the obstacle
+                local corridorClear = false
+                if state.originalFleeHeading and elapsed >= 200 then
+                    local fRad = math.rad(state.originalFleeHeading)
+                    local fDirX, fDirY = -math.sin(fRad), math.cos(fRad)
+                    corridorClear = not processLineOfSight(
+                        px, py, pz + 0.5,
+                        px + fDirX * 3.0, py + fDirY * 3.0, pz + 0.5,
+                        true, true, false, true, true, false, false, false, ped
+                    )
                 end
+
+                -- In-stride transition: never wait for terminal standstill blending
+                local shouldTransition = (detourTravelDist >= 0.8 and corridorClear) or
+                                         (detourTravelDist >= 1.5) or
+                                         (elapsed >= 1400)
 
                 if shouldTransition then
                     state.evading = false
@@ -2980,15 +2974,15 @@ local function pulsePedObstacleAvoidance()
                         end
                     else
                         if type(setPedWander) == "function" then
-                            -- Resume wandering in the direction of the detour corridor to avoid backtracking into the obstacle
-                            local resumeHeading = state.detourHeading or getElementRotation(ped)
-                            local resumeDir = math.floor((resumeHeading + 22.5) / 45) % 8
-                            setPedWander(ped, "walk", resumeDir, true)
+                            local task = assignments[ped]
+                            local dir = (task and task.direction) or math.random(0, 7)
+                            setPedWander(ped, "walk", dir, true)
                         end
                     end
                 end
             else
-                -- While not evading: cancel polite road-crossing pauses when in active flight out in the open
+                -- While not evading: cancel polite road-crossing pauses ONLY when in active flight out in the open.
+                -- Calm wandering civilians MUST be allowed to pause at crosswalks to look for traffic naturally!
                 if isFleeTask and not isPassiveReaction then
                     if type(isPedDoingTask) == "function" and
                         isPedDoingTask(ped, "TASK_COMPLEX_CROSS_ROAD_LOOK_AND_ACHIEVE_HEADING") then
@@ -3003,10 +2997,6 @@ local function pulsePedObstacleAvoidance()
                 local dt = now - state.lastSampleAt
                 if dt >= 250 then
                     local disp = getDistanceBetweenPoints2D(px, py, state.lastX, state.lastY)
-                    -- If ped is stationary (disp < 0.14m) and not in a passive reaction, track stuck ticks.
-                    -- Note: In GTA:SA, when a ped collides with an obstacle (boxes, trees, walls),
-                    -- GTA's subtask switches to TASK_SIMPLE_LOOK_ABOUT or STAND_STILL, returning "stand".
-                    -- We must evaluate stationary peds regardless of moveState so obstacle evasion triggers.
                     if not isPassiveReaction and disp < 0.14 then
                         state.stuckTicks = state.stuckTicks + 1
                     else
@@ -3016,15 +3006,25 @@ local function pulsePedObstacleAvoidance()
                     state.lastSampleAt = now
                 end
 
-                -- If stationary for at least ~500ms, check for obstacle or idle look-about blockage
+                -- Self-healing watchdog: if a calm pedestrian gets frozen in an animation glitch
+                -- for >= 3 seconds (12 sample ticks) without an obstacle, unfreeze them by cleanly restarting wander.
+                if state.stuckTicks >= 12 and not isPassiveReaction and not isFleeTask then
+                    state.stuckTicks = 0
+                    if type(setPedWander) == "function" then
+                        local task = assignments[ped]
+                        local dir = (task and task.direction) or math.random(0, 7)
+                        setPedWander(ped, "walk", dir, true)
+                    end
+                end
+
+                -- Obstacle avoidance: MUST ONLY TRIGGER when an actual solid obstacle physically blocks the ped!
+                -- If there is NO obstacle ahead (e.g. crosswalk, scenery pause), do not intervene.
                 if state.stuckTicks >= 2 and not isPassiveReaction then
                     local _, _, heading = getElementRotation(ped)
                     local isFrontBlocked = checkPedFrontObstacle(ped, px, py, pz, heading)
-                    local isIdleStuck = state.stuckTicks >= 4 and type(isPedDoingTask) == "function" and
-                        (isPedDoingTask(ped, "TASK_SIMPLE_LOOK_ABOUT") or isPedDoingTask(ped, "TASK_SIMPLE_STAND_STILL"))
 
-                    if isFrontBlocked or isIdleStuck then
-                        -- Obstacle or idle blockage confirmed. Probe angles including turnaround angles (up to 180 deg)
+                    if isFrontBlocked then
+                        -- Obstacle confirmed directly ahead. Probe angles including turnaround angles (up to 180 deg)
                         -- so peds can navigate out of U-shaped box clusters, narrow alleys, and corners.
                         local probeOffsets = { 45, -45, 65, -65, 85, -85, 110, -110, 135, -135, 160, -160, 180 }
                         local bestCandidate = nil
@@ -3101,28 +3101,46 @@ local function pulsePedObstacleAvoidance()
                             end
                         end
 
-                        if bestCandidate and type(setPedGoTo) == "function" then
-                            local moveMode = (isFleeTask or state.wasFleeing) and "run" or "walk"
-                            local ok = setPedGoTo(ped, Vector3(bestCandidate.x, bestCandidate.y, bestCandidate.z), moveMode, 0.4, 0.4, 2500)
-                            if ok then
-                                state.evading = true
-                                state.evadeTarget = Vector3(bestCandidate.x, bestCandidate.y, bestCandidate.z)
-                                state.detourStartPos = {x = px, y = py}
-                                state.detourHeading = bestCandidate.heading
-                                state.evadeStartedAt = now
-                                state.evadeTimeout = 2500
-                                state.wasFleeing = isFleeTask or false
-                                state.originalFleeHeading = heading
-                                state.threatPos = {x = threatX, y = threatY}
-                                state.threatTarget = threatEntity
-                                state.stuckTicks = 0
-                                log(("obstacle-evasion id=%s model=%d offset=%.1f target=(%.2f,%.2f,%.2f) fleeing=%s"):format(
-                                    tostring(getElementData(ped, "neon:ambientPedTrafficId")),
-                                    getElementModel(ped),
-                                    bestCandidate.heading - heading,
-                                    bestCandidate.x, bestCandidate.y, bestCandidate.z,
-                                    tostring(state.wasFleeing)
-                                ), 3)
+                        if bestCandidate then
+                            if isFleeTask or state.wasFleeing then
+                                -- Fleeing pedestrians detour via transient setPedGoTo, then seamlessly resume fleeing
+                                if type(setPedGoTo) == "function" then
+                                    local ok = setPedGoTo(ped, Vector3(bestCandidate.x, bestCandidate.y, bestCandidate.z), "run", 0.4, 0.4, 2500)
+                                    if ok then
+                                        state.evading = true
+                                        state.evadeTarget = Vector3(bestCandidate.x, bestCandidate.y, bestCandidate.z)
+                                        state.detourStartPos = {x = px, y = py}
+                                        state.evadeStartedAt = now
+                                        state.evadeTimeout = 2500
+                                        state.wasFleeing = true
+                                        state.originalFleeHeading = heading
+                                        state.threatPos = {x = threatX, y = threatY}
+                                        state.threatTarget = threatEntity
+                                        state.stuckTicks = 0
+                                        log(("obstacle-evasion-flee id=%s model=%d offset=%.1f target=(%.2f,%.2f,%.2f)"):format(
+                                            tostring(getElementData(ped, "neon:ambientPedTrafficId")),
+                                            getElementModel(ped),
+                                            bestCandidate.heading - heading,
+                                            bestCandidate.x, bestCandidate.y, bestCandidate.z
+                                        ), 3)
+                                    end
+                                end
+                            else
+                                -- Calm wandering pedestrians redirect their native wander task to the clear corridor.
+                                -- Using native wander avoids GoToPointAndStandStill blending conflicts and animation freezes.
+                                if type(setPedWander) == "function" then
+                                    local newDir = math.floor((bestCandidate.heading + 22.5) / 45) % 8
+                                    setPedWander(ped, "walk", newDir, true)
+                                    state.stuckTicks = 0
+                                    state.lastX, state.lastY, state.lastZ = px, py, pz
+                                    state.lastSampleAt = now
+                                    log(("obstacle-evasion-wander id=%s model=%d newDir=%d offset=%.1f"):format(
+                                        tostring(getElementData(ped, "neon:ambientPedTrafficId")),
+                                        getElementModel(ped),
+                                        newDir,
+                                        bestCandidate.heading - heading
+                                    ), 3)
+                                end
                             end
                         end
                     end
