@@ -151,6 +151,22 @@ local function countServerEvents(name)
     return n
 end
 
+-- native-ped-traffic stand-in: releaseTrafficCop accepts peds marked
+-- `releasable` and records every request.
+local trafficResource = {name = 'native-ped-traffic', state = 'running'}
+local releaseRequests, releaseAnswer = {}, nil
+function getResourceFromName(name) return name == 'native-ped-traffic' and trafficResource or false end
+function getResourceState(r) return r.state end
+function getResourceName(r) return r and r.name end
+function setElementFrozen(e, frozen) e.frozen = frozen; return true end
+exports = {['native-ped-traffic'] = {releaseTrafficCop = function(_, ped)
+    releaseRequests[#releaseRequests + 1] = ped
+    if releaseAnswer ~= nil then return releaseAnswer end
+    if not ped.releasable then return false end
+    ped.data['neon:ambientPedTraffic'] = false
+    return true
+end}}
+
 dofile('official-resources/native-wanted-police/rules.lua')
 dofile('official-resources/native-wanted-police/server.lua')
 
@@ -381,5 +397,65 @@ check('backoff', requestNativePoliceBackoff(alice, 5000) and getNativeWantedStat
 setNativeWantedLevel(bob, 2)
 fire('onPlayerQuit', bob)
 check('quit forgets the suspect', getNativePoliceUnits(bob)[1] == nil)
+
+-- 13. Street cops from native-ped-traffic join the chase (solo's wandering
+-- cops, 0x674D80), within the level's pursuit cap.
+local recruit
+for _, timer in ipairs(timers) do if timer.interval == 1000 then recruit = timer end end
+check('street cop recruitment runs every second', recruit ~= nil)
+local erin = element('player', {x = 1000, y = 1000, z = 10})
+fire('neonPolice:ready', resourceRoot, erin)
+local function streetCop(x, y, fields)
+    local cop = element('ped', fields or {})
+    cop.model, cop.x, cop.y, cop.z = cop.model or 280, x, y, 10
+    cop.data['neon:ambientPedTraffic'] = true
+    cop.data['neon:ambientPedPopulationClass'] = 'cop'
+    cop.releasable = cop.releasable ~= false
+    cop.frozen = true
+    return cop
+end
+local farCop = streetCop(1060, 1000)
+recruit.fn()
+check('no stars: street cops stay in traffic', #releaseRequests == 0 and getNativePoliceUnits(erin)[1] == nil)
+setNativeWantedLevel(erin, 1)
+recruit.fn()
+check('1 star: the street cop joins', getNativePoliceUnits(erin)[1] == farCop)
+check('it is now a unit of this resource', farCop.data['neon:police'] == true and farCop.data['neon:policeSuspect'] == erin)
+check('the joined cop runs on the suspect (nobody else near)', farCop.syncer == erin and farCop.frozen == false)
+local nearCop = streetCop(1020, 1000)
+local fartherCop = streetCop(1100, 1000)
+recruit.fn()
+check('cap 1: a closer cop displaces the farther one', getNativePoliceUnits(erin)[1] == nearCop and #getNativePoliceUnits(erin) == 1)
+check('the displaced cop walks away', farCop.data['neon:policePhase'] == 'disengage')
+check('a cop farther than every pursuer is not taken', fartherCop.data['neon:police'] == nil)
+setNativeWantedLevel(erin, 2)
+local refused = streetCop(1030, 1000, {releasable = false})
+recruit.fn()
+check('2 stars: a farther cop joins while there is room', fartherCop.data['neon:police'] == true)
+check('a cop the traffic resource refuses stays in traffic', refused.data['neon:police'] == nil)
+local civilian = streetCop(1010, 1000, {model = 7})
+local unmarked = element('ped', {model = 280, x = 1005, y = 1000, z = 10})
+setNativeWantedLevel(erin, 3)
+recruit.fn()
+check('a non-cop model is never taken', civilian.data['neon:police'] == nil)
+check('a cop without the traffic marker is never asked for', unmarked.data['neon:police'] == nil)
+-- A suspect driving fast past a foot cop is not chased (0x68BBD0).
+setNativeWantedLevel(erin, 6)
+local passing = streetCop(1040, 1000)
+local car = element('vehicle', {x = 1000, y = 1000, z = 10, vx = 0.5})
+erin.vehicle = car
+recruit.fn()
+check('a car at 90 km/h 40 m away is ignored', passing.data['neon:police'] == nil)
+car.vx = 0
+recruit.fn()
+check('the car stops: the cop joins', passing.data['neon:police'] == true)
+erin.vehicle = nil
+-- An older traffic build without the export: one call, then no more.
+local older = streetCop(1015, 1000)
+releaseAnswer = nil
+exports['native-ped-traffic'].releaseTrafficCop = function(_, ped) releaseRequests[#releaseRequests + 1] = ped; return nil end
+local asked = #releaseRequests
+recruit.fn(); recruit.fn()
+check('a traffic build without the export is asked once', #releaseRequests == asked + 1 and older.data['neon:police'] == nil)
 
 print(('server_spec: %d checks passed'):format(passed))

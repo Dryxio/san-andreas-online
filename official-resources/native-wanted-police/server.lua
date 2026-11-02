@@ -5,9 +5,11 @@
 --   chases whom, and arrests. GTA's wanted system cannot hold several network
 --   suspects (every Neon ped points at the local player's CWanted), so each
 --   player gets an independent ledger from rules.lua.
--- - Cops are dedicated MTA peds created out of view. They never come from the
---   traffic resource: two resources must never drive the same NPC, and
---   native-ped-traffic has no hand-over API yet.
+-- - Cops come from two places, as in solo: street cops already walking in
+--   native-ped-traffic join the chase, and new cops are created out of view.
+--   Two resources must never drive the same NPC, so a street cop is first
+--   released by the traffic resource (releaseTrafficCop) and then belongs to
+--   this resource only.
 -- - The server decides but cannot run GTA's AI. One client (the ped syncer)
 --   runs each cop's native task. Wherever possible that client is another
 --   player near the suspect, not the suspect. A watchdog checks that every cop
@@ -38,6 +40,7 @@ local function loadSettings()
     cfg.ownerRange = setting('ownerRange', 90)
     cfg.overheadStars = setting('overheadStars', true)
     cfg.bustedText = setting('bustedText', true)
+    cfg.streetCops = setting('streetCops', true)
     -- Multiplayer choice: solo has no foot-cop spawner during a chase (cops
     -- are ambient walkers plus car crews). Version 1 has no police cars, so
     -- foot units arrive at roughly the rate solo sends cars: 2 stars one car
@@ -426,6 +429,26 @@ local function avoidOwner(unit)
     assignOwner(unit, chooseOwner(unit))
 end
 
+-- Make `ped` a unit chasing `s`: shared by cops this resource spawns and
+-- street cops taken over from native-ped-traffic.
+local function registerUnit(s, ped, tier, street)
+    nextUnitId = nextUnitId + 1
+    local unit = {id = nextUnitId, ped = ped, suspect = s.player, phase = 'pursue', epoch = 0, createdAt = now(),
+                  progressAt = now(), bestDistance = math.huge, stalls = 0, tier = tier, street = street, avoid = {}}
+    units[ped] = unit
+    s.units[#s.units + 1] = ped
+    setData(ped, 'neon:police', true)
+    setData(ped, 'neon:ambientPedPopulationClass', 'cop')
+    setData(ped, 'neon:policeSuspect', s.player)
+    setData(ped, 'neon:policeUnit', unit.id)
+    setData(ped, 'neon:policePhase', 'pursue')
+    unit.lastX, unit.lastY, unit.lastZ = getElementPosition(ped)
+    unit.lastAt = now()
+    assignOwner(unit, chooseOwner(unit))
+    triggerEvent('onNativePoliceUnitStateChange', ped, s.player, 'pursue')
+    return unit
+end
+
 local function createUnit(s, x, y, z)
     local level = s.w.level
     local px, py = getElementPosition(s.player)
@@ -434,35 +457,150 @@ local function createUnit(s, x, y, z)
     local model = loadout.model or R.copModel(level, R.mapLevel(px, py))
     local ped = createPed(model, x, y, z, findRotation(x, y, px, py))
     if not ped then return false end
-    nextUnitId = nextUnitId + 1
-    local unit = {id = nextUnitId, ped = ped, suspect = s.player, phase = 'pursue', epoch = 0, createdAt = now(),
-                  progressAt = now(), bestDistance = math.huge, stalls = 0, tier = loadout.model ~= nil, avoid = {}}
-    units[ped] = unit
-    s.units[#s.units + 1] = ped
-    setData(ped, 'neon:police', true)
-    setData(ped, 'neon:ambientPedPopulationClass', 'cop')
-    setData(ped, 'neon:policeSuspect', s.player)
-    setData(ped, 'neon:policeUnit', unit.id)
-    setData(ped, 'neon:policePhase', 'pursue')
     -- City cops carry the nightstick and the pistol; the tick picks which is
     -- in hand from the suspect's weapon (the 1-star rule).
-    if unit.tier then
+    if loadout.model then
         giveWeapon(ped, loadout.weapon, loadout.ammo, true)
     else
         giveWeapon(ped, 22, 1000, not loadout.melee)
         giveWeapon(ped, 3, 1, loadout.melee)
     end
     if loadout.armor > 0 then setPedArmor(ped, loadout.armor) end
-    unit.lastX, unit.lastY, unit.lastZ, unit.lastAt = x, y, z, now()
-    assignOwner(unit, chooseOwner(unit))
-    triggerEvent('onNativePoliceUnitStateChange', ped, s.player, 'pursue')
+    registerUnit(s, ped, loadout.model ~= nil, false)
     return true
+end
+
+local function pursuitCap(s)
+    return math.min(R.caps[s.w.level].cops, cfg.maxCopsPerSuspect)
 end
 
 local function canDispatch(s)
     local active = countUnits()
-    return s.w.level > 0 and #aliveUnits(s) < math.min(R.caps[s.w.level].cops, cfg.maxCopsPerSuspect) and active < cfg.maxCops
+    return s.w.level > 0 and #aliveUnits(s) < pursuitCap(s) and active < cfg.maxCops
 end
+
+-- A suspect cops may go after: the same conditions tickSuspect uses, which
+-- include GTA's police back-off (CanCopJoinPursuit 0x562FB0 refuses then).
+local function suspectActive(s, t)
+    return s.enabled and s.w.level > 0 and isElement(s.player) and not isPedDead(s.player) and
+        inMainWorld(s.player) and s.backoffUntil <= (t or now())
+end
+
+------------------------------------------------------------------------
+-- Street cops (native-ped-traffic) joining the chase.
+------------------------------------------------------------------------
+
+-- Solo does not only send new cops: every cop already walking the street
+-- joins the pursuit of a wanted player (CTaskComplexWanderCop 0x674D80), up
+-- to the level's pursuit cap, a closer cop replacing the farthest one
+-- (rules.lua, R.pursuitJoin). Here the traffic resource owns those cops and
+-- deliberately keeps them from reacting (GTA's own reaction would read the
+-- local player's wanted level), so the police resource takes them over with
+-- native-ped-traffic's releaseTrafficCop export. The ped is not recreated:
+-- the cop the player sees is the one that comes for him.
+local trafficLacksRelease = false
+local function trafficRunning()
+    if trafficLacksRelease then return false end
+    local traffic = getResourceFromName('native-ped-traffic')
+    return traffic and getResourceState(traffic) == 'running'
+end
+
+local function isStreetCop(ped)
+    -- The marker is only a cheap filter; the traffic resource's own record
+    -- decides in releaseTrafficCop. The model decides that it is a cop.
+    return not units[ped] and getElementData(ped, 'neon:ambientPedTraffic') == true and not isPedDead(ped) and
+        not getPedOccupiedVehicle(ped) and R.pedClassForModel(getElementModel(ped)) == 'cop'
+end
+
+local function vehicleSpeedSquared(player)
+    local vehicle = getPedOccupiedVehicle(player)
+    if not vehicle then return nil end
+    local vx, vy, vz = getElementVelocity(vehicle)
+    return vx * vx + vy * vy + vz * vz
+end
+
+local function retireUnit(unit, reason)
+    unit.retireReason = reason
+    unit.retiredAt = unit.retiredAt or now()
+    setPhase(unit, 'disengage')
+end
+
+-- Street cops keep their own model and weapons (traffic arms them with the
+-- nightstick and a 1000-round pistol, like solo's city cops). The 1-star
+-- weapon rule in watchUnit then applies to them as to any city cop.
+local function adoptStreetCop(s, ped)
+    setElementFrozen(ped, false)
+    local model = getElementModel(ped)
+    local tier = model == 285 or model == 286 or model == 287
+    return registerUnit(s, ped, tier, true)
+end
+
+local function recruitStreetCops()
+    if not cfg.streetCops or not trafficRunning() then return end
+    local t = now()
+    local wanted = {}
+    for _, s in pairs(suspects) do
+        -- Like dispatch, nobody new joins during an arrest: a fresh attack
+        -- task would hit a suspect who already has his hands up.
+        if suspectActive(s, t) and not s.arrest then wanted[#wanted + 1] = s end
+    end
+    if #wanted == 0 then return end
+    -- Every street cop near a wanted player, with the suspect it would take:
+    -- the nearest one it can target (0x68BBD0). Solo does not try a second
+    -- player when the nearest one's pursuit is full.
+    local seen, candidates = {}, {}
+    for _, s in ipairs(wanted) do
+        local x, y, z = getElementPosition(s.player)
+        for _, ped in ipairs(getElementsWithinRange(x, y, z, cfg.copLostDistance, 'ped', 0, 0)) do
+            if not seen[ped] and isStreetCop(ped) then
+                seen[ped] = true
+                local best, bestDistance
+                for _, other in ipairs(wanted) do
+                    local d = distance3(ped, other.player)
+                    if d <= cfg.copLostDistance and R.footCopCanTarget(d, vehicleSpeedSquared(other.player)) and
+                        (not bestDistance or d < bestDistance) then
+                        best, bestDistance = other, d
+                    end
+                end
+                if best then candidates[#candidates + 1] = {ped = ped, s = best, distance = bestDistance} end
+            end
+        end
+    end
+    -- Closest first, so one pass never takes a cop that a closer one would
+    -- displace straight away.
+    table.sort(candidates, function(a, b) return a.distance < b.distance end)
+    for _, candidate in ipairs(candidates) do
+        local s = candidate.s
+        local pursuers, list = {}, {}
+        for _, ped in ipairs(s.units) do
+            local unit = units[ped]
+            if unit and unit.phase ~= 'disengage' then
+                list[#list + 1] = unit
+                pursuers[#pursuers + 1] = {distance = isElement(ped) and distance3(ped, s.player) or math.huge,
+                                           alive = isElement(ped) and not isPedDead(ped)}
+            end
+        end
+        local ok, dropped = R.pursuitJoin(pursuitCap(s), pursuers, candidate.distance)
+        local active = countUnits()
+        if ok and active - #dropped < cfg.maxCops and isElement(candidate.ped) then
+            local released = exports['native-ped-traffic']:releaseTrafficCop(candidate.ped)
+            if released == nil then
+                -- An older traffic build without the export: stop asking (one
+                -- warning, not one per second) until it is restarted.
+                trafficLacksRelease = true
+                return
+            end
+            if released then
+                for _, index in ipairs(dropped) do retireUnit(list[index], 'displaced') end
+                adoptStreetCop(s, candidate.ped)
+            end
+        end
+    end
+end
+
+addEventHandler('onResourceStart', root, function(resource)
+    if getResourceName(resource) == 'native-ped-traffic' then trafficLacksRelease = false end
+end)
 
 local function requestSpawn(s)
     nextRequestId = nextRequestId + 1
@@ -871,6 +1009,7 @@ addEventHandler('onResourceStart', resourceRoot, function()
         end
     end, 250, 0)
     setTimer(probeRetired, 2000, 0)
+    setTimer(recruitStreetCops, 1000, 0)
 end)
 
 addEventHandler('onResourceStop', resourceRoot, function()

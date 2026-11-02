@@ -19,6 +19,8 @@
         <setting name="*overheadStars" value="true" />
         <!-- Show BUSTED on the arrested player's screen. -->
         <setting name="*bustedText" value="true" />
+        <!-- Street cops from native-ped-traffic join the chase, as in solo. -->
+        <setting name="*streetCops" value="true" />
     </settings>
 
     <export function="reportNativeCrime" type="server" />

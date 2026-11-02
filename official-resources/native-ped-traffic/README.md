@@ -163,6 +163,27 @@ rejections and removals by request, visibility-check, traffic and group IDs.
 The file is reset when `/pedtraffic debug on` begins a new session and stops at
 20,000 lines.
 
+## Street cops and the police
+
+Street cops use the `ambient-cop-safe` profile, which keeps them from reacting
+to crimes: GTA's own reaction would read the local player's wanted level.
+`native-wanted-police` owns pursuits instead. When a player is wanted, it
+takes the nearby street cops that GTA would send after him with this server
+export:
+
+```lua
+local released = exports["native-ped-traffic"]:releaseTrafficCop(ped)
+```
+
+Only a different running server resource may call it, and only for a single
+cop whose record is settled (`active`: not frozen, handing over, suspended or
+under a test). On `true` the traffic record ends without destroying the ped:
+the owner's wander task and streaming lease are released
+(`pedTraffic:stop`), `neon:ambientPedTraffic` becomes false so every client
+drops the ambient profile, and the ped belongs to the caller. It is still an
+element of this resource, so stopping traffic removes it.
+`tests/release_contract.lua` runs the production function.
+
 ## Commands
 
 - `/pedtraffic on` starts population generation.

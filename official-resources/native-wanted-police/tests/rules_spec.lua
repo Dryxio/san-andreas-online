@@ -232,4 +232,27 @@ check('tier beats region', R.copModel(5, 1) == 286)
 check('flamethrower is not instant-hit', not R.isArmedWeapon(37))
 check('pistol is armed', R.isArmedWeapon(22))
 
+-- Street cops joining a pursuit (0x562F60 / 0x562B00 / 0x68BBD0).
+local function alive(...) local l = {} for i, d in ipairs({...}) do l[i] = {distance = d, alive = true} end return l end
+local ok, dropped = R.pursuitJoin(0, {}, 5)
+check('cap 0 refuses (0 stars)', not ok)
+ok, dropped = R.pursuitJoin(3, alive(40, 60), 80)
+check('room left: joins, nobody dropped', ok and #dropped == 0)
+ok, dropped = R.pursuitJoin(3, alive(40, 60, 30), 80)
+check('full and farther than everyone: refused', not ok)
+ok, dropped = R.pursuitJoin(3, alive(40, 60, 30), 50)
+check('full: the farthest pursuer is displaced', ok and #dropped == 1 and dropped[1] == 2)
+local withDead = alive(40, 60, 30); withDead[3].alive = false
+ok, dropped = R.pursuitJoin(3, withDead, 90)
+check('a dead pursuer is displaced first, even for a farther newcomer', ok and dropped[1] == 3)
+ok, dropped = R.pursuitJoin(1, alive(0.5), 0.8)
+check('newcomer distance raised to 1 m: a 0.5 m pursuer stays', not ok)
+ok, dropped = R.pursuitJoin(2, alive(40, 60, 70), 10)
+check('over cap after a level drop: displaced down to cap - 1', ok and #dropped == 2 and dropped[1] == 3 and dropped[2] == 2)
+check('on foot: any distance', R.footCopCanTarget(200, nil))
+check('parked car: any distance', R.footCopCanTarget(200, 0))
+-- 0.5 per step is 25 m/s (90 km/h): only within 8 m.
+check('car at 90 km/h, 7 m: targeted', R.footCopCanTarget(7, 0.25))
+check('car at 90 km/h, 9 m: ignored', not R.footCopCanTarget(9, 0.25))
+
 print(('rules_spec: %d checks passed'):format(passed))

@@ -6,6 +6,8 @@
     <script src="server.lua" type="server" />
     <script src="client.lua" type="client" cache="false" />
     <export function="pedTrafficSetDemo" type="server" />
+    <!-- Lets native-wanted-police take over a street cop that joins a chase. -->
+    <export function="releaseTrafficCop" type="server" />
     <settings>
         <setting name="*debug" value="false" />
         <!-- Optional for custom maps: comma-separated civilian skin IDs (GTA

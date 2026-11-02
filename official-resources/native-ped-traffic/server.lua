@@ -1296,6 +1296,48 @@ local function removeRecord(record, reason)
     })
 end
 
+-- Hand one street cop to another server resource (native-wanted-police).
+-- In solo a wandering cop leaves CTaskComplexWanderCop for
+-- CTaskComplexPolicePursuit when the player is wanted (0x674D80). Traffic
+-- cops are kept from reacting on purpose (GTA's reaction reads the local
+-- player's wanted level), so the police resource owns pursuits and takes the
+-- cop over instead of a new one appearing. Only a settled single cop is
+-- released: frozen, handing over, suspended or test records are refused.
+-- The record ends as if removed, but the ped stays and from now on belongs
+-- to the caller (it is still destroyed if this resource stops).
+-- Global, not local: this chunk is at Lua's 200-local limit.
+function releaseTrafficCop(ped)
+    if client or not sourceResource or sourceResource == getThisResource() or
+        getResourceState(sourceResource) ~= "running" then
+        return false
+    end
+    local record = trafficPeds[ped]
+    if not record or record.removing or record.populationClass ~= "cop" or record.group or record.couple or
+        record.state ~= "active" or record.airTest or record.climbTest or record.visibilityCheckId or
+        not isElement(ped) or isPedDead(ped) then
+        return false
+    end
+    record.removing = true
+    trafficPeds[ped] = nil
+    -- The owner ends its wander task and streaming lease; clearing the marker
+    -- makes every client drop the ambient-cop-safe event profile.
+    if isElement(record.owner) then
+        triggerClientEvent(record.owner, "pedTraffic:stop", resourceRoot, ped, record.epoch, "released")
+    end
+    setElementData(ped, "neon:ambientPedTraffic", false)
+    setElementData(ped, "neon:ambientPedCopSafe", false)
+    removeElementData(ped, "neon:ambientPedTrafficEpoch")
+    setElementFrozen(ped, false)
+    log(("release id=%d to=%s active=%d"):format(record.id, getResourceName(sourceResource), getTrafficPedCount()))
+    writePopulationTrace("release", {
+        traffic_id = record.id,
+        population_class = record.populationClass,
+        to = getResourceName(sourceResource),
+        active = getTrafficPedCount(),
+    })
+    return true
+end
+
 local function sendAssignment(record, reason)
     if not record or record.removing or record.state ~= "assigning" or not isElement(record.owner) then
         return false

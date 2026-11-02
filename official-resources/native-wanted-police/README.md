@@ -29,6 +29,13 @@ nearest police station. A gamemode can replace that outcome (see events).
   San Fierro, Las Venturas or inside, they stay until you are busted, die, or
   the gamemode clears them (Pay 'n' Spray, bribe). Riding a police vehicle,
   helicopter or plane stops the fading.
+- **Street cops join the chase.** With `native-ped-traffic` running, a cop
+  already walking the street goes after the nearest wanted player, as in
+  solo: no distance limit beyond the cop being there (`copLostDistance`
+  here), up to the level's pursuit cap (1, 3, 4, 6, 8, 10 cops). When the
+  chase is full, a closer street cop replaces the farthest pursuer. A foot
+  cop ignores a suspect driving past and goes for one that stops (GTA's
+  speed x distance limit). The cop the player sees is the one that comes.
 - **Cops on foot, out of view.** They appear on GTA's own off-screen
   pedestrian spots, after every player within 150 m confirms the spot is off
   their screen, and close in. The model follows the area (LS, SF, LV or
@@ -81,7 +88,8 @@ cars, job vehicles): getting into them is then not car theft.
 
 `maxCops` (24), `maxCopsPerSuspect` (10), `pvpCrimes` (true: hurting players
 is a crime), `copLostDistance` (220 m), `ownerRange` (90 m),
-`overheadStars` (true), `bustedText` (true).
+`overheadStars` (true), `bustedText` (true), `streetCops` (true: street cops
+from `native-ped-traffic` join the chase).
 
 ## How it works
 
@@ -103,10 +111,19 @@ is a crime), `copLostDistance` (220 m), `ownerRange` (90 m),
   the attacker is close enough and holds that weapon, and a rate limit.
   Collisions are never taken from the damaged car's own driver. Victim types
   come from the ped's model, never from element data.
-- Cops are ordinary MTA peds made by this resource. They never borrow
-  traffic peds. GTA's own cop tasks are never used: they read the local
+- Cops are ordinary MTA peds: the ones this resource creates, and street
+  cops taken over from `native-ped-traffic` through its `releaseTrafficCop`
+  export (the traffic resource drops the cop's record and ambient profile,
+  then it belongs to this resource only; two resources never drive the same
+  ped). The join rule is GTA's: `CTaskComplexWanderCop` (0x674D80),
+  `CanCopJoinPursuit` (0x562F60), `ComputePursuitCopToDisplace` (0x562B00)
+  and `CTaskComplexPolicePursuit::SetPursuit` (0x68BBD0).
+- GTA's own cop tasks are never used: they read the local
   player's wanted level and need real GTA cops. Instead each cop gets
-  `setPedKillOnFoot` aimed at its suspect. The binary shows GTA's "kill
+  `setPedKillOnFoot` aimed at its suspect, and is a mission actor
+  (`setPedMissionActor`) so it shoots at that target: MTA otherwise sends a
+  script ped's shots through the player branch of `FireInstantHit`
+  (0x74034C), which ignores the AI's target. The binary shows GTA's "kill
   criminal" reaction cannot start on a Neon ped (every MTA player and ped is a
   player-type `CPlayerPed`, which that task refuses).
 - One client runs each cop: preferably another player within 90 m of the cop,
@@ -136,6 +153,10 @@ is a crime), `copLostDistance` (220 m), `ownerRange` (90 m),
   avoid it.
 - Cops only work in dimension 0, outside interiors. Going inside sends them
   away; the stars stay.
+- A street cop that leaves the chase does not go back to traffic: it walks
+  away and is removed once nobody sees it, and traffic spawns new people as
+  usual. `native-vehicle-traffic` has no police cars yet, so only cops on
+  foot join.
 - Not yet tested in game.
 
 ## Tests
@@ -145,4 +166,5 @@ From the repository root:
 ```bash
 lua official-resources/native-wanted-police/tests/rules_spec.lua
 lua official-resources/native-wanted-police/tests/server_spec.lua
+lua official-resources/native-ped-traffic/tests/release_contract.lua
 ```

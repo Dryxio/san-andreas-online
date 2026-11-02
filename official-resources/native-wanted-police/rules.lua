@@ -28,6 +28,8 @@
 --   GenerateDamageEvent 0x73A530, CWeapon::DoBulletImpact 0x73B550,
 --   CPed::KillPedWithCar 0x5F0360, explosions 0x567750: direct reports
 --   CVehicle::IsLawEnforcementVehicle 0x6D2370
+--   street cops joining: WanderCop 0x674D80, CanCopJoinPursuit 0x562F60,
+--   ComputePursuitCopToDisplace 0x562B00, PolicePursuit::SetPursuit 0x68BBD0
 --
 -- The module is plain Lua 5.1 with no MTA calls so the tests can run it.
 NativeWantedRules = {}
@@ -70,6 +72,55 @@ R.caps = {
     [5] = {cops = 8, cars = 3, roadblock = 24},
     [6] = {cops = 10, cars = 3, roadblock = 30},
 }
+
+-- Street cops joining a pursuit. In solo every wandering cop
+-- (CTaskComplexWanderCop::ControlSubTask 0x674D80, via 0x66B160) switches to
+-- CTaskComplexPolicePursuit while the player is wanted, if the pursuit list
+-- accepts it. There is no distance limit beyond the cop existing.
+--
+-- CWanted::CanCopJoinPursuit 0x562F60 with ComputePursuitCopToDisplace
+-- 0x562B00: refused when the cap is 0; while the list is full, a dead
+-- pursuer is displaced first (slot order), otherwise the pursuer farthest
+-- from the player, and only if it is farther than the newcomer (squared
+-- distances, the newcomer's raised to at least 1.0: 0x858624). No candidate
+-- means the newcomer does not join.
+-- pursuers: array of {distance = metres, alive = bool}. Returns ok and the
+-- indices of the pursuers to drop.
+function R.pursuitJoin(cap, pursuers, distance)
+    if not cap or cap <= 0 then return false, {} end
+    local list, count = {}, 0
+    for index, p in ipairs(pursuers) do list[index] = p; count = count + 1 end
+    local newcomer = math.max(1.0, distance * distance)
+    local dropped = {}
+    while count >= cap do
+        local pick
+        local farthest = newcomer
+        for index = 1, #pursuers do
+            local p = list[index]
+            if p then
+                if not p.alive then pick = index; break end
+                local d = p.distance * p.distance
+                if d > farthest then pick, farthest = index, d end
+            end
+        end
+        if not pick then return false, {} end
+        list[pick] = false
+        count = count - 1
+        dropped[#dropped + 1] = pick
+    end
+    return true, dropped
+end
+
+-- CTaskComplexPolicePursuit::SetPursuit 0x68BBD0: the cop takes the nearest
+-- player (range FLT_MAX at 0x863A3C). A player in a vehicle is only taken
+-- while |move speed|^2 * distance^2 < 16 (0x8599D0); move speed is GTA's
+-- per-step velocity, the unit getElementVelocity returns. A foot cop does not
+-- chase a car going past, but does go for one that stops.
+R.pursuitVehicleLimit = 16
+function R.footCopCanTarget(distance, vehicleSpeedSquared)
+    if not vehicleSpeedSquared then return true end
+    return vehicleSpeedSquared * distance * distance < R.pursuitVehicleLimit
+end
 
 R.queueSize = 16
 R.queueReportDelay = 500
