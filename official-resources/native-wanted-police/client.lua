@@ -95,7 +95,7 @@ local function driveCar(ped, vehicle, phase, suspect, epoch, state, t)
         local cx, cy, cz = getElementPosition(vehicle)
         local px, py, pz = getElementPosition(suspect)
         local d2 = getDistanceBetweenPoints2D(cx, cy, px, py)
-        -- GTA's close / far mission switch (20 m / 50 m).
+        -- GTA's close / far mission switch (20 m / 25 m, rules.lua).
         if d2 < NativeWantedRules.carCloseDistance then
             state.close = true
         elseif d2 > NativeWantedRules.carFarDistance then
@@ -113,7 +113,8 @@ local function driveCar(ped, vehicle, phase, suspect, epoch, state, t)
             -- A suspect on a bike is blocked, never rammed (0x41FDE0).
             local vehicleType = getVehicleType(suspectVehicle)
             if vehicleType == 'Bike' or vehicleType == 'BMX' then mission = 'block' end
-            key = 'mission:' .. mission .. ':' .. tostring(suspectVehicle) .. ':' .. speed
+            key = 'mission:' .. mission .. ':' .. tostring(suspectVehicle)
+            state.wantSpeed = speed
             issue = function()
                 local ok = setPedDriveMission(ped, vehicle, suspectVehicle, mission .. '_car', speed, 'avoid_cars')
                 -- Builds before ram/block were admitted refuse: drive to
@@ -132,13 +133,17 @@ local function driveCar(ped, vehicle, phase, suspect, epoch, state, t)
         if key:sub(1, 5) == 'goto:' then
             refresh = t - state.at > 1500
         elseif key:sub(1, 8) == 'mission:' then
-            -- Re-issue only once GTA has dropped the mission task.
-            refresh = t - state.at > 3000 and not hasTask(ped, 'TASK_COMPLEX_CAR_DRIVE_MISSION')
+            -- Re-issue once GTA has dropped the mission task, or for a new
+            -- speed band: that restarts GTA's mission (back to far, path
+            -- cleared), so a speed change alone waits 2 s between restarts.
+            refresh = (t - state.at > 3000 and not hasTask(ped, 'TASK_COMPLEX_CAR_DRIVE_MISSION')) or
+                (state.speed ~= state.wantSpeed and t - state.at > 2000)
         end
         if not refresh then applied[ped] = state; return end
     end
     if issue() then
         state.key, state.epoch, state.at = key, epoch, t
+        state.speed = state.wantSpeed
     else
         state.key = nil
     end
@@ -156,8 +161,10 @@ local function drive(ped)
     local orderGiven = getElementData(ped, 'neon:policeOrder')
     if vehicle then
         if orderGiven == 'exit' then
-            -- GTA's own exit (door, animation). Asked again if refused.
+            -- GTA's own exit (door, animation). The drive task is dropped
+            -- first so it cannot fight the exit. Asked again if refused.
             if not state or state.exit ~= vehicle or t - state.at > 2000 then
+                if getPedOccupiedVehicleSeat(ped) == 0 then killPedTask(ped, 'primary', 3, false) end
                 setPedExitVehicle(ped)
                 applied[ped] = {exit = vehicle, at = t}
             end
@@ -167,10 +174,17 @@ local function drive(ped)
     end
     if orderGiven == 'enter' then
         -- The driver goes back to his car, as driver (task 701).
+        -- CClientPed::EnterVehicle refuses while a primary task runs (the
+        -- foot chase sits in slot 3) or a gun task is active, so both go.
         local car = getElementData(ped, 'neon:policeCarVehicle')
-        if isElement(car) and (not state or state.enter ~= car or t - state.at > 3000) then
-            setPedEnterVehicle(ped, car, 0)
-            applied[ped] = {enter = car, at = t}
+        if isElement(car) and (not state or state.enter ~= car or t - state.at > 1000) then
+            killPedTask(ped, 'primary', 3, true)
+            killPedTask(ped, 'secondary', 0, true)
+            if setPedEnterVehicle(ped, car, 0) then
+                applied[ped] = {enter = car, at = t + 2000}
+            else
+                applied[ped] = {enter = car, at = t}
+            end
         end
         return
     end

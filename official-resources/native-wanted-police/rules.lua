@@ -192,8 +192,11 @@ function R.policeCarShotgunSeat(level, model, rollDriver, rollPassenger)
 end
 
 -- Cruise speed (0x41CAA0): 25 at 1 star, 34 at 2; at 3-6 the car's
--- handling top speed (fMaxVelocity km/h, stored as km/h / 180) times 54,
--- 72, 75, 78. UpdateCarAI writes it again every frame during a chase.
+-- handling top speed times 54, 72, 75, 78. GTA multiplies handling+0x88,
+-- the drag-limited top speed 0x6F5080 derives from fMaxVelocity / 180 (a
+-- few percent lower); the handling value the server can read is
+-- fMaxVelocity, so these cars run a few percent faster than solo's.
+-- UpdateCarAI writes it again every frame during a chase.
 R.carSpeedFactor = {[3] = 54, [4] = 72, [5] = 75, [6] = 78}
 function R.policeCarSpeed(level, maxVelocityKmh)
     if level <= 1 then return 25 end
@@ -220,9 +223,15 @@ function R.policeCarCloseSpeed(level, speed, onFoot, distance, speedUnits)
 end
 
 -- The autopilot switches to the close mission under 20 m (vehicle+0x3DD
--- default) and back above 50 m for police (0x41BF70, 0x858B40).
+-- default) and back above FindSwitchDistanceFar (0x41BF70): 50 m for a car
+-- flagged bIsLawEnforcer, +0x3DD + 5 = 25 m otherwise. A script-created
+-- vehicle is never flagged (SetIsLawEnforcer 0x6D2330 is only called by
+-- GTA's own population and mission code), which also keeps UpdateCarAI's
+-- local-player police branches off these cars. So 25 m is where the native
+-- mission really switches back, and the siren and the close-range speed
+-- follow it.
 R.carCloseDistance = 20
-R.carFarDistance = 50
+R.carFarDistance = 25
 
 -- Cops get out (UpdateCarAI, close missions, then 0x41C760) when the car is
 -- within 10 m (2D) of the suspect and the suspect is on foot, his vehicle is

@@ -560,6 +560,7 @@ removePedFromVehicle(driver)
 step(250)
 check('empty car: parked, orders done', cruiser.data['neon:policeCarPhase'] == 'parked' and driver.data['neon:policeOrder'] == nil)
 check('out of the car they chase on foot', not getPedOccupiedVehicle(driver) and driver.data['neon:policePhase'] == 'pursue')
+check('a parked car no longer counts against the car cap', getNativeWantedState(frank).cars == 0)
 
 -- Frank drives off: only the driver goes back to his car.
 local getaway = element('vehicle', {model = 400, x = frank.x, y = frank.y, z = 10, vx = 0.5, occupants = {}})
@@ -614,5 +615,66 @@ second.driver = frank
 step(250)
 check('stolen: no longer a police car of this resource', getNativePoliceCars(frank)[1] == nil and second.alive and
     second.data['neon:policeCar'] == nil)
+
+-- 15. Fixes from review: no chase/bail flip-flop, infinite rotation, parked
+-- cars outside the cap, orders cleared, a stolen car's passenger.
+local gina = element('player', {x = 2600, y = 2600, z = 10, money = 5000})
+fire('neonPolice:ready', resourceRoot, gina)
+setNativeWantedLevel(gina, 2)
+mark = #clientEvents
+step(250)
+local probeG = probesTo(gina, 'neonPolice:carProbe', mark)[1]
+fire('neonPolice:carCandidate', resourceRoot, gina, probeG.args[1], 2600, 2680, 10, 1 / 0)
+check('an infinite rotation is refused', #getNativePoliceCars(gina) == 0)
+mark = #clientEvents
+step(1250)
+probeG = probesTo(gina, 'neonPolice:carProbe', mark)[1]
+fire('neonPolice:carCandidate', resourceRoot, gina, probeG.args[1], 2600, 2680, 10, 0)
+local carG = getNativePoliceCars(gina)[1]
+check('then a valid answer creates the car', carG ~= nil)
+carG.vx = 0.3
+local creep = element('vehicle', {model = 400, x = gina.x, y = gina.y, z = 10, vx = 0.03, occupants = {}})
+warpPedIntoVehicle(gina, creep, 0)
+carG.x, carG.y = gina.x + 6, gina.y
+step(3000)
+check('a creeping suspect (1.5 m/s): the car stops after 2.5 s', carG.data['neon:policeCarPhase'] == 'bail')
+step(250)
+check('then drives on, since he gets away', carG.data['neon:policeCarPhase'] == 'chase')
+local phases = {}
+for _ = 1, 12 do step(250); phases[carG.data['neon:policeCarPhase']] = true end
+check('no flip-flop while he keeps creeping', phases.chase and not phases.bail)
+-- Gunfire on the police car is seen by the server: crime 8.
+local chaosG = getNativeWantedState(gina).chaos
+gina.weapon = 22
+fire('onPlayerWeaponFire', gina, nil, 22, 0, 0, 0, carG)
+step(2250)
+check('shooting a police car: crime 8 seen by the server', getNativeWantedState(gina).chaos >= chaosG + 5)
+-- A bystander running the car cannot blame a far player with a weapon.
+local hank = element('player', {x = 2600, y = 2640, z = 10})
+fire('neonPolice:ready', resourceRoot, hank)
+carG.syncer = hank
+local hankChaos = getNativeWantedState(gina).chaos
+gina.x = 2650
+fire('neonPolice:vehicleDamage', resourceRoot, hank, carG, gina, 22)
+step(2250)
+check('a bystander syncer is not believed for gunfire', getNativeWantedState(gina).chaos == hankChaos)
+gina.x = 2600
+-- A player jacks the moving police car with the passenger still inside.
+local passengerG = getVehicleOccupant(carG, 1)
+removePedFromVehicle(getVehicleOccupant(carG, 0))
+removePedFromVehicle(gina)
+warpPedIntoVehicle(gina, carG, 0)
+step(250)
+check('jacked: the seated cop is told to get out', passengerG.data['neon:policeOrder'] == 'exit')
+check('and is no police car any more', getNativePoliceCars(gina)[1] == nil)
+gina.vx = 0
+carG.vx = 0
+step(3000)
+check('a cop sitting in the suspect\'s car never arrests him', getNativeWantedState(gina).arrest == false)
+removePedFromVehicle(passengerG)
+step(250)
+check('out of the car: the exit order is done', passengerG.data['neon:policeOrder'] == nil)
+removePedFromVehicle(gina)
+setNativeWantedLevel(gina, 0)
 
 print(('server_spec: %d checks passed'):format(passed))

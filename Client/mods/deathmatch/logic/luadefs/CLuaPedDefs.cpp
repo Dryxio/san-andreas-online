@@ -3615,9 +3615,10 @@ bool CLuaPedDefs::SetPedDriveMission(CClientPed* ped, CClientVehicle* vehicle, C
     // steers exactly like BLOCKPLAYER_CLOSE (5) (both 0x4335E0); RAMCAR_CLOSE
     // (16) uses the plain intercept 0x433280, without the side offset that
     // RAMPLAYER_CLOSE (3) adds. CCarAI::UpdateCarAI switches FARAWAY/CLOSE by
-    // itself and falls back to cruising if the target reference is cleared
-    // (target destroyed or streamed out), so only the FARAWAY entries are
-    // admitted.
+    // itself, and when the target reference is cleared (target destroyed or
+    // streamed out) the car stops (mission 0, 0x41FA8B) or cruises (16 -> 1,
+    // 0x41E791) instead of reading a dangling pointer, so only the FARAWAY
+    // entries are admitted.
     if (missionId != 29 && missionId != 15 && missionId != 17)
         return false;
 

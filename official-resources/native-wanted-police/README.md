@@ -183,12 +183,18 @@ stars; false: version 1's foot cops at every level), `maxCars` (12),
 - No roadblocks, helicopters, police bikes or boats yet. Cops in cars never
   shoot from them (solo does not either; only bike cops and the boat gunner
   do).
-- Hitting a vehicle with a cop in it counts (crime 8). A car alarm going off
-  near a cop does not yet.
+- A car alarm going off near a cop does not count yet.
 - Police cars only drive where GTA has road paths. Off-road, foot cops stand
   in.
 - A police car a player takes becomes an ordinary vehicle that this resource
-  no longer removes.
+  no longer removes; cops still inside get out.
+- From 3 stars, police cars run a few percent faster than solo's: GTA scales
+  the drag-limited top speed, the server can only read the handling top
+  speed.
+- Hitting a police car counts as crime 8 when the server sees the shot, the
+  attacker reports it, or the client running the car reports a collision
+  with the attacker's vehicle within 12 m. A police car that rams the
+  suspect also counts against him, as the collision is the same.
 - Setting fire to people and cars (crimes 13-15) is not detected yet.
 - A cheating client can hide its own crimes. A malicious syncer can only
   blame a player who was close enough and held that weapon.
