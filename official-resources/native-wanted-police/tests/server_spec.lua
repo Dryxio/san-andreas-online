@@ -277,6 +277,11 @@ check('cops hold during the arrest', arrestingCop.data['neon:policePhase'] == 'a
 local level = getNativeWantedState(alice).level
 step(4250)
 check('busted after 4 s', countServerEvents('onNativePlayerArrested') == 1)
+for _, e in ipairs(serverEvents) do
+    if e.name == 'onNativePlayerArrested' then
+        check('the event carries the station respawn point', e.args[3] == 'Los Santos' and math.abs(e.args[4] - 1550.68) < 0.01)
+    end
+end
 check('controls held until the respawn', lastClientEvent('neonPolice:bustHold', alice).args[1] == true)
 check('wanted cleared', getNativeWantedState(alice).level == 0 and alice.hudStars == 0)
 check('fine by stars taken', alice.money == 5000 - NativeWantedRules.bustedFine(level))

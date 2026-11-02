@@ -695,7 +695,9 @@ local function bust(s)
     -- that cancels it and locks controls in its handler (jail, cuffs) keeps
     -- its lock.
     triggerClientEvent(player, 'neonPolice:arrestEnd', resourceRoot, true)
-    if not triggerEvent('onNativePlayerArrested', player, level, fine, station[5]) then return end
+    if not triggerEvent('onNativePlayerArrested', player, level, fine, station[5], station[1], station[2], station[3], station[4]) then
+        return
+    end
     -- Default outcome (CGameLogic): fine by stars, weapons taken, respawn at
     -- the nearest police station. Controls stay locked until the respawn.
     takePlayerMoney(player, math.max(0, math.min(getPlayerMoney(player), fine)))

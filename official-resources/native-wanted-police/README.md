@@ -65,7 +65,7 @@ nearest police station. A gamemode can replace that outcome (see events).
 | `onNativeWantedLevelChange` | `oldLevel, newLevel, reason` | |
 | `onNativeSuspectEscaped` | `oldLevel` | |
 | `onNativePlayerArrestAttempt` | `cop` | refuse this arrest |
-| `onNativePlayerArrested` | `level, fine, stationName` | apply your own outcome (the stars are cleared either way) |
+| `onNativePlayerArrested` | `level, fine, stationName, x, y, z, rotation` | apply your own outcome (the stars are cleared either way); the coordinates are the station's respawn point |
 | `onNativePoliceUnitStateChange` (source = cop) | `suspect, phase` | |
 
 `victim` is `false` when the crime has none.
