@@ -8,6 +8,7 @@ not resources for an unmodified MTA:SA installation.
 | --- | --- |
 | [native-ped-traffic](native-ped-traffic/README.md) | Shared ambient pedestrians using GTA's native walking and reaction AI. |
 | [native-vehicle-traffic](native-vehicle-traffic/README.md) | Shared civilian road traffic with native driving, occupants, and ownership handoff. |
+| [native-wanted-police](native-wanted-police/README.md) | Per-player wanted levels with GTA's crime rules, foot cops chasing one suspect each, and server-validated arrests. |
 | [camera-pointing-test](camera-pointing-test/README.md) | Hold E to point toward the camera direction, visible to other players. The existing resource name is retained for compatibility. |
 | [fps-counter](fps-counter/README.md) | An optional local FPS display toggled with `/fps`. |
 | [samp-map-loader](samp-map-loader/README.md) | Load SA-MP/Pawn maps through client exports, with the model payload included. Supply your own map. |
