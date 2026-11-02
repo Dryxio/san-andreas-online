@@ -2880,6 +2880,23 @@ local function pulsePedObstacleAvoidance()
                                                  moveState == "walk" or moveState == "jog" or
                                                  moveState == "powerwalk")
 
+            -- Active suppression of road-crossing and look-around pauses:
+            -- In vanilla GTA:SA, crossing from sidewalk to street triggers
+            -- TASK_COMPLEX_CROSS_ROAD_LOOK_AND_ACHIEVE_HEADING and TASK_SIMPLE_LOOK_ABOUT
+            -- (stopping to look left and right for traffic). When in a threat or flee
+            -- state, we proactively cancel this polite pause so the ped sprints continuously.
+            if isFleeTask or state.wasFleeing then
+                if type(isPedDoingTask) == "function" and
+                    (isPedDoingTask(ped, "TASK_COMPLEX_CROSS_ROAD_LOOK_AND_ACHIEVE_HEADING") or
+                     isPedDoingTask(ped, "TASK_SIMPLE_LOOK_ABOUT")) then
+                    local _, _, currHeading = getElementRotation(ped)
+                    local fleeDir = math.floor((currHeading + 22.5) / 45) % 8
+                    if type(setPedWander) == "function" then
+                        setPedWander(ped, "run", fleeDir, false)
+                    end
+                end
+            end
+
             if state.evading then
                 local elapsed = now - state.evadeStartedAt
                 local detourTravelDist = state.detourStartPos and
@@ -2887,7 +2904,7 @@ local function pulsePedObstacleAvoidance()
 
                 -- Check if the corridor along the original flee line is now clear of the obstacle
                 local corridorClear = false
-                if state.originalFleeHeading and elapsed >= 250 then
+                if state.originalFleeHeading and elapsed >= 200 then
                     local fRad = math.rad(state.originalFleeHeading)
                     local fDirX, fDirY = -math.sin(fRad), math.cos(fRad)
                     corridorClear = not processLineOfSight(
@@ -2900,9 +2917,9 @@ local function pulsePedObstacleAvoidance()
                 -- Transition early while the ped is still running at full speed.
                 -- Never wait until arrival at the detour point, because arrival triggers
                 -- GTA's terminal StandStill task which plays idle animations.
-                local shouldTransition = (detourTravelDist >= 0.85 and corridorClear) or
-                                         (detourTravelDist >= 1.6) or
-                                         (elapsed >= 1500)
+                local shouldTransition = (detourTravelDist >= 0.8 and corridorClear) or
+                                         (detourTravelDist >= 1.5) or
+                                         (elapsed >= 1400)
 
                 if shouldTransition then
                     state.evading = false
@@ -2923,31 +2940,24 @@ local function pulsePedObstacleAvoidance()
                             end
                         end
 
-                        -- Resume running flee without stopping or idling
-                        if threatPed and isElement(threatPed) and type(setPedTaskSequence) == "function" then
-                            setPedTaskSequence(ped, {
-                                {
-                                    task = "smart_flee",
-                                    target = threatPed,
-                                    safeDistance = 80.0,
-                                    duration = 15000,
-                                }
-                            })
-                        elseif type(setPedWander) == "function" then
-                            local threatX, threatY
-                            if state.threatPos then
-                                threatX, threatY = state.threatPos.x, state.threatPos.y
-                            elseif threatPed and isElement(threatPed) then
-                                threatX, threatY = getElementPosition(threatPed)
-                            else
-                                local threatRad = math.rad((state.originalFleeHeading + 180) % 360)
-                                threatX = px - math.sin(threatRad) * 15.0
-                                threatY = py + math.cos(threatRad) * 15.0
-                            end
-                            local escapeAngle = math.deg(math.atan2(-(px - threatX), py - threatY))
-                            if escapeAngle < 0 then escapeAngle = escapeAngle + 360 end
-                            local escapeDir = math.floor((escapeAngle + 22.5) / 45) % 8
-                            setPedWander(ped, "run", escapeDir, true)
+                        local threatX, threatY
+                        if state.threatPos then
+                            threatX, threatY = state.threatPos.x, state.threatPos.y
+                        elseif threatPed and isElement(threatPed) then
+                            threatX, threatY = getElementPosition(threatPed)
+                        else
+                            local threatRad = math.rad((state.originalFleeHeading + 180) % 360)
+                            threatX = px - math.sin(threatRad) * 15.0
+                            threatY = py + math.cos(threatRad) * 15.0
+                        end
+                        local escapeAngle = math.deg(math.atan2(-(px - threatX), py - threatY))
+                        if escapeAngle < 0 then escapeAngle = escapeAngle + 360 end
+                        local escapeDir = math.floor((escapeAngle + 22.5) / 45) % 8
+
+                        -- Resume running flee without stopping, idling, or waiting for road crossings.
+                        -- Setting wanderSensibly = false disables GTA's road-crossing pauses entirely.
+                        if type(setPedWander) == "function" then
+                            setPedWander(ped, "run", escapeDir, false)
                         end
                     else
                         if type(setPedWander) == "function" then
@@ -2959,7 +2969,7 @@ local function pulsePedObstacleAvoidance()
                 end
             else
                 local dt = now - state.lastSampleAt
-                if dt >= 300 then
+                if dt >= 250 then
                     local disp = getDistanceBetweenPoints2D(px, py, state.lastX, state.lastY)
                     if isMovingIntent and disp < 0.14 then
                         state.stuckTicks = state.stuckTicks + 1
@@ -2970,7 +2980,7 @@ local function pulsePedObstacleAvoidance()
                     state.lastSampleAt = now
                 end
 
-                -- If blocked for at least ~600ms while intending to move forward, check obstacle collision
+                -- If blocked for at least ~500ms while intending to move forward, check obstacle collision
                 if state.stuckTicks >= 2 then
                     local _, _, heading = getElementRotation(ped)
                     local rad = math.rad(heading)
@@ -3014,7 +3024,7 @@ local function pulsePedObstacleAvoidance()
                             local candHeading = (heading + offset) % 360
                             local cRad = math.rad(candHeading)
                             local cDirX, cDirY = -math.sin(cRad), math.cos(cRad)
-                            local probeDist = 3.2
+                            local probeDist = 3.0
                             local probeEndX = px + cDirX * probeDist
                             local probeEndY = py + cDirY * probeDist
 
@@ -3035,7 +3045,10 @@ local function pulsePedObstacleAvoidance()
                                     if not lowBlocked then
                                         local distToThreat = getDistanceBetweenPoints2D(probeEndX, probeEndY, threatX, threatY)
                                         local anglePenalty = math.abs(offset) * 0.05
-                                        local score = distToThreat * 2.0 - anglePenalty
+                                        -- Bonus for staying on the flat sidewalk level (avoiding stepping down into the roadway)
+                                        local sidewalkBonus = (math.abs(groundZ - pz) <= 0.08) and 6.0 or 0.0
+                                        local roadPenalty = (groundZ < pz - 0.10) and 4.0 or 0.0
+                                        local score = distToThreat * 2.0 - anglePenalty + sidewalkBonus - roadPenalty
 
                                         if score > bestScore then
                                             bestScore = score
@@ -3054,8 +3067,7 @@ local function pulsePedObstacleAvoidance()
                         if bestCandidate and type(setPedGoTo) == "function" then
                             local moveMode = isMovingIntent and "run" or "walk"
                             -- Use matching radius and slowdownRadius (0.4, 0.4) so GTA does not decelerate
-                            -- ahead of time into a walk or stand-still. The target is projected 3.2m ahead
-                            -- so the ped stays in full stride while navigating around the obstacle.
+                            -- ahead of time into a walk or stand-still.
                             local ok = setPedGoTo(ped, Vector3(bestCandidate.x, bestCandidate.y, bestCandidate.z), moveMode, 0.4, 0.4, 2500)
                             if ok then
                                 state.evading = true
