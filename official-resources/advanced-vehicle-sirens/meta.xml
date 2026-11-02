@@ -1,0 +1,38 @@
+<meta>
+    <info author="MTA Community &amp; AVS Contributors" type="script" name="Advanced Vehicle Sirens" version="1.0.0" description="Complete dynamic AVS emergency vehicle siren &amp; lightbar system for MTA:SA"/>
+
+    <!-- Shared Libraries -->
+    <script src="shared/avs_parser.lua" type="shared"/>
+
+    <!-- Server Scripts -->
+    <script src="server/avs_server.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/avs_scanner.lua" type="client"/>
+    <script src="client/avs_sequencer.lua" type="client"/>
+    <script src="client/avs_renderer.lua" type="client"/>
+    <script src="client/avs_model_loader.lua" type="client"/>
+    <script src="client/avs_client_api.lua" type="client"/>
+
+    <!-- Assets and Configurations -->
+    <file src="assets/corona.png"/>
+    <file src="configs/554.json"/>
+    <file src="models/yosemite.dff"/>
+    <file src="models/yosemite.txd"/>
+
+    <!-- Server Exports -->
+    <export function="setVehicleSirenState" type="server"/>
+    <export function="getVehicleSirenState" type="server"/>
+    <export function="cycleVehicleSirenState" type="server"/>
+    <export function="setVehicleSirenMuted" type="server"/>
+    <export function="isVehicleSirenMuted" type="server"/>
+    <export function="registerVehicleSirenModel" type="server"/>
+    <export function="unregisterVehicleSirenModel" type="server"/>
+
+    <!-- Client Exports -->
+    <export function="getVehicleSirenState" type="client"/>
+    <export function="isVehicleSirenActive" type="client"/>
+    <export function="getVehicleAvailableStates" type="client"/>
+    <export function="cycleVehicleSirenState" type="client"/>
+    <export function="setVehicleSirenState" type="client"/>
+</meta>
