@@ -53,6 +53,10 @@ end
 
 -- Main render loop: pre-render executes right before GTA draws world entities
 local function onRenderPulse()
+    -- If native C++ engine is handling AVS coronas, skip Lua software rendering
+    if type(setVehicleSirenState) == "function" then
+        return
+    end
     if not coronaTexture then
         AVSRenderer.init()
         if not coronaTexture then return end

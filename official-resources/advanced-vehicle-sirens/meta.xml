@@ -16,9 +16,54 @@
 
     <!-- Assets and Configurations -->
     <file src="assets/corona.png"/>
+
+    <!-- Siren Configurations -->
+    <file src="configs/407.json"/>
+    <file src="configs/416.json"/>
+    <file src="configs/426.json"/>
+    <file src="configs/427.json"/>
+    <file src="configs/445.json"/>
+    <file src="configs/490.json"/>
+    <file src="configs/523.json"/>
+    <file src="configs/525.json"/>
+    <file src="configs/528.json"/>
     <file src="configs/554.json"/>
+    <file src="configs/578.json"/>
+    <file src="configs/596.json"/>
+    <file src="configs/597.json"/>
+    <file src="configs/598.json"/>
+    <file src="configs/599.json"/>
+
+    <!-- Emergency Vehicle Models & Textures -->
+    <file src="models/admiral.dff"/>
+    <file src="models/admiral.txd"/>
+    <file src="models/ambulan.dff"/>
+    <file src="models/ambulan.txd"/>
+    <file src="models/copcarla.dff"/>
+    <file src="models/copcarla.txd"/>
+    <file src="models/copcarru.dff"/>
+    <file src="models/copcarru.txd"/>
+    <file src="models/copcarsf.dff"/>
+    <file src="models/copcarsf.txd"/>
+    <file src="models/copcarvg.dff"/>
+    <file src="models/copcarvg.txd"/>
+    <file src="models/dft30.dff"/>
+    <file src="models/dft30.txd"/>
+    <file src="models/enforcer.dff"/>
+    <file src="models/enforcer.txd"/>
+    <file src="models/fbiranch.dff"/>
+    <file src="models/fbiranch.txd"/>
+    <file src="models/fbitruck.dff"/>
+    <file src="models/fbitruck.txd"/>
+    <file src="models/firetruk.dff"/>
+    <file src="models/firetruk.txd"/>
+    <file src="models/premier.dff"/>
+    <file src="models/premier.txd"/>
+    <file src="models/towtruck.dff"/>
+    <file src="models/towtruck.txd"/>
     <file src="models/yosemite.dff"/>
     <file src="models/yosemite.txd"/>
+    <file src="assets/shadows256.txd"/>
 
     <!-- Server Exports -->
     <export function="setVehicleSirenState" type="server"/>
@@ -26,6 +71,8 @@
     <export function="cycleVehicleSirenState" type="server"/>
     <export function="setVehicleSirenMuted" type="server"/>
     <export function="isVehicleSirenMuted" type="server"/>
+    <export function="setVehicleSirenShadowsEnabled" type="server"/>
+    <export function="isVehicleSirenShadowsEnabled" type="server"/>
     <export function="registerVehicleSirenModel" type="server"/>
     <export function="unregisterVehicleSirenModel" type="server"/>
 
@@ -35,4 +82,8 @@
     <export function="getVehicleAvailableStates" type="client"/>
     <export function="cycleVehicleSirenState" type="client"/>
     <export function="setVehicleSirenState" type="client"/>
+    <export function="setVehicleSirenShadowsEnabled" type="client"/>
+    <export function="isVehicleSirenShadowsEnabled" type="client"/>
+    <export function="setSirenShadowsEnabled" type="client"/>
+    <export function="isSirenShadowsEnabled" type="client"/>
 </meta>

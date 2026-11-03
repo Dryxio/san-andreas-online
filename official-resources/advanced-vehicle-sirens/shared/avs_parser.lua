@@ -98,7 +98,15 @@ function AVSParser.parse(jsonInput)
         stateOrder = {},   -- Array of state names for cycling
     }
 
-    local rawStates = root.states or {}
+    local rawStates = root.states
+    if not rawStates or type(rawStates) ~= "table" then
+        rawStates = {}
+        for k, v in pairs(root) do
+            if k ~= "references" and k ~= "streamDistance" and k ~= "inertia" and k ~= "inertiaAngle" and k ~= "flare" and k ~= "flareDistance" and type(v) == "table" then
+                rawStates[k] = v
+            end
+        end
+    end
     for stateName, stateDummies in pairs(rawStates) do
         parsed.stateOrder[#parsed.stateOrder + 1] = tostring(stateName)
         local dummiesMap = {}

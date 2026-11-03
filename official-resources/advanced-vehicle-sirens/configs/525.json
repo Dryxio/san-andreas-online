@@ -1,0 +1,430 @@
+{
+	"1.emergency_by_donater": {
+		"1": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 1200,200,200,200,200,200 ]
+		},
+		"2": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 1,
+			"pattern": [ 200,200,200,200,200,1200 ]
+		},
+		"3": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 600,100,100,100,100,100 ]
+		},
+		"4": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 600,100,100,100,100,100 ]
+		},
+		"5": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 600,100,100,100,100,100 ]
+		},
+		"6": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 600,100,100,100,100,100 ]
+		},
+		"7": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 1,
+			"pattern": [ 100,100,100,100,100,600 ]
+		},
+		"8": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 1,
+			"pattern": [ 100,100,100,100,100,600 ]
+		},
+		"9": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 1,
+			"pattern": [ 100,100,100,100,100,600 ]
+		},
+		"10": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 1,
+			"pattern": [ 100,100,100,100,100,600 ]
+		},
+		"11": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 1,
+			"pattern": [ 200,200,200,200,200,1200 ]
+		},
+		"12": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 1200,200,200,200,200,200 ]
+		},
+		"13": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 0,200,200,200,200,200,200,0,200,200,200,200,200,200 ]
+		},
+		"14": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 200,200,200,200,200,200, 200,200,200,200,200,200 ]
+		},
+		"15": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 0,200,200,200,200,200,200,0,200,200,200,200,200,200 ]
+		},
+		"16": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 200,200,200,200,200,200, 200,200,200,200,200,200 ]
+		},
+		"17": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 0,200,200,200,200,200,200,0,200,200,200,200,200,200 ]
+		},
+		"18": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 200,200,200,200,200,200,0,200,200,200,200,200,200 ]
+		},
+		"19": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 0,200,200,200,200,200,200,0,0,200,200,200,200,200,200 ]
+		},
+		"20": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 200,200,200,200,200,200,0,200,200,200,200,200,200 ]
+		},
+		"21": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 0,200,200,200,200,200,200,0,0,200,200,200,200,200,200 ]
+		},
+		"22": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 200,200,200,200,200,200,0,200,200,200,200,200,200 ]
+		}
+	},
+	"2.Advisor_by_donater": {
+		"1": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 1200,200,200,200,200,200 ]
+		},
+		"2": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 1,
+			"pattern": [ 200,200,200,200,200,1200 ]
+		},
+		"4": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 0 ]
+		},
+		"9": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 0 ]
+		},
+		"11": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 1,
+			"pattern": [ 200,200,200,200,200,1200 ]
+		},
+		"12": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 1200,200,200,200,200,200 ]
+		},
+		"13": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 900,100 ]
+		},
+		"14": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 800,200 ]
+		},
+		"15": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 700,300 ]
+		},
+		"16": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 600,400 ]
+		},
+		"17": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 500,500 ]
+		},
+		"18": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 400,600 ]
+		},
+		"19": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 300,700 ]
+		},
+		"20": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 200,800 ]
+		},
+		"21": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 100,900 ]
+		},
+		"22": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 100,900 ]
+		}
+	},
+	"3.Advisor_by_donater": {
+		"1": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 1200,200,200,200,200,200 ]
+		},
+		"2": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 1,
+			"pattern": [ 200,200,200,200,200,1200 ]
+		},
+		"4": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 0 ]
+		},
+		"9": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 0 ]
+		},
+		"11": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 1,
+			"pattern": [ 200,200,200,200,200,1200 ]
+		},
+		"12": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 1200,200,200,200,200,200 ]
+		},
+		"13": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 100,900 ]
+		},
+		"14": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 100,900 ]
+		},
+		"15": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 200,800 ]
+		},
+		"16": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 300,700 ]
+		},
+		"17": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 400,600 ]
+		},
+		"18": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 500,500 ]
+		},
+		"19": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 600,400 ]
+		},
+		"20": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 700,300 ]
+		},
+		"21": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 800,200 ]
+		},
+		"22": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 900,100 ]
+		}
+	},
+	"4.Advisor_by_donater": {
+		"1": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 1200,200,200,200,200,200 ]
+		},
+		"2": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 1,
+			"pattern": [ 200,200,200,200,200,1200 ]
+		},
+		"4": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 0 ]
+		},
+		"9": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 0 ]
+		},
+		"11": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 1,
+			"pattern": [ 200,200,200,200,200,1200 ]
+		},
+		"12": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 1200,200,200,200,200,200 ]
+		},
+		"13": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 500,200 ]
+		},
+		"14": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 400,300 ]
+		},
+		"15": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 300,400 ]
+		},
+		"16": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 200,500 ]
+		},
+		"17": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 100,600 ]
+		},
+		"18": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 100,600 ]
+		},
+		"19": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 200,500 ]
+		},
+		"20": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 300,400 ]
+		},
+		"21": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 400,300 ]
+		},
+		"22": {
+			"size": 0.4,
+			"color": { "red": 255, "green": 210, "blue": 0, "alpha": 128 },
+			"state": 0,
+			"pattern": [ 500,200 ]
+		}
+	}
+}

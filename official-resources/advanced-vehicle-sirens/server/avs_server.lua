@@ -12,23 +12,30 @@ local serverModelConfigs = {}
 local serverVehicleStates = {}
 local serverVehicleMuted = {}
 
--- Load configs on server startup
+-- Load all configs on server startup
 addEventHandler("onResourceStart", resourceRoot, function()
-    if fileExists("configs/554.json") then
-        local hFile = fileOpen("configs/554.json", true)
-        if hFile then
-            local size = fileGetSize(hFile)
-            local content = fileRead(hFile, size)
-            fileClose(hFile)
+    local configModels = {407, 416, 426, 427, 445, 490, 523, 525, 528, 554, 578, 596, 597, 598, 599}
+    local count = 0
 
-            local parsed = AVSParser.parse(content)
-            if parsed then
-                serverModelConfigs[554] = parsed
-                outputServerLog("[AVS] Server registered model 554 configuration with " ..
-                    tostring(#parsed.stateOrder) .. " states.")
+    for _, modelId in ipairs(configModels) do
+        local configPath = "configs/" .. tostring(modelId) .. ".json"
+        if fileExists(configPath) then
+            local hFile = fileOpen(configPath, true)
+            if hFile then
+                local size = fileGetSize(hFile)
+                local content = fileRead(hFile, size)
+                fileClose(hFile)
+
+                local parsed = AVSParser.parse(content)
+                if parsed then
+                    serverModelConfigs[modelId] = parsed
+                    count = count + 1
+                end
             end
         end
     end
+
+    outputServerLog(string.format("[AVS] Server registered %d emergency vehicle configurations.", count))
 end)
 
 -- Send registered configs to joining players
@@ -200,3 +207,20 @@ addEventHandler("onElementDestroy", root, function()
         serverVehicleMuted[source] = nil
     end
 end)
+
+-- Server-side shadow reflection control exports
+function setVehicleSirenShadowsEnabled(vehicle, enabled)
+    if not isElement(vehicle) or getElementType(vehicle) ~= "vehicle" then
+        return false
+    end
+    setElementData(vehicle, "avs:shadows", enabled == true)
+    return true
+end
+
+function isVehicleSirenShadowsEnabled(vehicle)
+    if not isElement(vehicle) or getElementType(vehicle) ~= "vehicle" then
+        return false
+    end
+    return getElementData(vehicle, "avs:shadows") ~= false
+end
+

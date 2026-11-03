@@ -1,0 +1,122 @@
+{
+    "references": {
+        "colors": {
+            "red":    { "red": 255, "blue":   0, "green":   0, "alpha": 128 },
+			"white":  { "red": 255, "blue": 255, "green": 255, "alpha": 128 },
+			"yellow": { "red": 255, "blue": 0, "green": 153, "alpha": 128 }
+        },
+		
+		"rotator": {
+            "size": 0.25,
+
+            "state": 1,
+
+            "type": "rotator",
+			
+			"inertia": 0.5,
+
+            "rotator": {
+                "type": "linear"
+		    }
+	    }
+	},
+
+    "states": {
+        "1.Emergency": {
+            "1": {
+                "color": "yellow",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650
+                }
+            },
+			
+            "2": {
+                "color": "yellow",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650,
+					
+                    "direction": "counter-clockwise"
+                }
+            }
+		},
+		
+        "2.EmergencyAlt": {
+            "1": {
+                "color": "yellow",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650,
+
+                    "direction": "counter-clockwise"
+                }
+            },
+			
+            "2": {
+                "color": "yellow",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650
+					
+                }
+            }
+		},
+		
+        "3.Right": {
+            "1": {
+                "color": "yellow",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650,
+
+                    "direction": "counter-clockwise"
+                }
+            },
+			
+            "2": {
+                "color": "yellow",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650,
+
+                    "direction": "counter-clockwise"
+                }
+            }
+		},
+		
+        "4.Left": {
+            "1": {
+                "color": "yellow",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650
+                }
+            },
+			
+            "2": {
+                "color": "yellow",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650
+                }
+            }
+		}						
+    }
+}		

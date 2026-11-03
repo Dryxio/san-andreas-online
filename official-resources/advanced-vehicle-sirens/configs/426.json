@@ -1,0 +1,273 @@
+{
+    "references": {
+        "colors": {
+            "red":    { "red": 255, "blue":   0, "green":   0, "alpha": 180 },
+			"white":  { "red": 255, "blue": 255, "green": 255, "alpha": 200 },
+			"yellow": { "red": 255, "blue": 0, "green": 180, "alpha": 150 },
+			"altyellow": { "red": 255, "blue": 0, "green": 80, "alpha": 180 },
+			"blue": { "red": 2, "green": 96, "blue": 255, "alpha": 180 }
+        },
+		
+		"strobe": {
+            "size": 0.2,
+
+            "diffuse": true
+	    }
+	},
+
+    "states": {
+        "1. Code 3": {
+            "1": {
+                "color": "blue",
+
+                "pattern": [ 100, 100, 100, 100, 500 ],
+
+                "reference": "strobe"
+            },
+
+            "2": {
+                "color": "red",
+
+                "pattern": [ 400, 100, 100, 100, 100, 100 ],
+
+                "reference": "strobe"
+            },
+			
+            "3": {
+                "color": "red",
+
+                "pattern": [ 400, 100, 100, 100, 100, 100 ],
+
+                "reference": "strobe"
+            },
+
+            "4": {
+                "color": "blue",
+
+                "pattern": [ 100, 100, 100, 100, 500 ],
+
+                "reference": "strobe"
+            },
+			
+            "5": {
+                "color": "blue",
+				
+				"state": 0,
+
+                "pattern": [ [5, 130, 130], [3, 300, 300] ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "reference": "strobe"
+            },
+
+            "6": {
+                "color": "red",
+				
+				"state": 0,
+
+                "pattern": [ [3, 300, 300], [5, 130, 130] ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "reference": "strobe"
+            },
+			
+            "7": {
+                "color": "blue",
+				
+				"state": 1,
+
+                "pattern": [ 120, 120 ],
+
+
+                "reference": "strobe"
+            },
+
+            "8": {
+                "color": "red",
+
+				"state": 0,
+
+                "pattern": [ 120, 120 ],
+				
+                "reference": "strobe"
+            },
+
+            "9": {
+                "color": "white",
+				
+                "state": 0,
+
+                "pattern": [ 50, 50, 50, 50, 50, 50, 550 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "reference": "strobe"
+            },
+
+            "10": {
+                "color": "white",
+				
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50, 150 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "reference": "strobe"
+			}
+        },
+
+        "2. Code 3 Alt": {
+            "1": {
+                "color": "blue",
+
+                "pattern": [ 0, 100, 500 ],
+
+                "reference": "strobe"
+            },
+
+            "2": {
+                "color": "red",
+
+                "pattern": [ 100, 100, 300, 100 ],
+
+                "reference": "strobe"
+            },
+			
+            "3": {
+                "color": "red",
+
+                "pattern": [ 200, 100, 100, 100, 100 ],
+
+                "reference": "strobe"
+            },
+
+            "4": {
+                "color": "blue",
+
+                "pattern": [ 300, 100, 200 ],
+
+                "reference": "strobe"
+            },
+			
+            "5": {
+                "color": "blue",
+				
+				"state": 0,
+
+                "pattern": [ [4, 130, 130], [3, 300, 300] ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "reference": "strobe"
+            },
+
+            "6": {
+                "color": "red",
+				
+				"state": 0,
+
+                "pattern": [ [3, 300, 300], [4, 130, 130] ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "reference": "strobe"
+            },
+			
+            "7": {
+                "color": "blue",
+				
+				"state": 1,
+
+                "pattern": [ 120, 120 ],
+
+
+                "reference": "strobe"
+            },
+
+            "8": {
+                "color": "red",
+
+				"state": 0,
+
+                "pattern": [ 120, 120 ],
+				
+                "reference": "strobe"
+            },
+
+            "9": {
+                "color": "white",
+				
+                "state": 0,
+
+                "pattern": [ 50, 50, 50, 50, 50, 50, 550 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "reference": "strobe"
+            },
+
+            "10": {
+                "color": "white",
+				
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50, 150 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "reference": "strobe"
+			}
+		}
+    }
+}

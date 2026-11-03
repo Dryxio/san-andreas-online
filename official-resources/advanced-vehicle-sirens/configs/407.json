@@ -1,0 +1,625 @@
+{
+    "references": {
+        "colors": {
+            "red":    { "red": 255, "blue":   0, "green":   0, "alpha": 128 },
+			"white":  { "red": 255, "blue": 255, "green": 255, "alpha": 128 },
+			"yellow": { "red": 255, "blue": 0, "green": 153, "alpha": 128 }
+        },
+		
+		"rotator": {
+            "size": 0.25,
+
+            "state": 1,
+
+            "type": "rotator",
+			
+			"inertia": 0.5,
+
+            "rotator": {
+                "type": "linear"
+		    }
+	    },
+
+        "strobe": {
+            "size": 0.3
+	    }
+	},
+
+    "states": {
+        "1.Emergency": {
+            "1": {
+                "color": "red",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650
+                }
+            },
+			
+            "2": {
+                "color": "red",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650
+                }
+            },
+
+            "3": {
+                "color": "red",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650
+                }
+            },
+
+            "4": {
+                "color": "red",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650,
+					
+                    "direction": "counter-clockwise"
+                }
+            },
+			
+            "5": {
+                "color": "red",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650,
+
+                    "direction": "counter-clockwise"
+                }
+            },
+
+            "6": {
+                "color": "red",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650,
+
+                    "direction": "counter-clockwise"
+                }
+            },
+
+            "7": {
+                "color": "red",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650,
+
+                    "direction": "counter-clockwise"
+                }
+            },
+
+            "8": {
+                "color": "red",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650,
+
+                    "direction": "counter-clockwise"
+                }
+            },
+
+            "9": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "10": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 100, 50, 50, 50, 50, 50, 350 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "11": {
+                "color": "white",
+
+                "state": 0,
+
+                "pattern": [ 100, 50, 50, 50, 50, 50, 350 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "12": {
+                "color": "white",
+
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "13": {
+                "color": "white",
+
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "14": {
+                "color": "white",
+
+                "state": 0,
+
+                "pattern": [ 100, 50, 50, 50, 50, 50, 350 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "15": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 650, 50, 50, 50, 50, 50, 50 ],
+
+                "shadow": {
+                    "offset": 0.01,
+    
+                    "size": 0.9,
+        
+                    "type": 4
+                },
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "16": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50 ],
+
+                "shadow": {
+                    "offset": 0.01,
+    
+                    "size": 0.9,
+        
+                    "type": 4
+                },
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "17": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 100, 50, 50, 50, 50, 50, 350 ],
+
+                "shadow": {
+                    "offset": 0.01,
+    
+                    "size": 0.9,
+        
+                    "type": 4
+                },
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "18": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 100, 50, 50, 50, 50, 50, 50, 550 ],
+
+                "shadow": {
+                    "offset": 0.01,
+    
+                    "size": 0.9,
+        
+                    "type": 4
+                },
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "19": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50 ],
+
+                "shadow": {
+                    "offset": 0.01,
+    
+                    "size": 0.9,
+        
+                    "type": 4
+                },
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "20": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50 ],
+
+                "shadow": {
+                    "offset": 0.01,
+    
+                    "size": 0.9,
+        
+                    "type": 4
+                },
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "21": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 100, 50, 50, 50, 50, 50, 50, 550 ],
+
+                "shadow": {
+                    "offset": 0.01,
+    
+                    "size": 0.9,
+        
+                    "type": 4
+                },
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "22": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 100, 50, 50, 50, 50, 50, 350 ],
+
+                "shadow": {
+                    "offset": 0.01,
+    
+                    "size": 0.9,
+        
+                    "type": 4
+                },
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "23": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50 ],
+
+                "shadow": {
+                    "offset": 0.01,
+    
+                    "size": 0.9,
+        
+                    "type": 4
+                },
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "24": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 650, 50, 50, 50, 50, 50, 50 ],
+
+                "shadow": {
+                    "offset": 0.01,
+    
+                    "size": 0.9,
+        
+                    "type": 4
+                },
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "25": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 750, 50, 50, 50, 50, 50, 50, 50 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "26": {
+                "color": "white",
+
+                "state": 0,
+
+                "pattern": [ 100, 50, 50, 50, 50, 50, 50, 50, 650 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "27": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 750, 50, 50, 50, 50, 50, 50, 50 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "28": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 100, 50, 50, 50, 50, 50, 50, 50, 650 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "29": {
+                "color": "white",
+
+                "state": 0,
+
+                "pattern": [ 750, 50, 50, 50, 50, 50, 50, 50 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "30": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 100, 50, 50, 50, 50, 50, 50, 50, 650 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "31": {
+                "color": "white",
+
+                "state": 0,
+
+                "pattern": [ 350, 50, 50, 50, 50, 50 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "32": {
+                "color": "white",
+
+                "state": 0,
+
+                "pattern": [ 100, 50, 50, 50, 50, 50, 250 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "33": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 150, 50, 150, 50, 150, 50, 150, 50, 150, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50 ],
+
+                "shadow": {
+                    "offset": 0.01,
+    
+                    "size": 0.9,
+        
+                    "type": 4
+                },
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "34": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 100, 150, 50, 150, 50, 150, 50, 150, 50, 100, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50 ],
+
+                "shadow": {
+                    "offset": 0.01,
+    
+                    "size": 0.9,
+        
+                    "type": 4
+                },
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "35": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 550, 50, 50, 50, 50, 50, 50 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "36": {
+                "color": "white",
+
+                "state": 0,
+
+                "pattern": [ 100, 50, 50, 50, 50, 50, 50, 450 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "37": {
+                "color": "white",
+
+                "state": 0,
+
+                "pattern": [ 550, 50, 50, 50, 50, 50, 50 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "38": {
+                "color": "red",
+
+                "state": 0,
+
+                "pattern": [ 100, 50, 50, 50, 50, 50, 50, 450 ],
+
+                "interia": 0.0,
+
+                "reference": "strobe"
+            },
+
+            "39": {
+                "color": "red",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650,
+
+                    "direction": "counter-clockwise"
+                }
+            },
+
+            "40": {
+                "color": "red",
+				
+                "reference": "rotator",
+				
+				"rotator": {
+                    "time": 650,
+
+                    "direction": "counter-clockwise"
+                }
+            },
+
+            "41": {
+                "color": "yellow",
+
+                "state": 0,
+
+                "pattern": [ 400,400 ],
+
+                "interia": 0.8,
+
+                "reference": "strobe"
+            },
+
+            "42": {
+                "color": "yellow",
+
+                "state": 1,
+
+                "pattern": [ 400,400 ],
+
+                "interia": 0.8,
+
+                "reference": "strobe"
+            }
+        }
+    }
+}
