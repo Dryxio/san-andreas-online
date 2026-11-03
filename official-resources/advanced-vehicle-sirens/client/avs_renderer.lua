@@ -136,18 +136,22 @@ local function getReplacementShader(texName)
 
     local imgPath = "assets/textures/" .. texName .. ".png"
     if not fileExists(imgPath) or not fileExists("assets/tex_replace.fx") then
+        outputDebugString("[AVS] Missing texture or shader for " .. tostring(texName), 2)
         replacementShaders[texName] = false
         return nil
     end
 
     local shader = dxCreateShader("assets/tex_replace.fx", 0, 160.0, false, "vehicle")
-    local tex = dxCreateTexture(imgPath, "dxt5")
+    -- Note: Standard PNG images must NOT pass 'dxt5' to dxCreateTexture (default 'argb' losslessly decodes PNGs)
+    local tex = dxCreateTexture(imgPath)
     if shader and tex then
         dxSetShaderValue(shader, "gTexture", tex)
         replacementShaders[texName] = shader
         return shader
     end
 
+    if shader then destroyElement(shader) end
+    if tex then destroyElement(tex) end
     replacementShaders[texName] = false
     return nil
 end
@@ -164,8 +168,11 @@ local function applyVehicleTextures(vehicle, active)
         if shader then
             if active then
                 engineApplyShaderToWorldTexture(shader, pair.target, vehicle)
+                engineApplyShaderToWorldTexture(shader, pair.target .. "*", vehicle)
+                outputDebugString(string.format("[AVS] Swapped %s -> %s on model %s", pair.target, pair.replacement, tostring(model)), 3)
             else
                 engineRemoveShaderFromWorldTexture(shader, pair.target, vehicle)
+                engineRemoveShaderFromWorldTexture(shader, pair.target .. "*", vehicle)
             end
         end
     end
@@ -182,7 +189,7 @@ local function getShadowTexture(typeId)
     local filePath = "assets/shadows/" .. texName .. ".png"
 
     if fileExists(filePath) then
-        local tex = dxCreateTexture(filePath, "dxt5")
+        local tex = dxCreateTexture(filePath)
         shadowTextures[id] = tex or false
         return tex
     end
@@ -193,7 +200,7 @@ end
 
 function AVSRenderer.init()
     if not coronaTexture and fileExists("assets/corona.png") then
-        coronaTexture = dxCreateTexture("assets/corona.png", "dxt5")
+        coronaTexture = dxCreateTexture("assets/corona.png")
     end
 end
 
