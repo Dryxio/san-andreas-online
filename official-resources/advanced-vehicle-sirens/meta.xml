@@ -1,5 +1,5 @@
 <meta>
-    <info author="MTA Community &amp; AVS Contributors" type="script" name="Advanced Vehicle Sirens" version="1.0.0" description="Complete dynamic AVS emergency vehicle siren &amp; lightbar system for MTA:SA"/>
+    <info author="MTA Community &amp; AVS Contributors" type="script" name="Advanced Vehicle Sirens" version="1.0.0" description="Complete dynamic AVS emergency vehicle siren, ground reflection &amp; lightbar system for MTA:SA"/>
 
     <!-- Shared Libraries -->
     <script src="shared/avs_parser.lua" type="shared"/>
@@ -14,8 +14,45 @@
     <script src="client/avs_model_loader.lua" type="client"/>
     <script src="client/avs_client_api.lua" type="client"/>
 
-    <!-- Assets and Configurations -->
+    <!-- Assets and Shaders -->
     <file src="assets/corona.png"/>
+    <file src="assets/lightbar_glow.fx"/>
+    <file src="assets/shadows256.txd"/>
+
+    <!-- Ground Reflection Optics (33 AVS Shadow Patterns) -->
+    <file src="assets/shadows/arealight256.png"/>
+    <file src="assets/shadows/bollard256.png"/>
+    <file src="assets/shadows/comet256.png"/>
+    <file src="assets/shadows/cylindernarrow256.png"/>
+    <file src="assets/shadows/defined256.png"/>
+    <file src="assets/shadows/defineddiffuse256.png"/>
+    <file src="assets/shadows/defineddiffusespot256.png"/>
+    <file src="assets/shadows/definedspot256.png"/>
+    <file src="assets/shadows/display256.png"/>
+    <file src="assets/shadows/jellyfish256.png"/>
+    <file src="assets/shadows/mediumscatter256.png"/>
+    <file src="assets/shadows/overhead256.png"/>
+    <file src="assets/shadows/parallelbeam256.png"/>
+    <file src="assets/shadows/pear256.png"/>
+    <file src="assets/shadows/pointlight256.png"/>
+    <file src="assets/shadows/round256.png"/>
+    <file src="assets/shadows/scatterlight256.png"/>
+    <file src="assets/shadows/softarrow256.png"/>
+    <file src="assets/shadows/softdisplay256.png"/>
+    <file src="assets/shadows/star256.png"/>
+    <file src="assets/shadows/starfocused256.png"/>
+    <file src="assets/shadows/taillight256.png"/>
+    <file src="assets/shadows/threelobeumbrella256.png"/>
+    <file src="assets/shadows/threelobevee256.png"/>
+    <file src="assets/shadows/tightfocused256.png"/>
+    <file src="assets/shadows/toppost256.png"/>
+    <file src="assets/shadows/trapezoid256.png"/>
+    <file src="assets/shadows/umbrella256.png"/>
+    <file src="assets/shadows/vee256.png"/>
+    <file src="assets/shadows/veeup256.png"/>
+    <file src="assets/shadows/xarrow256.png"/>
+    <file src="assets/shadows/xarrowdiffuse256.png"/>
+    <file src="assets/shadows/xarrowsoft256.png"/>
 
     <!-- Siren Configurations -->
     <file src="configs/407.json"/>
@@ -63,7 +100,6 @@
     <file src="models/towtruck.txd"/>
     <file src="models/yosemite.dff"/>
     <file src="models/yosemite.txd"/>
-    <file src="assets/shadows256.txd"/>
 
     <!-- Server Exports -->
     <export function="setVehicleSirenState" type="server"/>

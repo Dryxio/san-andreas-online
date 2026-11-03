@@ -2,27 +2,30 @@
     Advanced Vehicle Sirens (AVS) - Client Controls, Keybinds & API
     
     Provides:
-    - Automatic state listener for 'avs:state' and 'avs:muted' element data
+    - Automatic state listener for 'avs:state', 'avs:muted', and 'avs:shadows' element data
     - Global driver keybinds:
         * H / Horn: Toggle siren on/off (State 0 <-> State 1)
         * R: Cycle siren states (Off -> 1 -> 2 -> 3 -> Off)
         * 1, 2, 3..9: Direct state selection
         * L: Toggle audio mute
-    - Console commands: /avs [state], /avs0, /avs1, /avs2, /avs3, /sirenstate, /sirenmute
+    - Console commands: /avs [state], /avs0..9, /sirenstate, /sirenmute, /avsshadows, /sirenshadows
     - Clean visual notifications on state changes
-    - Client-side exported functions without shadowing C++ native symbols
+    - Seamless support for both standard MTA:SA and custom C++ builds
 ]]
 
--- Cache native C++ functions exposed by CLuaVehicleSirenDefs
-local nativeSetVehicleSirenState = setVehicleSirenState
-local nativeGetVehicleSirenState = getVehicleSirenState
-local nativeSetVehicleSirenMuted = setVehicleSirenMuted
-local nativeIsVehicleSirenMuted = isVehicleSirenMuted
-local nativeIsModelRegistered = isVehicleSirenModelRegistered
-local nativeSetVehicleSirenShadowsEnabled = setVehicleSirenShadowsEnabled
-local nativeIsVehicleSirenShadowsEnabled = isVehicleSirenShadowsEnabled
-local nativeSetSirenShadowsEnabled = setSirenShadowsEnabled
-local nativeIsSirenShadowsEnabled = isSirenShadowsEnabled
+-- Check whether the custom native C++ engine is available
+local hasNativeEngine = (type(isVehicleSirenModelRegistered) == "function")
+
+-- Cache native C++ functions exposed by CLuaVehicleSirenDefs (if present)
+local nativeSetVehicleSirenState = hasNativeEngine and setVehicleSirenState or nil
+local nativeGetVehicleSirenState = hasNativeEngine and getVehicleSirenState or nil
+local nativeSetVehicleSirenMuted = hasNativeEngine and setVehicleSirenMuted or nil
+local nativeIsVehicleSirenMuted = hasNativeEngine and isVehicleSirenMuted or nil
+local nativeIsModelRegistered = hasNativeEngine and isVehicleSirenModelRegistered or nil
+local nativeSetVehicleSirenShadowsEnabled = hasNativeEngine and setVehicleSirenShadowsEnabled or nil
+local nativeIsVehicleSirenShadowsEnabled = hasNativeEngine and isVehicleSirenShadowsEnabled or nil
+local nativeSetSirenShadowsEnabled = hasNativeEngine and setSirenShadowsEnabled or nil
+local nativeIsSirenShadowsEnabled = hasNativeEngine and isSirenShadowsEnabled or nil
 
 -- Helper: Check if vehicle model is configured for AVS
 local function isAVSVehicle(vehicle)
@@ -80,6 +83,9 @@ addEventHandler("onClientElementDataChange", root, function(key, oldValue, newVa
         if nativeSetVehicleSirenShadowsEnabled then
             nativeSetVehicleSirenShadowsEnabled(source, newValue ~= false)
         end
+        if AVSRenderer then
+            AVSRenderer.setVehicleShadowsEnabled(source, newValue ~= false)
+        end
     end
 end)
 
@@ -100,8 +106,13 @@ addEventHandler("onClientElementStreamIn", root, function()
             nativeSetVehicleSirenMuted(source, muted == true)
         end
         local shadows = getElementData(source, "avs:shadows")
-        if shadows ~= nil and nativeSetVehicleSirenShadowsEnabled then
-            nativeSetVehicleSirenShadowsEnabled(source, shadows ~= false)
+        if shadows ~= nil then
+            if nativeSetVehicleSirenShadowsEnabled then
+                nativeSetVehicleSirenShadowsEnabled(source, shadows ~= false)
+            end
+            if AVSRenderer then
+                AVSRenderer.setVehicleShadowsEnabled(source, shadows ~= false)
+            end
         end
     end
 end)
@@ -198,6 +209,15 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
             if muted ~= nil and nativeSetVehicleSirenMuted then
                 nativeSetVehicleSirenMuted(veh, muted == true)
             end
+            local shadows = getElementData(veh, "avs:shadows")
+            if shadows ~= nil then
+                if nativeSetVehicleSirenShadowsEnabled then
+                    nativeSetVehicleSirenShadowsEnabled(veh, shadows ~= false)
+                end
+                if AVSRenderer then
+                    AVSRenderer.setVehicleShadowsEnabled(veh, shadows ~= false)
+                end
+            end
         end
     end
 end)
@@ -253,16 +273,19 @@ function setVehicleSirenState(vehicle, newState)
     if nativeSetVehicleSirenState then
         return nativeSetVehicleSirenState(vehicle, newState)
     end
-    return false
+    return true
 end
 
 -- Ground reflection (siren shadow projection) control exports
 function setVehicleSirenShadowsEnabled(vehicle, enabled)
     if not isElement(vehicle) then return false end
     if nativeSetVehicleSirenShadowsEnabled then
-        return nativeSetVehicleSirenShadowsEnabled(vehicle, enabled == true)
+        nativeSetVehicleSirenShadowsEnabled(vehicle, enabled == true)
     end
-    return false
+    if AVSRenderer then
+        AVSRenderer.setVehicleShadowsEnabled(vehicle, enabled == true)
+    end
+    return true
 end
 
 function isVehicleSirenShadowsEnabled(vehicle)
@@ -270,25 +293,34 @@ function isVehicleSirenShadowsEnabled(vehicle)
     if nativeIsVehicleSirenShadowsEnabled then
         return nativeIsVehicleSirenShadowsEnabled(vehicle)
     end
+    if AVSRenderer then
+        return AVSRenderer.isVehicleShadowsEnabled(vehicle)
+    end
     return getElementData(vehicle, "avs:shadows") ~= false
 end
 
 function setSirenShadowsEnabled(enabled)
     if nativeSetSirenShadowsEnabled then
-        return nativeSetSirenShadowsEnabled(enabled == true)
+        nativeSetSirenShadowsEnabled(enabled == true)
     end
-    return false
+    if AVSRenderer then
+        AVSRenderer.setShadowsEnabled(enabled == true)
+    end
+    return true
 end
 
 function isSirenShadowsEnabled()
     if nativeIsSirenShadowsEnabled then
         return nativeIsSirenShadowsEnabled()
     end
+    if AVSRenderer then
+        return AVSRenderer.isShadowsEnabled()
+    end
     return true
 end
 
--- Console command to toggle shadows globally: /avsshadows [on/off]
-addCommandHandler("avsshadows", function(_, stateArg)
+-- Console command to toggle shadows globally: /avsshadows [on/off] or /sirenshadows [on/off]
+local function onShadowToggleCommand(_, stateArg)
     local newState = nil
     if stateArg == "on" or stateArg == "1" or stateArg == "true" then
         newState = true
@@ -299,5 +331,7 @@ addCommandHandler("avsshadows", function(_, stateArg)
     end
     setSirenShadowsEnabled(newState)
     outputChatBox("[AVS] Ground light reflections (siren shadows): " .. (newState and "Enabled" or "Disabled"), 0, 220, 255)
-end)
+end
 
+addCommandHandler("avsshadows", onShadowToggleCommand)
+addCommandHandler("sirenshadows", onShadowToggleCommand)
