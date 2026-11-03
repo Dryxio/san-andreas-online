@@ -20,20 +20,32 @@
     <file src="assets/shadows256.txd"/>
 
     <!-- Authentic Illuminated Emergency Light Textures (15 Vehicle Lightbars) -->
+    <file src="assets/textures/siren12.png"/>
+    <file src="assets/textures/siren128.png"/>
     <file src="assets/textures/siren128on.png"/>
     <file src="assets/textures/siren12on.png"/>
+    <file src="assets/textures/siren256.png"/>
     <file src="assets/textures/siren256_on.png"/>
+    <file src="assets/textures/siren32.png"/>
     <file src="assets/textures/siren32on.png"/>
+    <file src="assets/textures/siren64.png"/>
     <file src="assets/textures/siren64on.png"/>
     <file src="assets/textures/siren64_on.png"/>
+    <file src="assets/textures/sirenlight.png"/>
+    <file src="assets/textures/sirenlight128.png"/>
     <file src="assets/textures/sirenlight128on.png"/>
     <file src="assets/textures/sirenlight128_on.png"/>
     <file src="assets/textures/sirenlighton.png"/>
+    <file src="assets/textures/sirenlights.png"/>
+    <file src="assets/textures/sirenlights128.png"/>
     <file src="assets/textures/sirenlights128on.png"/>
     <file src="assets/textures/sirenlights_on.png"/>
     <file src="assets/textures/sirenlight_on.png"/>
+    <file src="assets/textures/sirennavlights.png"/>
     <file src="assets/textures/sirennavlightson.png"/>
+    <file src="assets/textures/sirentow.png"/>
     <file src="assets/textures/sirentow_on.png"/>
+    <file src="assets/textures/vehiclelights.png"/>
     <file src="assets/textures/vehiclelights_on.png"/>
 
     <!-- Ground Reflection Optics (33 AVS Shadow Patterns) -->
