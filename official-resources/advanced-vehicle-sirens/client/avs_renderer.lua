@@ -174,11 +174,27 @@ local function attachVehicleShaders(vehicle)
                     end
                     dxSetShaderValue(shader, "gTextureOn", texOn)
                     dxSetShaderValue(shader, "gGlobalOn", 0.0)
+                    dxSetShaderValue(shader, "gStateA", 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+                    dxSetShaderValue(shader, "gStateB", 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+                    dxSetShaderValue(shader, "gStateC", 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
 
                     engineApplyShaderToWorldTexture(shader, pair.target, vehicle)
                     vehicleShaders[vehicle][pair.target] = shader
                 end
             end
+        end
+    end
+end
+
+-- Reset dynamic strobe shaders for vehicle to unlit off state (zero out strobe values)
+local function resetVehicleShaders(vehicle)
+    if not vehicleShaders[vehicle] then return end
+    for _, shader in pairs(vehicleShaders[vehicle]) do
+        if isElement(shader) then
+            dxSetShaderValue(shader, "gGlobalOn", 0.0)
+            dxSetShaderValue(shader, "gStateA", 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+            dxSetShaderValue(shader, "gStateB", 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+            dxSetShaderValue(shader, "gStateC", 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
         end
     end
 end
@@ -275,7 +291,7 @@ function AVSRenderer.setVehicleState(vehicle, stateName)
     else
         activeVehicles[vehicle] = nil
         if wasActive then
-            detachVehicleShaders(vehicle)
+            resetVehicleShaders(vehicle)
         end
     end
 end
@@ -527,6 +543,16 @@ end
 -- Render in onClientRender so coronas and reflections are drawn on top of vehicle lenses
 addEventHandler("onClientRender", root, onRenderPulse)
 
+-- Attach unlit shaders when emergency vehicles stream in so they never display raw cyan vertex diffuse
+addEventHandler("onClientElementStreamIn", root, function()
+    if getElementType(source) == "vehicle" then
+        local model = getElementModel(source)
+        if vehicleTexturePairs[model] then
+            attachVehicleShaders(source)
+        end
+    end
+end)
+
 -- Clean up shaders on vehicle destruction or streaming out
 addEventHandler("onClientElementDestroy", root, function()
     if getElementType(source) == "vehicle" then
@@ -542,11 +568,29 @@ addEventHandler("onClientElementStreamOut", root, function()
     end
 end)
 
--- When streaming back in, re-attach shaders if sirens are still active
-addEventHandler("onClientElementStreamIn", root, function()
+-- Handle vehicle model change (e.g. skin/mod reloads)
+addEventHandler("onClientElementModelChange", root, function(oldModel, newModel)
     if getElementType(source) == "vehicle" then
-        if activeVehicles[source] then
+        detachVehicleShaders(source)
+        if vehicleTexturePairs[newModel] then
             attachVehicleShaders(source)
         end
+    end
+end)
+
+-- Initialize all currently streamed-in vehicles on resource start
+addEventHandler("onClientResourceStart", resourceRoot, function()
+    for _, veh in ipairs(getElementsByType("vehicle", root, true)) do
+        local model = getElementModel(veh)
+        if vehicleTexturePairs[model] then
+            attachVehicleShaders(veh)
+        end
+    end
+end)
+
+-- Clean up all shaders on resource stop
+addEventHandler("onClientResourceStop", resourceRoot, function()
+    for veh, _ in pairs(vehicleShaders) do
+        detachVehicleShaders(veh)
     end
 end)

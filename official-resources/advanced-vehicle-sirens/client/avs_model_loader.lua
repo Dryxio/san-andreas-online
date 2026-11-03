@@ -46,10 +46,13 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
             if txd then
                 engineImportTXD(txd, modelId)
             end
-            -- Note: Pass modelId and alphaTransparency = true so hierarchy and glass render properly
-            local dff = engineLoadDFF(entry.dff, modelId)
+            -- Note: Pass alphaTransparency = true so lightbar glass and lens transparency render cleanly
+            local dff = engineLoadDFF(entry.dff)
             if dff then
-                engineReplaceModel(dff, modelId, true)
+                local success = engineReplaceModel(dff, modelId, true)
+                if not success then
+                    outputDebugString(string.format("[AVS] WARNING: engineReplaceModel failed for model %d (%s)", modelId, entry.name), 2)
+                end
             end
         end
 
