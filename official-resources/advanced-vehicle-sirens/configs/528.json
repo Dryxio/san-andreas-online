@@ -1,0 +1,216 @@
+{
+
+      "references": {
+
+            "colors": {
+                  "blue": { "red": 51, "green": 102, "blue": 255, "alpha": 200 },
+                  "orange": { "red": 255, "green": 98, "blue": 0, "alpha": 200 },
+                  "red": { "red": 255, "green": 20, "blue": 20, "alpha": 200 },
+                  "white": { "red": 255, "green": 255, "blue": 255, "alpha": 128 }
+            },
+
+            "strobe1": {
+                  "size": 0.125
+            },
+
+            "strobe2": {
+                  "size": 0.2
+            },
+
+            "strobe3": {
+                  "size": 0.175
+            }
+
+      },
+
+      "states": {
+
+            "1": {
+
+                  "1": {
+                        "color": "blue",
+                        "pattern": [ 200, 150 ],
+                        "reference": "strobe1",
+			      "state": 1
+                  },
+
+                  "2": {
+                        "color": "blue",
+                        "pattern": [ 50, 200, 100 ],
+                        "reference": "strobe1",
+			      "state": 0
+                  },
+
+                  "3": {
+                        "color": "blue",
+                        "pattern": [ 100, 200, 50 ],
+                        "reference": "strobe1",
+			      "state": 0
+                  },
+
+                  "4": {
+                        "color": "blue",
+                        "pattern": [ 150, 200, 0 ],
+                        "reference": "strobe1",
+			      "state": 0
+                  },
+
+                  "5": {
+                        "color": "red",
+                        "pattern": [ 200, 150 ],
+                        "reference": "strobe1",
+			      "state": 1
+                  },
+
+                  "6": {
+                        "color": "red",
+                        "pattern": [ 50, 200, 100 ],
+                        "reference": "strobe1",
+			      "state": 0
+                  },
+
+                  "7": {
+                        "color": "red",
+                        "pattern": [ 100, 200, 50 ],
+                        "reference": "strobe1",
+			      "state": 0
+                  },
+
+                  "8": {
+                        "color": "red",
+                        "pattern": [ 150, 200, 0 ],
+                        "reference": "strobe1",
+			      "state": 0
+                  },
+
+                  "9": {
+                        "color": "blue",
+                        "pattern": [ 200, 200 ],
+                        "reference": "strobe1",
+			      "state": 1
+                  },
+
+                  "10": {
+                        "color": "red",
+                        "pattern": [ 200, 200 ],
+                        "reference": "strobe1",
+			      "state": 1
+                  },
+
+                  "11": {
+                        "color": "white",
+                        "pattern": [ 200, 50, 50, 50, 50 ],
+                        "reference": "strobe1",
+			      "state": 0
+                  },
+
+                  "12": {
+                        "color": "orange",
+                        "pattern": [ 400, 400 ],
+                        "reference": "strobe1",
+			      "state": 0
+                  },
+
+                  "13": {
+                        "color": "orange",
+                        "pattern": [ 400, 400 ],
+                        "reference": "strobe1",
+			      "state": 1
+                  },
+
+                  "14": {
+                        "color": "blue",
+                        "pattern": [ ],
+                        "reference": "strobe2",
+			      "state": 1
+                  },
+
+                  "15": {
+                        "color": "red",
+                        "pattern": [ ],
+                        "reference": "strobe2",
+			      "state": 1
+                  },
+
+                  "16": {
+                        "color": "blue",
+                        "pattern": [ 50, 50, 50, 300, 400, 50, 50, 300, 450, 50, 50, 300, 400, 50, 50, 300, 400 ],
+                        "reference": "strobe3",
+			      "state": 0
+                  },
+
+                  "17": {
+                        "color": "blue",
+                        "pattern": [ 450, 50, 50, 300, 450, 50, 50, 300, 400, 50, 50, 300, 400, 50, 50, 300 ],
+                        "reference": "strobe3",
+			      "state": 0
+                  },
+
+                  "18": {
+                        "color": "red",
+                        "pattern": [ ],
+                        "reference": "strobe3",
+			      "state": 1
+                  },
+
+                  "19": {
+                        "color": "red",
+                        "pattern": [ 50, 50, 50, 300, 400, 50, 50, 300, 450, 50, 50, 300, 400, 50, 50, 300, 400 ],
+                        "reference": "strobe3",
+			      "state": 0
+                  },
+
+                  "20": {
+                        "color": "red",
+                        "pattern": [ 450, 50, 50, 300, 450, 50, 50, 300, 400, 50, 50, 300, 400, 50, 50, 300 ],
+                        "reference": "strobe3",
+			      "state": 0
+                  },
+
+                  "21": {
+                        "color": "blue",
+                        "pattern": [ 100, 50, 50, 50, 50, 50, 350 ],
+                        "reference": "strobe2",
+			      "state": 0
+                  },
+
+                  "22": {
+                        "color": "red",
+                        "pattern": [ 450, 50, 50, 50, 50, 50 ],
+                        "reference": "strobe2",
+			      "state": 0
+                  },
+
+                  "23": {
+                        "color": "white",
+                        "pattern": [ 350, 350 ],
+                        "reference": "strobe2",
+			      "state": 1
+                  },
+
+                  "24": {
+                        "color": "white",
+                        "pattern": [ 300, 300 ],
+                        "reference": "strobe2",
+			      "state": 0
+                  },
+
+                  "25": {
+                        "color": "red",
+                        "pattern": [ 100, 50, 50, 50, 50, 50, 350 ],
+                        "reference": "strobe2",
+			      "state": 0
+                  },
+
+                  "26": {
+                        "color": "orange",
+                        "pattern": [ 450, 50, 50, 50, 50, 50 ],
+                        "reference": "strobe2",
+			      "state": 0
+                  }
+                  
+            }
+
+      }
+
+}
