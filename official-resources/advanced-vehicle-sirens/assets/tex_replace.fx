@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------
-// Advanced Vehicle Sirens (AVS) - Texture Replacement Shader
-// Replaces the dormant unlit lightbar texture with the authentic
-// illuminated texture crafted by the vehicle modeler.
+// Advanced Vehicle Sirens (AVS) - Pure Texture Replacement Shader
+// Replaces the unlit material with the pure, untainted illuminated texture
+// without vehicle diffuse color contamination or cyan/blue tinting.
 //---------------------------------------------------------------------
 
 texture gTexture;
@@ -16,17 +16,9 @@ sampler Sampler0 = sampler_state
     AddressV = Wrap;
 };
 
-struct PSInput
+float4 PixelShaderFunction(float2 TexCoord : TEXCOORD0) : COLOR0
 {
-    float4 Position : POSITION;
-    float4 Diffuse : COLOR0;
-    float2 TexCoord : TEXCOORD0;
-};
-
-float4 PixelShaderFunction(PSInput input) : COLOR0
-{
-    float4 texColor = tex2D(Sampler0, input.TexCoord);
-    return texColor * input.Diffuse;
+    return tex2D(Sampler0, TexCoord);
 }
 
 technique TexReplace

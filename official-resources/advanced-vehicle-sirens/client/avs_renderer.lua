@@ -168,11 +168,9 @@ local function applyVehicleTextures(vehicle, active)
         if shader then
             if active then
                 engineApplyShaderToWorldTexture(shader, pair.target, vehicle)
-                engineApplyShaderToWorldTexture(shader, pair.target .. "*", vehicle)
                 outputDebugString(string.format("[AVS] Swapped %s -> %s on model %s", pair.target, pair.replacement, tostring(model)), 3)
             else
                 engineRemoveShaderFromWorldTexture(shader, pair.target, vehicle)
-                engineRemoveShaderFromWorldTexture(shader, pair.target .. "*", vehicle)
             end
         end
     end
