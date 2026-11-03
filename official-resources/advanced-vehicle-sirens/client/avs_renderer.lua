@@ -1,10 +1,11 @@
 --[[
-    Advanced Vehicle Sirens (AVS) - Client 3D Corona & Ground Shadow Renderer
+    Advanced Vehicle Sirens (AVS) - Client 3D Corona, Texture Swapper & Ground Shadow Renderer
     
     Provides 100% standalone AVS rendering for standard, unmodified MTA:SA:
     - Directional line-of-sight flares with TIR lens optic falloff
     - 360-degree rotating beacons with smooth angular interpolation
     - Camera-oriented 3D billboarded coronas with hot-core blending
+    - Authentic lightbar texture swapping (swaps dormant glass with the modeler's illuminated '_on' texture)
     - Dynamic asphalt / ground reflection projections using 33 authentic AVS shadow optics
     - Developer and player toggles for ground shadow reflections
     - Zero performance overhead when sirens are inactive
@@ -58,6 +59,117 @@ local shadowTextureNames = {
 
 -- Cache loaded shadow texture elements
 local shadowTextures = {}
+
+-- Model-specific unlit target texture -> authentic illuminated replacement texture pairs
+local vehicleTexturePairs = {
+    -- Model 407 (Firetruck)
+    [407] = {
+        { target = "sirenlights128", replacement = "sirenlights128on" },
+        { target = "siren128",       replacement = "siren128on" },
+    },
+    -- Model 416 (Ambulance)
+    [416] = {
+        { target = "sirenlight128", replacement = "sirenlight128_on" },
+        { target = "siren256",      replacement = "siren256_on" },
+    },
+    -- Model 426 (Premier Unmarked)
+    [426] = {
+        { target = "sirenlight128", replacement = "sirenlight128on" },
+    },
+    -- Model 427 (Enforcer)
+    [427] = {
+        { target = "sirenlights",   replacement = "sirenlights_on" },
+    },
+    -- Model 445 (Admiral Unmarked)
+    [445] = {
+        { target = "sirenlight128", replacement = "sirenlight128on" },
+    },
+    -- Model 490 (FBI Rancher)
+    [490] = {
+        { target = "sirenlight128", replacement = "sirenlight128on" },
+    },
+    -- Model 525 (Towtruck)
+    [525] = {
+        { target = "vehiclelights", replacement = "vehiclelights_on" },
+    },
+    -- Model 528 (FBI Truck)
+    [528] = {
+        { target = "siren64",       replacement = "siren64_on" },
+    },
+    -- Model 554 (Yosemite DOT)
+    [554] = {
+        { target = "sirenlight",    replacement = "sirenlighton" },
+    },
+    -- Model 578 (DFT-30 DOT)
+    [578] = {
+        { target = "sirentow",      replacement = "sirentow_on" },
+    },
+    -- Model 596 (Police Car LS - Dodge Charger)
+    [596] = {
+        { target = "sirenlight",    replacement = "sirenlighton" },
+    },
+    -- Model 597 (Police Car SF)
+    [597] = {
+        { target = "sirenlight",    replacement = "sirenlight_on" },
+    },
+    -- Model 598 (Police Car LV)
+    [598] = {
+        { target = "sirenlight128", replacement = "sirenlight128on" },
+    },
+    -- Model 599 (Police Ranger Rural)
+    [599] = {
+        { target = "sirennavlights", replacement = "sirennavlightson" },
+        { target = "siren32",        replacement = "siren32on" },
+        { target = "siren12",        replacement = "siren12on" },
+        { target = "siren64",        replacement = "siren64on" },
+    },
+}
+
+-- Cache of texture replacement shaders
+local replacementShaders = {}
+
+-- Lazy shader and texture loader for lightbar replacement
+local function getReplacementShader(texName)
+    if replacementShaders[texName] ~= nil then
+        return replacementShaders[texName]
+    end
+
+    local imgPath = "assets/textures/" .. texName .. ".png"
+    if not fileExists(imgPath) or not fileExists("assets/tex_replace.fx") then
+        replacementShaders[texName] = false
+        return nil
+    end
+
+    local shader = dxCreateShader("assets/tex_replace.fx", 0, 160.0, false, "vehicle")
+    local tex = dxCreateTexture(imgPath, "dxt5")
+    if shader and tex then
+        dxSetShaderValue(shader, "gTexture", tex)
+        replacementShaders[texName] = shader
+        return shader
+    end
+
+    replacementShaders[texName] = false
+    return nil
+end
+
+-- Swap vehicle materials between unlit and illuminated state
+local function applyVehicleTextures(vehicle, active)
+    if not isElement(vehicle) then return end
+    local model = getElementModel(vehicle)
+    local pairsList = vehicleTexturePairs[model]
+    if not pairsList then return end
+
+    for _, pair in ipairs(pairsList) do
+        local shader = getReplacementShader(pair.replacement)
+        if shader then
+            if active then
+                engineApplyShaderToWorldTexture(shader, pair.target, vehicle)
+            else
+                engineRemoveShaderFromWorldTexture(shader, pair.target, vehicle)
+            end
+        end
+    end
+end
 
 -- Lazy shadow texture loader
 local function getShadowTexture(typeId)
@@ -124,10 +236,19 @@ end
 -- Track vehicles with active sirens
 function AVSRenderer.setVehicleState(vehicle, stateName)
     if not isElement(vehicle) then return end
-    if not stateName or stateName == 0 or stateName == "0" or stateName == "off" or stateName == false then
-        activeVehicles[vehicle] = nil
-    else
+    local wasActive = (activeVehicles[vehicle] ~= nil)
+    local isActive = not (not stateName or stateName == 0 or stateName == "0" or stateName == "off" or stateName == false)
+
+    if isActive then
         activeVehicles[vehicle] = tostring(stateName)
+        if not wasActive then
+            applyVehicleTextures(vehicle, true)
+        end
+    else
+        activeVehicles[vehicle] = nil
+        if wasActive then
+            applyVehicleTextures(vehicle, false)
+        end
     end
 end
 
@@ -317,6 +438,7 @@ local function onRenderPulse()
             end
         else
             activeVehicles[vehicle] = nil
+            applyVehicleTextures(vehicle, false)
         end
     end
 end
@@ -326,12 +448,25 @@ addEventHandler("onClientPreRender", root, onRenderPulse)
 -- Clean up on vehicle destruction or streaming out
 addEventHandler("onClientElementDestroy", root, function()
     if getElementType(source) == "vehicle" then
-        activeVehicles[source] = nil
+        if activeVehicles[source] then
+            applyVehicleTextures(source, false)
+            activeVehicles[source] = nil
+        end
     end
 end)
 
 addEventHandler("onClientElementStreamOut", root, function()
     if getElementType(source) == "vehicle" then
-        activeVehicles[source] = nil
+        if activeVehicles[source] then
+            applyVehicleTextures(source, false)
+        end
+    end
+end)
+
+addEventHandler("onClientElementStreamIn", root, function()
+    if getElementType(source) == "vehicle" then
+        if activeVehicles[source] then
+            applyVehicleTextures(source, true)
+        end
     end
 end)
