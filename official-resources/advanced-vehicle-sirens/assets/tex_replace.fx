@@ -15,8 +15,10 @@
 texture gTextureOff;
 texture gTextureOn;
 
-// Array of active strobe states for dummies 0..63 (1.0 = ON, 0.0 = OFF)
-float gDummyStates[64];
+// Three 16-element float arrays matching MTA's maximum 16-float dxSetShaderValue limit
+float gStateA[16]; // Dummies 0..15
+float gStateB[16]; // Dummies 16..31
+float gStateC[16]; // Dummies 32..47
 
 // Global on/off state for unencoded materials (1.0 = ON, 0.0 = OFF)
 float gGlobalOn = 1.0;
@@ -47,6 +49,17 @@ struct PS_INPUT
     float4 Diffuse  : COLOR0;
 };
 
+float GetDummyState(int id)
+{
+    if (id < 16)
+        return gStateA[id];
+    else if (id < 32)
+        return gStateB[id - 16];
+    else if (id < 48)
+        return gStateC[id - 32];
+    return 0.0;
+}
+
 float4 PixelShader30(PS_INPUT input) : COLOR0
 {
     float4 colOff = tex2D(SamplerOff, input.TexCoord);
@@ -59,18 +72,18 @@ float4 PixelShader30(PS_INPUT input) : COLOR0
     {
         float normR = input.Diffuse.r / input.Diffuse.g;
         int id = (int)round(normR * 255.0);
-        if (id > 0 && id < 64)
+        if (id > 0 && id < 48)
         {
-            isOn = gDummyStates[id];
+            isOn = GetDummyState(id);
         }
     }
     // 2. IVF Material Encoding: G == 0, B == 0, R > 0.1 (dummyId = 256 - R)
     else if (input.Diffuse.g < 0.05 && input.Diffuse.b < 0.05 && input.Diffuse.r > 0.1)
     {
         int id = (int)(256.0 - round(input.Diffuse.r * 255.0));
-        if (id > 0 && id < 64)
+        if (id > 0 && id < 48)
         {
-            isOn = gDummyStates[id];
+            isOn = GetDummyState(id);
         }
     }
 

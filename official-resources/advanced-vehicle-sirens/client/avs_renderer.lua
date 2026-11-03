@@ -320,10 +320,10 @@ local function onRenderPulse()
                         scanned = AVSScanner.scanVehicle(vehicle, config)
                     end
 
-                    -- Prepare dummy states table for dynamic shader strobing (1-indexed Lua table mapped to HLSL float array)
-                    local dummyStates = {}
-                    for i = 1, 64 do
-                        dummyStates[i] = 0.0
+                    -- Prepare dummy states table for dynamic shader strobing (0..47)
+                    local states = {}
+                    for i = 0, 47 do
+                        states[i] = 0.0
                     end
                     local anyDummyActive = false
 
@@ -349,8 +349,8 @@ local function onRenderPulse()
                                 local numId = tonumber(dummyId)
                                 if isActive then
                                     anyDummyActive = true
-                                    if numId and numId >= 1 and numId <= 63 then
-                                        dummyStates[numId + 1] = 1.0
+                                    if numId and numId >= 0 and numId <= 47 then
+                                        states[numId] = 1.0
                                     end
                                 end
 
@@ -493,7 +493,24 @@ local function onRenderPulse()
                         local globalPulse = anyDummyActive and 1.0 or 0.0
                         for _, shader in pairs(vehicleShaders[vehicle]) do
                             if isElement(shader) then
-                                dxSetShaderValue(shader, "gDummyStates", dummyStates)
+                                dxSetShaderValue(shader, "gStateA",
+                                    states[0], states[1], states[2], states[3],
+                                    states[4], states[5], states[6], states[7],
+                                    states[8], states[9], states[10], states[11],
+                                    states[12], states[13], states[14], states[15]
+                                )
+                                dxSetShaderValue(shader, "gStateB",
+                                    states[16], states[17], states[18], states[19],
+                                    states[20], states[21], states[22], states[23],
+                                    states[24], states[25], states[26], states[27],
+                                    states[28], states[29], states[30], states[31]
+                                )
+                                dxSetShaderValue(shader, "gStateC",
+                                    states[32], states[33], states[34], states[35],
+                                    states[36], states[37], states[38], states[39],
+                                    states[40], states[41], states[42], states[43],
+                                    states[44], states[45], states[46], states[47]
+                                )
                                 dxSetShaderValue(shader, "gGlobalOn", globalPulse)
                             end
                         end

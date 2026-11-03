@@ -46,10 +46,10 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
             if txd then
                 engineImportTXD(txd, modelId)
             end
-            -- Note: Must pass modelId to engineLoadDFF so vehicle dummy hierarchy is correctly allocated
+            -- Note: Pass modelId and alphaTransparency = true so hierarchy and glass render properly
             local dff = engineLoadDFF(entry.dff, modelId)
             if dff then
-                engineReplaceModel(dff, modelId)
+                engineReplaceModel(dff, modelId, true)
             end
         end
 
