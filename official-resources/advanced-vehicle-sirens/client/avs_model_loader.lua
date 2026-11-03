@@ -2,8 +2,9 @@
     Advanced Vehicle Sirens (AVS) - Client Model & Config Loader
     
     Loads JSON manifests and registers model configurations:
-    - Registers models with the native C++ AVS engine (registerVehicleSirenModel)
-    - Imports and replaces emergency vehicle DFFs and TXDs
+    - Registers models with both Lua parser/renderer and native C++ engine (when present)
+    - Imports and replaces emergency vehicle DFFs and TXDs with proper vehicle model allocation
+    - Gracefully restores models on resource stop to prevent collision/memory leaks
     - Exposes dynamic registration for external resources
 ]]
 
@@ -45,13 +46,14 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
             if txd then
                 engineImportTXD(txd, modelId)
             end
-            local dff = engineLoadDFF(entry.dff)
+            -- Note: Must pass modelId to engineLoadDFF so vehicle dummy hierarchy is correctly allocated
+            local dff = engineLoadDFF(entry.dff, modelId)
             if dff then
                 engineReplaceModel(dff, modelId)
             end
         end
 
-        -- 2. Load JSON manifest and register with native C++ engine
+        -- 2. Load JSON manifest and register configuration
         if entry.config and fileExists(entry.config) then
             local hFile = fileOpen(entry.config, true)
             if hFile then
@@ -59,27 +61,42 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
                 local content = fileRead(hFile, size)
                 fileClose(hFile)
 
+                local registered = false
+
+                -- Register with native C++ engine if available
                 if type(registerVehicleSirenModel) == "function" then
                     local success = registerVehicleSirenModel(modelId, content)
                     if success then
-                        loadedCount = loadedCount + 1
-                    else
-                        outputDebugString("[AVS] Native C++ engine failed to register config for model " .. tostring(modelId), 2)
+                        registered = true
                     end
                 end
 
-                -- Fallback / complementary parser registration
+                -- Register with Lua parser / software renderer
                 if AVSParser and AVSRenderer then
                     local parsed, err = AVSParser.parse(content)
                     if parsed then
                         AVSRenderer.registerModelConfig(modelId, parsed)
+                        registered = true
                     end
+                end
+
+                if registered then
+                    loadedCount = loadedCount + 1
                 end
             end
         end
     end
 
     outputDebugString(string.format("[AVS] Successfully initialized %d emergency vehicle configurations.", loadedCount), 3)
+end)
+
+-- Restore replaced models on resource stop
+addEventHandler("onClientResourceStop", resourceRoot, function()
+    for _, entry in ipairs(vehicleCatalog) do
+        if entry.dff then
+            engineRestoreModel(entry.model)
+        end
+    end
 end)
 
 -- Receive dynamic model registrations from server or other resources

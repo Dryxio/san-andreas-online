@@ -16,7 +16,6 @@
 
     <!-- Assets and Shaders -->
     <file src="assets/corona.png"/>
-    <file src="assets/lightbar_glow.fx"/>
     <file src="assets/shadows256.txd"/>
 
     <!-- Ground Reflection Optics (33 AVS Shadow Patterns) -->

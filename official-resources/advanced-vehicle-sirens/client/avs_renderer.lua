@@ -1,12 +1,11 @@
 --[[
-    Advanced Vehicle Sirens (AVS) - Client 3D Corona, Texture Glow & Ground Shadow Renderer
+    Advanced Vehicle Sirens (AVS) - Client 3D Corona & Ground Shadow Renderer
     
     Provides 100% standalone AVS rendering for standard, unmodified MTA:SA:
     - Directional line-of-sight flares with TIR lens optic falloff
     - 360-degree rotating beacons with smooth angular interpolation
     - Camera-oriented 3D billboarded coronas with hot-core blending
     - Dynamic asphalt / ground reflection projections using 33 authentic AVS shadow optics
-    - Automatic lightbar lens emissive glow shader on activation
     - Developer and player toggles for ground shadow reflections
     - Zero performance overhead when sirens are inactive
 ]]
@@ -14,10 +13,8 @@
 AVSRenderer = {}
 
 local coronaTexture = nil
-local lightbarShader = nil
 local registeredModelConfigs = {}
 local activeVehicles = {}
-local vehicleGlowApplied = {}
 
 -- Global shadow reflection toggle (true by default)
 local globalShadowsEnabled = true
@@ -62,23 +59,6 @@ local shadowTextureNames = {
 -- Cache loaded shadow texture elements
 local shadowTextures = {}
 
--- Common lightbar and beacon texture names across emergency vehicles
-local lightbarTextureNames = {
-    "sirenlight*",
-    "sirenlight128*",
-    "siren256*",
-    "sirentow*",
-    "vehiclelights*",
-    "emerglights*",
-    "sirenlights*",
-    "siren64*",
-    "siren32*",
-    "siren12*",
-    "sirennavlights*",
-    "lightbar*",
-    "arrow_sign*",
-}
-
 -- Lazy shadow texture loader
 local function getShadowTexture(typeId)
     local id = tonumber(typeId) or 0
@@ -102,9 +82,6 @@ end
 function AVSRenderer.init()
     if not coronaTexture and fileExists("assets/corona.png") then
         coronaTexture = dxCreateTexture("assets/corona.png", "dxt5")
-    end
-    if not lightbarShader and fileExists("assets/lightbar_glow.fx") then
-        lightbarShader = dxCreateShader("assets/lightbar_glow.fx", 0, 140.0, false, "vehicle")
     end
 end
 
@@ -144,36 +121,13 @@ function AVSRenderer.isVehicleShadowsEnabled(vehicle)
     return getElementData(vehicle, "avs:shadows") ~= false
 end
 
--- Apply or remove lightbar emissive shader on a vehicle
-local function updateVehicleLightbarShader(vehicle, active)
-    if not lightbarShader or not isElement(vehicle) then return end
-
-    if active then
-        if not vehicleGlowApplied[vehicle] then
-            for _, texName in ipairs(lightbarTextureNames) do
-                engineApplyShaderToWorldTexture(lightbarShader, texName, vehicle)
-            end
-            vehicleGlowApplied[vehicle] = true
-        end
-    else
-        if vehicleGlowApplied[vehicle] then
-            for _, texName in ipairs(lightbarTextureNames) do
-                engineRemoveShaderFromWorldTexture(lightbarShader, texName, vehicle)
-            end
-            vehicleGlowApplied[vehicle] = nil
-        end
-    end
-end
-
 -- Track vehicles with active sirens
 function AVSRenderer.setVehicleState(vehicle, stateName)
     if not isElement(vehicle) then return end
     if not stateName or stateName == 0 or stateName == "0" or stateName == "off" or stateName == false then
         activeVehicles[vehicle] = nil
-        updateVehicleLightbarShader(vehicle, false)
     else
         activeVehicles[vehicle] = tostring(stateName)
-        updateVehicleLightbarShader(vehicle, true)
     end
 end
 
@@ -183,7 +137,7 @@ end
 
 -- Main render loop: pre-render executes right before GTA draws world entities
 local function onRenderPulse()
-    if not coronaTexture or not lightbarShader then
+    if not coronaTexture then
         AVSRenderer.init()
         if not coronaTexture then return end
     end
@@ -363,7 +317,6 @@ local function onRenderPulse()
             end
         else
             activeVehicles[vehicle] = nil
-            updateVehicleLightbarShader(vehicle, false)
         end
     end
 end
@@ -374,12 +327,11 @@ addEventHandler("onClientPreRender", root, onRenderPulse)
 addEventHandler("onClientElementDestroy", root, function()
     if getElementType(source) == "vehicle" then
         activeVehicles[source] = nil
-        updateVehicleLightbarShader(source, false)
     end
 end)
 
 addEventHandler("onClientElementStreamOut", root, function()
     if getElementType(source) == "vehicle" then
-        updateVehicleLightbarShader(source, false)
+        activeVehicles[source] = nil
     end
 end)
