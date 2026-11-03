@@ -1,5 +1,6 @@
 import type { ServerAddress, ServerItem, ServerLink, ServerSource } from '../../types'
 import type { BackendEvent, BackendListener, BrowserBackend, ConnectErrorCode, ConnectStage, Unsubscribe } from '../BrowserBackend'
+import { cleanGameMode, cleanMapName, cleanServerName, cleanServerText } from '../../textSanitizer'
 
 /**
  * Backend réel : parle au bridge C++ de CServerBrowserWeb (Client/core).
@@ -111,18 +112,24 @@ export class CefBackend implements BrowserBackend {
   }
 
   private toServerItem(native: NativeServer): ServerItem {
+    const cleanName = cleanServerName(native.name)
+    const cleanMode = cleanGameMode(native.gameMode)
+    const cleanMap = cleanMapName(native.map)
+    const rawTagline = cleanServerText(native.tagline)
+    const rawDesc = cleanServerText(native.description)
+
     return {
       id: native.id,
       ip: native.ip,
       publicHost: native.publicHost || undefined,
       gamePort: native.port,
       httpPort: native.httpPort || undefined,
-      name: native.name,
-      tagline: native.tagline || [native.gameMode, native.map].filter(Boolean).join(' — '),
-      description: native.description || [native.gameMode, native.map].filter(Boolean).join(' on ') || native.name,
-      gameMode: native.gameMode,
-      map: native.map,
-      version: native.version,
+      name: cleanName,
+      tagline: rawTagline || [cleanMode, cleanMap].filter(Boolean).join(' — '),
+      description: rawDesc || [cleanMode, cleanMap].filter(Boolean).join(' on ') || cleanName,
+      gameMode: cleanMode,
+      map: cleanMap,
+      version: cleanServerText(native.version) || native.version,
       isCompatible: this.clientVersion === '' || native.version === this.clientVersion,
       players: native.players,
       maxPlayers: native.maxPlayers,
@@ -131,7 +138,7 @@ export class CefBackend implements BrowserBackend {
       requiresSerial: native.serials,
       isStatusVerified: native.verified,
       scanState: native.state,
-      playerList: native.playerList.map((name) => ({ name })),
+      playerList: native.playerList.map((name) => ({ name: cleanServerText(name) })),
       isFavourite: native.favourite || this.favouriteKeys.has(native.id),
       isFeatured: native.featured,
       countries: native.countries ?? [],

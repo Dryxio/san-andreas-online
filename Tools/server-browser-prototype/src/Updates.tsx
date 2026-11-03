@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { chooseLaunchLoadscreen } from './loadscreen'
+import { AmbientLighting } from './components/AmbientLighting'
 import {
   findNeonRelease,
   formatReleaseDate,
@@ -93,6 +94,7 @@ export function Updates({ buildNumber, onClose }: UpdatesProps) {
         <img src={loadscreen} alt="" draggable={false} />
       </div>
       <div className="updates-shell__wash" aria-hidden="true" />
+      <AmbientLighting />
 
       <header className="updates-header">
         <div>
