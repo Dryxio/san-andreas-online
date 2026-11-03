@@ -80,8 +80,18 @@ const Row = memo(function Row({
           style={{ '--server-accent': server.accent ?? '#ffbb4e' } as CSSProperties}
           aria-hidden="true"
         >
-          <span>{serverInitials(server.name)}</span>
-          {server.logoUrl && <img src={server.logoUrl} alt="" draggable={false} referrerPolicy="no-referrer" />}
+          <span className="sao-server-card__initials">{serverInitials(server.name)}</span>
+          {server.logoUrl && (
+            <img
+              src={server.logoUrl}
+              alt=""
+              draggable={false}
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          )}
         </span>
 
         <div className="sao-server-card__body">

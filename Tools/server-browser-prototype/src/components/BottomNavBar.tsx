@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../i18n'
 import type { MenuIdentity } from '../menuBridge'
 import { playUiSound } from '../uiSound'
@@ -43,7 +43,7 @@ export function BottomNavBar({
 }: BottomNavBarProps) {
   const { t } = useI18n()
 
-  const navItems: Array<{ id: NavItemKey; label: string; active?: boolean }> = inGame
+  const navItems = useMemo<Array<{ id: NavItemKey; label: string; active?: boolean }>>(() => inGame
     ? [
         { id: 'resume', label: t('main.resumeGame'), active: currentView === 'main-menu' },
         { id: 'servers', label: t('main.browseServers'), active: currentView === 'server-browser' },
@@ -67,7 +67,7 @@ export function BottomNavBar({
         { id: 'updates', label: 'UPDATES', active: currentView === 'updates' },
         { id: 'about', label: t('common.about') },
         { id: 'quit', label: t('main.quitGame') },
-      ]
+      ], [currentView, inGame, recentServerName, t])
 
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
