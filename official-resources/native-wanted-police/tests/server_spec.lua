@@ -35,7 +35,18 @@ function getThisResource() return resourceRoot end
 function getTickCount() return T end
 function isElement(e) return type(e) == 'table' and e.kind ~= nil and e.alive == true end
 function getElementType(e) return e.kind end
-function getElementPosition(e) return e.x, e.y, e.z end
+function getElementPosition(e)
+    -- A ped in a vehicle is where the vehicle is.
+    if e.kind == 'ped' and e.vehicle and e.vehicle.occupants then return e.vehicle.x, e.vehicle.y, e.vehicle.z end
+    return e.x, e.y, e.z
+end
+function setElementPosition(e, x, y, z)
+    e.x, e.y, e.z = x, y, z
+    for _, ped in pairs(e.occupants or {}) do ped.x, ped.y, ped.z = x, y, z end
+    return true
+end
+function setElementAlpha(e, alpha) e.alpha = alpha; return true end
+function setVehicleOverrideLights(e, state) e.lights = state; return true end
 function getDistanceBetweenPoints3D(a, b, c, d, e, f) return math.sqrt((a - d) ^ 2 + (b - e) ^ 2 + (c - f) ^ 2) end
 function getElementDimension(e) return e.dimension end
 function getElementInterior(e) return e.interior end
@@ -114,7 +125,7 @@ function getVehicleOccupant(vehicle, seat)
     if ped and ped.vehicle == vehicle then return ped end
     return false
 end
-function getVehicleHandling() return {maxVelocity = 200} end
+function getVehicleHandling() return {maxVelocity = 200, engineAcceleration = 25, dragCoeff = 2, handlingFlags = 0x10200008} end
 function setVehicleEngineState() return true end
 function setVehicleSirensOn(vehicle, on) vehicle.siren = on; return true end
 function getElementHealth(e) return e.health or 100 end
@@ -177,6 +188,19 @@ local function spawnAt(player, x, y, z, visible)
     fire('neonPolice:spawnCandidate', resourceRoot, player, probe.args[1], x, y, z)
     answerVetoes(mark, visible == true)
     return probe
+end
+
+-- Answer every reveal probe sent since `from` (staged police cars).
+local function answerReveals(from, isReady, visible)
+    for i = from + 1, #clientEvents do
+        local e = clientEvents[i]
+        if e.name == 'neonPolice:revealProbe' then
+            local targets = (type(e.target) == 'table' and e.target.kind == nil) and e.target or {e.target}
+            for _, target in ipairs(targets) do
+                fire('neonPolice:revealResult', resourceRoot, target, e.args[1], isReady, visible)
+            end
+        end
+    end
 end
 
 local function countServerEvents(name)
@@ -501,9 +525,19 @@ local function probesTo(player, name, from)
     local list = {}
     for i = (from or 0) + 1, #clientEvents do
         local e = clientEvents[i]
-        if e.name == name and e.target == player then list[#list + 1] = e end
+        local listed = type(e.target) == 'table' and e.target.kind == nil
+        local hit = e.target == player
+        if listed then for _, target in ipairs(e.target) do hit = hit or target == player end end
+        if e.name == name and hit then list[#list + 1] = e end
     end
     return list
+end
+-- Fixed rolls for Frank's first car: the cop-bike switch starts off and
+-- flips in 50 s, the car rams, nobody gets a shotgun.
+local realRandom = math.random
+math.random = function(a, b)
+    if a == nil then return 0.9 end
+    return b or a
 end
 local mark = #clientEvents
 setNativeWantedLevel(frank, 1)
@@ -519,6 +553,7 @@ fire('neonPolice:carCandidate', resourceRoot, bob, carProbes[1].args[1], 2200, 2
 check('a candidate from another client is ignored', #getNativePoliceCars(frank) == 0)
 fire('neonPolice:carCandidate', resourceRoot, frank, carProbes[1].args[1], 2200, 2280, 10, 180)
 local cruisers = getNativePoliceCars(frank)
+math.random = realRandom
 check('the car is created', #cruisers == 1)
 local cruiser = cruisers[1]
 local driver, passenger = getVehicleOccupant(cruiser, 0), getVehicleOccupant(cruiser, 1)
@@ -528,10 +563,28 @@ check('car, driver and passenger run on one client', cruiser.syncer == frank and
 check('2 stars: speed 34, a mission chosen', cruiser.data['neon:policeCarSpeed'] == 34 and
     (cruiser.data['neon:policeCarMission'] == 'ram' or cruiser.data['neon:policeCarMission'] == 'block'))
 check('crew armed with the pistol', driver.weapon == 22 and passenger.weapons[3] == 1)
+-- Staging: created hidden, then shown once every nearby client is ready.
+check('created hidden at its road point', cruiser.alpha == 0 and driver.alpha == 0 and passenger.alpha == 0 and
+    cruiser.lights == 1 and cruiser.data['neon:policeCarPhase'] == 'staging' and cruiser.z > 10 and cruiser.z < 11)
+check('a staged car already counts against the car cap', getNativeWantedState(frank).cars == 1)
+mark = #clientEvents
+step(250)
+check('the suspect is asked to check the reveal', #probesTo(frank, 'neonPolice:revealProbe', mark) == 1)
+answerReveals(mark, false, false)
+check('not loaded on the suspect\'s client: still hidden', cruiser.alpha == 0 and cruiser.data['neon:policeCarPhase'] == 'staging')
+mark = #clientEvents
+step(500)
+answerReveals(mark, true, true)
+check('its spot on his screen up close: still hidden', cruiser.alpha == 0)
+mark = #clientEvents
+step(500)
+answerReveals(mark, true, false)
+check('loaded and out of view: shown, the chase starts', cruiser.alpha == 255 and driver.alpha == 255 and
+    passenger.alpha == 255 and cruiser.lights == 0 and cruiser.data['neon:policeCarPhase'] == 'chase')
 check('a cop driving a law car counts as police nearby', getNativeWantedState(frank).cars == 1)
 cruiser.vx = 0.3 -- the owner drives it (GTA's AI is not simulated here)
 mark = #clientEvents
-step(7000)
+step(5500) -- 6.75 s since the car was created (staging took 1.25 s)
 check('2 stars: no second car within 8 s', #probesTo(frank, 'neonPolice:carProbe', mark) == 0)
 step(1500)
 check('a second car after 8 s', #probesTo(frank, 'neonPolice:carProbe', mark) == 1)
@@ -562,11 +615,15 @@ check('empty car: parked, orders done', cruiser.data['neon:policeCarPhase'] == '
 check('out of the car they chase on foot', not getPedOccupiedVehicle(driver) and driver.data['neon:policePhase'] == 'pursue')
 check('a parked car no longer counts against the car cap', getNativeWantedState(frank).cars == 0)
 
--- Frank drives off: only the driver goes back to his car.
+-- Frank drives off: only the driver goes back to his car, once within 4 m
+-- of it (0x6901B1).
 local getaway = element('vehicle', {model = 400, x = frank.x, y = frank.y, z = 10, vx = 0.5, occupants = {}})
 warpPedIntoVehicle(frank, getaway, 0)
-driver.x, driver.y = cruiser.x + 3, cruiser.y
+driver.x, driver.y = cruiser.x + 6, cruiser.y
 passenger.x, passenger.y = cruiser.x + 4, cruiser.y
+step(250)
+check('6 m from his car: not yet', driver.data['neon:policeOrder'] == nil and cruiser.data['neon:policeCarPhase'] == 'parked')
+driver.x = cruiser.x + 3
 step(250)
 check('the driver is sent back to his car', driver.data['neon:policeOrder'] == 'enter' and cruiser.data['neon:policeCarPhase'] == 'boarding')
 check('never the passenger', passenger.data['neon:policeOrder'] == nil)
@@ -607,6 +664,10 @@ check('3 stars: a new car', probe3 ~= nil)
 fire('neonPolice:carCandidate', resourceRoot, frank, probe3.args[1], 2200, 2120, 10, 0)
 local second = getNativePoliceCars(frank)[1]
 check('created', second ~= nil and second ~= cruiser)
+mark = #clientEvents
+step(250)
+answerReveals(mark, true, false)
+check('and shown', second.alpha == 255)
 removePedFromVehicle(getVehicleOccupant(second, 1))
 removePedFromVehicle(getVehicleOccupant(second, 0))
 step(250)
@@ -620,6 +681,11 @@ check('stolen: no longer a police car of this resource', getNativePoliceCars(fra
 -- cars outside the cap, orders cleared, a stolen car's passenger.
 local gina = element('player', {x = 2600, y = 2600, z = 10, money = 5000})
 fire('neonPolice:ready', resourceRoot, gina)
+-- Fixed rolls again: a two-seat cruiser, never the cop bike.
+math.random = function(a, b)
+    if a == nil then return 0.9 end
+    return b or a
+end
 setNativeWantedLevel(gina, 2)
 mark = #clientEvents
 step(250)
@@ -631,18 +697,27 @@ step(1250)
 probeG = probesTo(gina, 'neonPolice:carProbe', mark)[1]
 fire('neonPolice:carCandidate', resourceRoot, gina, probeG.args[1], 2600, 2680, 10, 0)
 local carG = getNativePoliceCars(gina)[1]
+math.random = realRandom
 check('then a valid answer creates the car', carG ~= nil)
+mark = #clientEvents
+step(250)
+answerReveals(mark, true, false)
+check('shown', carG.data['neon:policeCarPhase'] == 'chase')
 carG.vx = 0.3
 local creep = element('vehicle', {model = 400, x = gina.x, y = gina.y, z = 10, vx = 0.03, occupants = {}})
 warpPedIntoVehicle(gina, creep, 0)
 carG.x, carG.y = gina.x + 6, gina.y
-step(3000)
-check('a creeping suspect (1.5 m/s): the car stops after 2.5 s', carG.data['neon:policeCarPhase'] == 'bail')
+step(2500)
+check('the 2.5 s count starts when the car is close, not before', carG.data['neon:policeCarPhase'] == 'chase')
+step(500)
+check('a creeping suspect (1.5 m/s): the car stops after 2.5 s up close', carG.data['neon:policeCarPhase'] == 'bail')
+creep.vx = 0.2
 step(250)
-check('then drives on, since he gets away', carG.data['neon:policeCarPhase'] == 'chase')
+check('he speeds off (10 m/s): the driver keeps the wheel', carG.data['neon:policeCarPhase'] == 'chase')
+creep.vx = 0.03
 local phases = {}
-for _ = 1, 12 do step(250); phases[carG.data['neon:policeCarPhase']] = true end
-check('no flip-flop while he keeps creeping', phases.chase and not phases.bail)
+for _ = 1, 8 do step(250); phases[carG.data['neon:policeCarPhase']] = true end
+check('no flip-flop when he creeps again: a new 2.5 s count', phases.chase and not phases.bail)
 -- Gunfire on the police car is seen by the server: crime 8.
 local chaosG = getNativeWantedState(gina).chaos
 gina.weapon = 22
@@ -676,5 +751,82 @@ step(250)
 check('out of the car: the exit order is done', passengerG.data['neon:policeOrder'] == nil)
 removePedFromVehicle(gina)
 setNativeWantedLevel(gina, 0)
+
+-- 16. Production review: framing by a bystander, bounded vetoes, hidden
+-- foot cops, staging timeout, the far placement ring, the police bike.
+local ivan = element('player', {x = 2300, y = 1500, z = 10, money = 5000})
+local jill = element('player', {x = 2310, y = 1500, z = 10})
+fire('neonPolice:ready', resourceRoot, ivan)
+fire('neonPolice:ready', resourceRoot, jill)
+local streetCivilian = element('ped', {model = 7, x = 2305, y = 1500, z = 10, syncer = jill})
+ivan.weapon = 22
+local ivanChaos = getNativeWantedState(ivan).chaos
+fire('neonPolice:damage', resourceRoot, jill, streetCivilian, ivan, 22)
+step(1500)
+check('a bystander syncer alone cannot blame a gun hit', getNativeWantedState(ivan).chaos == ivanChaos)
+fire('onPlayerWeaponFire', ivan, nil, 22, 0, 0, 0, nil)
+ivanChaos = getNativeWantedState(ivan).chaos
+fire('neonPolice:damage', resourceRoot, jill, streetCivilian, ivan, 22)
+step(1500)
+check('with a shot the server saw just before, it is believed', getNativeWantedState(ivan).chaos > ivanChaos)
+ivan.weapon = 0
+streetCivilian.x = 2310
+ivanChaos = getNativeWantedState(ivan).chaos
+fire('neonPolice:damage', resourceRoot, jill, streetCivilian, ivan, 0)
+step(1500)
+check('a punch from 10 m reported by a bystander is ignored', getNativeWantedState(ivan).chaos <= ivanChaos)
+setNativeWantedLevel(ivan, 0)
+step(250)
+
+-- Police cars off for the foot-cop checks.
+settings.policeCars = 'false'
+fire('onSettingChange', root, nil, '*native-wanted-police.policeCars')
+setNativeWantedLevel(ivan, 4) -- a cop every 1.5 s, and no decay in town
+local vetoed = 0
+for _ = 1, 9 do
+    local before = #getNativePoliceUnits(ivan)
+    spawnAt(ivan, 2300, 1560, 10, true)
+    if #getNativePoliceUnits(ivan) == before then vetoed = vetoed + 1 end
+end
+check('a watcher that always says "visible": only 8 vetoes in 20 s count', vetoed == 8)
+local footCop = getNativePoliceUnits(ivan)[1]
+check('a foot cop is created transparent and fades in', footCop and footCop.alpha == 0 and footCop.z == 10)
+setNativeWantedLevel(ivan, 0)
+step(250)
+settings.policeCars = 'true'
+fire('onSettingChange', root, nil, '*native-wanted-police.policeCars')
+
+-- The police bike: switch on (roll 0.1), 2 stars in Las Venturas.
+math.random = function(a, b)
+    if a == nil then return 0.1 end
+    return a
+end
+step(51000) -- Jill's vetoes age out, and the bike switch is due
+setNativeWantedLevel(ivan, 2)
+mark = #clientEvents
+step(250)
+local probeI = probesTo(ivan, 'neonPolice:carProbe', mark)[1]
+check('2 stars in town with the bike switch on: an HPV1000', probeI and probeI.args[2] == 523)
+fire('neonPolice:carCandidate', resourceRoot, ivan, probeI.args[1], 2300, 1500 + 215, 10, 0)
+check('a point beyond 210 m is refused', #getNativePoliceCars(ivan) == 0)
+step(1250)
+probeI = probesTo(ivan, 'neonPolice:carProbe', mark)
+probeI = probeI[#probeI]
+jill.x = 2400
+fire('neonPolice:carCandidate', resourceRoot, ivan, probeI.args[1], 2300, 1500 + 180, 10, 0)
+answerVetoes(mark, false)
+math.random = realRandom
+local bikeCar = getNativePoliceCars(ivan)[1]
+check('the 160 m ring is accepted', bikeCar ~= nil)
+check('one motorbike cop rides it', getVehicleOccupant(bikeCar, 0).model == 284 and not getVehicleOccupant(bikeCar, 1))
+-- Nobody answers the reveal: removed unseen after 6 s, and the next car
+-- waits 2 s.
+mark = #clientEvents
+step(6250)
+check('a car that cannot be shown within 6 s is removed', bikeCar.alive == false and #getNativePoliceCars(ivan) == 0)
+local soon = #probesTo(ivan, 'neonPolice:carProbe', mark)
+step(1000)
+check('and the next car waits', #probesTo(ivan, 'neonPolice:carProbe', mark) == soon)
+setNativeWantedLevel(ivan, 0)
 
 print(('server_spec: %d checks passed'):format(passed))

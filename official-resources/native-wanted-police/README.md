@@ -1,4 +1,4 @@
-# Native wanted and police (version 2)
+# Native wanted and police (version 2.1)
 
 Server-authoritative wanted levels for every player, with GTA San Andreas's
 own crime rules, police cars and cops that chase one named suspect each, and
@@ -44,9 +44,19 @@ drive to the suspect instead.
 - **Police cars from 2 stars, as in solo.** At 1 star only cops already on
   the street come. From 2 stars cars are sent, at most 2 at 2-4 stars and 3
   at 5-6, the next one more than 8 s after the last at 2 stars, 5 s at 3, at
-  once from 4. They appear on GTA's own road spots out of everyone's view.
+  once from 4. They appear on GTA's own road spots: about 160 m away (often
+  ahead, where you see them coming from afar) or 38 m away out of view, never
+  on screen closer than 70 m. A new car stays invisible, its lights off,
+  until every player within 250 m has loaded it and cannot see its spot up
+  close; if that takes more than 6 s it is removed unseen.
+  - **Losing them:** as in solo, in a city your stars never go down from 2
+    stars (Pay 'n' Spray, bribes, clothes, busted or death clear them), and
+    in the countryside they only go down with no cop within 18 m. A car that
+    loses you is replaced.
   - **Which car:** LSPD, SFPD or LVPD cruiser, or the Ranger in the
-    countryside, with two cops of that area. At 4 stars one car in three is a
+    countryside, with two cops of that area. In a city at 2 stars, about half
+    of them are HPV1000 police bikes with one motorbike cop (solo switches
+    every 30-50 s). At 4 stars one car in three is a
     SWAT Enforcer (four SWAT), at 5 stars always an FBI Rancher (four
     agents), at 6 stars army Barracks (two soldiers) or a Rhino. From 3 stars
     one cop in four of a cruiser carries a shotgun.
@@ -55,16 +65,19 @@ drive to the suspect instead.
     never rams a bike, and its siren comes on up close. Its speed follows
     the level; at 2 stars it slows down near you.
   - **Getting out:** within 10 m, when you are on foot, your car is on its
-    roof, or it has stood still for 2.5 s, the car stops. The passenger gets
-    out at once, the driver after 3-5 s, unless you drive off first. On foot
-    they chase you like any cop.
-  - **Getting back in:** when you drive away (or are more than 100 m off in
-    a car), the driver runs back to his car if it is within 16 m and drives
-    after you again. Passengers stay on foot.
+    roof, or it has been slow for 2.5 s while that car was up close (under
+    about 2 m/s against a blocking car, 2.5 m/s against a ramming one), the
+    car stops. The passenger gets out at once, the driver after 3-5 s,
+    unless you get away first: faster than about 7 m/s, or more than 10 m
+    from him. On foot they chase you like any cop.
+  - **Getting back in:** when you get away in a car, the driver goes back
+    to his car if he is within 4 m of it and it is upright, and drives after
+    you again. Passengers stay on foot.
 - **Cops on foot, out of view**, only where no police car can be placed (no
-  road nearby, two failed placements in a row). They appear on GTA's own
-  off-screen pedestrian spots, after every player within 150 m confirms the
-  spot is off their screen, and close in. The model follows the area (LS,
+  road nearby, two failed placements in a row) and only for a suspect on
+  foot or slower than 5 m/s. They appear on GTA's own off-screen pedestrian
+  spots, after every player within 150 m confirms the spot is off their
+  screen, fade in, and close in. The model follows the area (LS,
   SF, LV or country sheriff). At 1 star they use the nightstick, unless you
   carry a gun. At exactly 4, 5 and 6 stars they are SWAT, FBI and army.
 - **Every player has their own wanted level.** Two suspects next to each
@@ -140,7 +153,10 @@ stars; false: version 1's foot cops at every level), `maxCars` (12),
   death event); it is counted once.
 - Damage the server cannot see is reported by the victim's syncer, the
   victim player or the attacker. The server checks who may report it, that
-  the attacker is close enough and holds that weapon, and a rate limit.
+  the attacker is close enough and holds that weapon, and a rate limit. A
+  report from a third party (the syncer of the victim is often a bystander)
+  also needs the server's own evidence: a shot it saw from the accused in
+  the last 1.5 s, or contact range for a punch.
   Collisions are never taken from the damaged car's own driver. Victim types
   come from the ped's model, never from element data.
 - Cops are ordinary MTA peds: the ones this resource creates, and street
@@ -176,21 +192,28 @@ stars; false: version 1's foot cops at every level), `maxCars` (12),
   after three stalls it is replaced. A cop that moves faster than it can run
   also changes owner.
 - Cops leave only when no nearby player has them on screen (90 s limit, and
-  at most twice `maxCops` waiting).
+  at most twice `maxCops` waiting); cars when no player within 220 m sees
+  them (120 s limit).
+- New cops and cars are created 500 m under their spot, made transparent
+  there, then moved into place, so no client ever has them opaque before
+  they are ready. A player that answers "visible" more than 8 times in 20 s
+  is no longer listened to, so one client cannot keep the police away.
+- When a cop or car changes owner, the old owner stops the GTA task it gave,
+  so two clients never drive it at once.
 
 ## Limits of version 2
 
-- No roadblocks, helicopters, police bikes or boats yet. Cops in cars never
-  shoot from them (solo does not either; only bike cops and the boat gunner
-  do).
+- No roadblocks, helicopters or boats yet. Cops in cars never shoot from
+  them (solo does not either). Bike cops do not shoot from the bike yet.
 - A car alarm going off near a cop does not count yet.
 - Police cars only drive where GTA has road paths. Off-road, foot cops stand
   in.
 - A police car a player takes becomes an ordinary vehicle that this resource
   no longer removes; cops still inside get out.
-- From 3 stars, police cars run a few percent faster than solo's: GTA scales
-  the drag-limited top speed, the server can only read the handling top
-  speed.
+- Solo counts police cars in the whole world against the cap; here the cap
+  is per suspect (`maxCarsPerSuspect`) plus a server total (`maxCars`).
+- A suspect whose client never answers placement requests gets no police
+  car: placement uses GTA's road search on his client.
 - Hitting a police car counts as crime 8 when the server sees the shot, the
   attacker reports it, or the client running the car reports a collision
   with the attacker's vehicle within 12 m. A police car that rams the
@@ -212,7 +235,9 @@ stars; false: version 1's foot cops at every level), `maxCars` (12),
   away and is removed once nobody sees it, and traffic spawns new people as
   usual. `native-vehicle-traffic` has no police cars yet, so only cops on
   foot join.
-- Police cars are not yet tested in game.
+- Police cars were first tested in game on 2026-11-03; the fixes from the
+  second review (hidden staging, the far ring, driver rules, bikes) are not
+  yet tested in game.
 
 ## Tests
 

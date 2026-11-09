@@ -162,11 +162,29 @@ R.areaCopCar = {[0] = 599, [1] = 596, [2] = 597, [3] = 598}
 -- 0x421980: at 4 stars (SWAT) an Enforcer when rand(0,3) == 2, else the
 -- default car; at 5 (FBI) always the FBI Rancher; at 6 (army) Barracks when
 -- rand() < 0x3FFF, else the Rhino. roll3: 0-2, rollHalf: boolean.
-function R.policeCarModel(level, mapLevel, roll3, rollHalf)
+-- The default car is the HPV1000 police bike (523) while the cop-bike switch
+-- is on (0x407C50 reads 0x9654BE); see R.copBikeSwitch.
+function R.policeCarModel(level, mapLevel, roll3, rollHalf, bikeOn)
     if level == 4 and roll3 == 2 then return 427 end
     if level == 5 then return 490 end
     if level == 6 then return rollHalf and 433 or 432 end
+    if bikeOn and level < 3 then return 523 end
     return R.areaCopCar[mapLevel] or 599
+end
+
+-- The cop-bike switch (0x40A150, run with the streaming of the default cop
+-- models): it is forced off at 3 stars and above and in the countryside (map
+-- level 0); otherwise it flips every 30-50 s (rand(30000, 50000), 0x40A1A9).
+-- So in a city at 2 stars about half of the police vehicles are bikes.
+-- state: {on = boolean, flipAt = ms}. roll: 0-1. Returns the state.
+function R.copBikeSwitch(state, level, mapLevel, now, roll)
+    if level >= 3 or mapLevel == 0 then
+        state.on = false
+    elseif now >= (state.flipAt or 0) then
+        state.on = not state.on
+        state.flipAt = now + 30000 + math.floor(roll * 20000)
+    end
+    return state
 end
 
 -- 0x41C070: who rides in each model (MTA seats; 0 is the driver) and which
@@ -177,6 +195,9 @@ function R.policeCarCrew(model, mapLevel)
     if model == 427 then return {0, 1, 2, 3}, 285 end
     if model == 490 then return {0, 1, 2, 3}, 286 end
     if model == 432 then return {0}, 287 end
+    -- The bike shares the Rhino's case (driver only); its rider is the
+    -- motorbike cop 284 (0x8A5A9C).
+    if model == 523 then return {0}, 284 end
     if model == 433 then return {0, 1}, 287 end
     return {0, 1}, R.levelCopModel[mapLevel] or 280
 end
@@ -191,17 +212,41 @@ function R.policeCarShotgunSeat(level, model, rollDriver, rollPassenger)
     return nil
 end
 
--- Cruise speed (0x41CAA0): 25 at 1 star, 34 at 2; at 3-6 the car's
--- handling top speed times 54, 72, 75, 78. GTA multiplies handling+0x88,
--- the drag-limited top speed 0x6F5080 derives from fMaxVelocity / 180 (a
--- few percent lower); the handling value the server can read is
--- fMaxVelocity, so these cars run a few percent faster than solo's.
--- UpdateCarAI writes it again every frame during a chase.
+-- Cruise speed (0x41CAA0): 25 at 1 star, 34 at 2; at 3-6 handling+0x88
+-- times 54, 72, 75, 78. UpdateCarAI writes it again every frame during a
+-- chase.
+-- handling+0x88 is the top speed cHandlingDataMgr::ConvertDataToGameUnits
+-- (0x6F5080) works out from handling.cfg, in game units (km/h / 180):
+-- starting at fMaxVelocity / 180 it steps down by 0.01 until the engine
+-- (fEngineAcceleration x 0.0004 / 6) beats the drag at that speed
+-- (fDragMult / 1000 x 0.5 x v^2; below 0.01 drag, v (1 - 1 / (1 + drag v^2))).
+-- The step comes first, so the result is at least 0.01 below fMaxVelocity.
+-- With handling flag 0x1000000 (OFFROAD_ABILITY) it is fMaxVelocity / 180 x
+-- 0.8333 instead. The server's getVehicleHandling gives handling.cfg units.
+function R.handlingTopSpeed(maxVelocityKmh, engineAcceleration, dragCoeff, handlingFlags)
+    local top = (maxVelocityKmh or 160) / 180
+    if handlingFlags and math.floor(handlingFlags / 0x1000000) % 2 == 1 then return top * 0.8333333 end
+    local push = (engineAcceleration or 20) * 0.0004 / 6
+    local drag = dragCoeff or 2
+    local v = top
+    while v > 0 do
+        v = v - 0.01
+        local force
+        if drag < 0.01 then
+            force = -(1 / (1 + drag * v * v) - 1) * v
+        else
+            force = drag / 1000 * 0.5 * v * v
+        end
+        if push >= force then break end
+    end
+    return math.max(v, 0)
+end
+
 R.carSpeedFactor = {[3] = 54, [4] = 72, [5] = 75, [6] = 78}
-function R.policeCarSpeed(level, maxVelocityKmh)
+function R.policeCarSpeed(level, topSpeed)
     if level <= 1 then return 25 end
     if level == 2 then return 34 end
-    local speed = (maxVelocityKmh or 160) / 180 * (R.carSpeedFactor[math.min(level, 6)] or 54)
+    local speed = (topSpeed or 160 / 180) * (R.carSpeedFactor[math.min(level, 6)] or 54)
     return math.max(1, math.min(speed, 254))
 end
 
@@ -235,12 +280,18 @@ R.carFarDistance = 25
 
 -- Cops get out (UpdateCarAI, close missions, then 0x41C760) when the car is
 -- within 10 m (2D) of the suspect and the suspect is on foot, his vehicle is
--- upside down (up.z < -0.9), or it has stayed slower than 0.05 per step
--- (about 2.5 m/s) for more than 2.5 s. Not from a Rhino, unless its random
--- seed is above 10000.
+-- upside down (up.z < -0.9), or it has stayed slow for more than 2.5 s. Not
+-- from a Rhino, unless its random seed is above 10000.
+-- "Slow" is counted per police car (vehicle+0x4DC), only while that car is
+-- in its close mission, and is reset as soon as the suspect is faster: under
+-- 0.05 per step (about 2.5 m/s) in the ram-close mission (0x41DE42), under
+-- 0.04 (about 2 m/s) in the block-close mission (0x41E1AD).
 R.bailDistance = 10
 R.bailSlowSpeed = 0.05
 R.bailSlowTime = 2500
+function R.bailSlowSpeedFor(mission)
+    return mission == 'block' and 0.04 or 0.05
+end
 function R.shouldBail(distance2D, onFoot, upsideDown, slowFor)
     if distance2D >= R.bailDistance then return false end
     return onFoot or upsideDown or (slowFor or 0) > R.bailSlowTime
@@ -249,19 +300,22 @@ end
 -- CTaskComplexCopInCar 0x68FD50: the passenger leaves at once; the driver
 -- waits 3000 + rand(0, 2000) ms (250 + rand(0, 1250) once he has driven
 -- again after getting out). He stays at the wheel and resumes the chase if
--- the suspect's vehicle is moving (|speed| x 50 > 1, about 1 m/s) or is more
--- than 100 m away. The same test lets the driver (never a passenger) get
--- back in: suspect in another, moving or far vehicle, cop within 16 m of
--- his car, car upright and not wrecked.
+-- the suspect's vehicle gets away (0x68FF6A-0x68FF9C). Both tests use
+-- squared lengths (0x406DA0): |v|^2 x timeStep x 50 > 1, so faster than
+-- about 0.141 per step (7 m/s) at 50 fps, or the suspect's vehicle more than
+-- 10 m (d^2 > 100) from the cop himself. The same test lets the driver
+-- (never a passenger) get back in (0x690179-0x6901BC): suspect in another
+-- vehicle that gets away, cop within 4 m of his car (d^2 < 16), car neither
+-- upside down (up.z < -0.9, 0x6D1D90) nor on its side (|right.z| >= 0.8,
+-- 0x6D1DD0).
 function R.driverExitDelay(reentered, roll)
     if reentered then return 250 + math.floor(roll * 1250) end
     return 3000 + math.floor(roll * 2000)
 end
-R.suspectCarMovingSpeed = 0.02
-R.suspectCarFarDistance = 100
-R.reenterDistance = 16
+R.suspectCarFarDistance = 10
+R.reenterDistance = 4
 function R.suspectCarGetsAway(speedUnits, distance)
-    return speedUnits * 50 > 1.0 or distance > R.suspectCarFarDistance
+    return speedUnits * speedUnits * 50 > 1.0 or distance > R.suspectCarFarDistance
 end
 
 R.queueSize = 16

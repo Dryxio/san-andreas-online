@@ -108,6 +108,15 @@ local function driveCar(ped, vehicle, phase, suspect, epoch, state, t)
         end
         local useMission = suspectVehicle and isElementStreamedIn(suspectVehicle) and not isVehicleBlown(suspectVehicle) and
             type(setPedDriveMission) == 'function' and (state.missionRefusedAt or 0) + 3000 < t
+        -- GTA clears the mission's target when the suspect's vehicle is
+        -- recreated (streamed out and back in) and then sets mission 0
+        -- (0x41FA8B): the task lives on, but the car just stands there. A car
+        -- standing still while far from the suspect gets its mission again.
+        if useMission and not state.close and speedOf(vehicle) < 0.02 then
+            state.stuckSince = state.stuckSince or t
+        else
+            state.stuckSince = nil
+        end
         if useMission then
             local mission = getElementData(vehicle, 'neon:policeCarMission') == 'ram' and 'ram' or 'block'
             -- A suspect on a bike is blocked, never rammed (0x41FDE0).
@@ -137,13 +146,15 @@ local function driveCar(ped, vehicle, phase, suspect, epoch, state, t)
             -- speed band: that restarts GTA's mission (back to far, path
             -- cleared), so a speed change alone waits 2 s between restarts.
             refresh = (t - state.at > 3000 and not hasTask(ped, 'TASK_COMPLEX_CAR_DRIVE_MISSION')) or
-                (state.speed ~= state.wantSpeed and t - state.at > 2000)
+                (state.speed ~= state.wantSpeed and t - state.at > 2000) or
+                (state.stuckSince ~= nil and t - state.stuckSince > 2000 and t - state.at > 2000)
         end
         if not refresh then applied[ped] = state; return end
     end
     if issue() then
         state.key, state.epoch, state.at = key, epoch, t
         state.speed = state.wantSpeed
+        state.stuckSince = nil
     else
         state.key = nil
     end
@@ -264,7 +275,15 @@ setTimer(function()
         if cop and isElementSyncer(ped) then
             drive(ped)
         else
-            applied[ped] = nil -- owner changed: the next owner gives the task again
+            -- Owner changed: the next owner gives the task again. The task
+            -- this client gave keeps running locally (MTA only drops jump and
+            -- climb tasks on a handover), and its autopilot would fight the
+            -- new owner's sync, so it is stopped here, as
+            -- native-vehicle-traffic does when it releases a unit.
+            if applied[ped] and isElement(ped) and not isPedDead(ped) then
+                killPedTask(ped, 'primary', 3, not getPedOccupiedVehicle(ped))
+            end
+            applied[ped] = nil
         end
     end
     for ped in pairs(applied) do
@@ -280,9 +299,12 @@ end, 400, 0)
 -- Spawn points and visibility.
 ------------------------------------------------------------------------
 
-local function hiddenFromCamera(x, y, z)
+-- radius: 1 m for a ped; 5 m for a car, as GTA's road placement (0x424210)
+-- and native-vehicle-traffic test, so the nose of a long car cannot be on
+-- screen while its centre is not.
+local function hiddenFromCamera(x, y, z, radius)
     if type(isAmbientPedSphereVisible) == 'function' then
-        return not isAmbientPedSphereVisible(x, y, z, 1.0)
+        return not isAmbientPedSphereVisible(x, y, z, radius or 1.0)
     end
     if not getScreenFromWorldPosition(x, y, z + 1, 0.1) then return true end
     local cx, cy, cz = getCameraMatrix()
@@ -312,7 +334,9 @@ addEventHandler('neonPolice:spawnProbe', resourceRoot, function(id)
         local angle = math.random() * math.pi * 2
         local radius = 45 + math.random() * 30
         local x, y = px + math.cos(angle) * radius, py + math.sin(angle) * radius
-        local ground = getGroundPosition(x, y, pz + 30)
+        -- Searched from just above the suspect's height: from higher up the
+        -- first surface found is often a roof.
+        local ground = getGroundPosition(x, y, pz + 5)
         if ground and ground ~= 0 and math.abs(ground - pz) < 20 then
             local water = getWaterLevel(x, y, ground + 1)
             local z = ground + 1.0
@@ -351,12 +375,18 @@ addEventHandler('neonPolice:carProbe', resourceRoot, function(id, model)
             return answer(false)
         end
     end
+    -- GTA's placement answers on two rings (0x424210): about 160 m, a point
+    -- the camera may see (a car that far is a speck, and it is staged hidden
+    -- until loaded anyway), and 38 m, a point it must not see. Both are
+    -- kept; only a visible point within 70 m is refused. Keeping only hidden
+    -- points threw away every far one, so every car appeared 38 m away,
+    -- right at the edge of the screen.
     local found
     for _ = 1, 4 do
         local candidate = getAmbientVehicleSpawnCandidate(px, py, pz, model)
         if type(candidate) == 'table' then
             local d = getDistanceBetweenPoints3D(px, py, pz, candidate.x, candidate.y, candidate.z)
-            if d >= 30 and d <= 150 and hiddenFromCamera(candidate.x, candidate.y, candidate.z) then
+            if d >= 30 and d <= 205 and (d >= 70 or hiddenFromCamera(candidate.x, candidate.y, candidate.z, 5.0)) then
                 found = candidate
                 break
             end
@@ -366,15 +396,56 @@ addEventHandler('neonPolice:carProbe', resourceRoot, function(id, model)
     answer(found)
 end)
 
--- Another player's check before a cop appears near them.
+-- Another player's check before a cop appears near them. A car point uses
+-- the car rule: refused only when on screen within 70 m (or closer than
+-- 25 m).
 addEvent('neonPolice:spawnVeto', true)
-addEventHandler('neonPolice:spawnVeto', resourceRoot, function(id, x, y, z)
+addEventHandler('neonPolice:spawnVeto', resourceRoot, function(id, x, y, z, kind)
     local visible = true
     if type(x) == 'number' and type(y) == 'number' and type(z) == 'number' then
         local px, py, pz = getElementPosition(localPlayer)
-        visible = getDistanceBetweenPoints3D(px, py, pz, x, y, z) < 18 or not hiddenFromCamera(x, y, z)
+        local d = getDistanceBetweenPoints3D(px, py, pz, x, y, z)
+        if kind == 'car' then
+            visible = d < 25 or (d < 70 and not hiddenFromCamera(x, y, z, 5.0))
+        else
+            visible = d < 18 or not hiddenFromCamera(x, y, z)
+        end
     end
     triggerServerEvent('neonPolice:spawnVetoResult', resourceRoot, id, visible)
+end)
+
+local function modelLoaded(model)
+    if type(engineStreamingGetModelLoadState) ~= 'function' then return true end
+    local ok, state = pcall(engineStreamingGetModelLoadState, model)
+    return not ok or state == 'loaded'
+end
+
+-- A new police car is created hidden; the server shows it once every
+-- nearby client answers here: ready (car and crew streamed in with their
+-- models loaded, when within 160 m) and not visible (its spot is not on
+-- screen within 70 m, 5 m sphere).
+addEvent('neonPolice:revealProbe', true)
+addEventHandler('neonPolice:revealProbe', resourceRoot, function(id, vehicle)
+    local isReady, visible = true, false
+    if isElement(vehicle) then
+        local occupants = getVehicleOccupants(vehicle) or {}
+        -- Hidden here too, in case the server's alpha change has not been
+        -- applied yet when the car streams in.
+        setElementAlpha(vehicle, 0)
+        setVehicleOverrideLights(vehicle, 1)
+        for _, ped in pairs(occupants) do setElementAlpha(ped, 0) end
+        local x, y, z = getElementPosition(vehicle)
+        local px, py, pz = getElementPosition(localPlayer)
+        local d = getDistanceBetweenPoints3D(px, py, pz, x, y, z)
+        if d < 160 then
+            isReady = isElementStreamedIn(vehicle) and modelLoaded(getElementModel(vehicle))
+            for _, ped in pairs(occupants) do
+                isReady = isReady and isElementStreamedIn(ped) and modelLoaded(getElementModel(ped))
+            end
+        end
+        visible = d < 70 and not hiddenFromCamera(x, y, z, 5.0)
+    end
+    triggerServerEvent('neonPolice:revealResult', resourceRoot, id, isReady == true, visible)
 end)
 
 addEvent('neonPolice:visibilityProbe', true)

@@ -1,5 +1,5 @@
 <meta>
-    <info author="San Andreas Online" name="Native wanted and police" version="2.0.0" type="script"
+    <info author="San Andreas Online" name="Native wanted and police" version="2.1.0" type="script"
           description="Server-authoritative wanted levels with GTA's own crime rules, police cars, foot cops and arrests" />
     <!-- Shared: the client reads the close-range speed rules for police cars. -->
     <script src="rules.lua" type="shared" cache="false" />
