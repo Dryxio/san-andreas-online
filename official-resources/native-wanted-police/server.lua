@@ -1416,7 +1416,12 @@ local function probeRetired()
             destroyCar(car) -- never shown: nobody can see it go
         elseif carRemovable(car) then
             car.retiredAt = car.retiredAt or t
-            local x, y, z = isElement(vehicle) and getElementPosition(vehicle)
+            -- Not `isElement(v) and getElementPosition(v)`: an `and`
+            -- keeps only the first of the three values, and the whole cleanup
+            -- pass then failed on every car waiting to leave (2026-11-03 to
+            -- 11-09 on the RPG: retired cars and cops were never removed).
+            local x, y, z
+            if isElement(vehicle) then x, y, z = getElementPosition(vehicle) end
             local watchers = {}
             if x then
                 -- A car is seen from farther than a cop: 220 m, the distance

@@ -59,6 +59,8 @@ end
 function removeElementData(e, key) e.data[key] = nil end
 function getElementModel(e) return e.model or 0 end
 function getElementsWithinRange(x, y, z, range, kind)
+    -- MTA refuses a position that is not three numbers.
+    if type(x) ~= 'number' or type(y) ~= 'number' or type(z) ~= 'number' then error('getElementsWithinRange: bad position') end
     local list = {}
     for _, e in ipairs(elements) do
         if e.alive and (not kind or e.kind == kind) and getDistanceBetweenPoints3D(x, y, z, e.x, e.y, e.z) <= range then
@@ -654,6 +656,17 @@ local arrestsBeforeFrank = countServerEvents('onNativePlayerArrested')
 step(4250)
 check('busted', countServerEvents('onNativePlayerArrested') == arrestsBeforeFrank + 1)
 check('the car is retired with the chase', cruiser.data['neon:policeCarPhase'] == 'retire')
+-- The cleanup pass asks the players near the retired car, then removes it
+-- once nobody sees it (it used to fail on every car waiting to leave).
+mark = #clientEvents
+visibilityProbe.fn()
+local carCheck
+for _, e in ipairs(probesTo(frank, 'neonPolice:visibilityProbe', mark)) do
+    if e.args[2] == cruiser then carCheck = e end
+end
+check('a retired car is checked by the players near it', carCheck ~= nil)
+fire('neonPolice:visibilityResult', resourceRoot, frank, carCheck.args[1], false)
+check('and removed once nobody sees it', cruiser.alive == false)
 
 -- A player who takes a parked police car keeps it.
 setNativeWantedLevel(frank, 3)
