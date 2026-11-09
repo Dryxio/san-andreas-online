@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { IconArrowLeft } from './components/Icons'
 import { chooseLaunchLoadscreen } from './loadscreen'
+import { AmbientLighting } from './components/AmbientLighting'
 import { SETTINGS_COPY, type SettingId, type SettingValue } from './settingsSchema'
 import { type SettingsBindRow, type SettingsState, useSettingsBridge } from './settingsBridge'
 import './Settings.css'
@@ -108,6 +109,7 @@ export function Settings({ onClose }: SettingsProps) {
         <img src={loadscreen} alt="" draggable={false} />
       </div>
       <div className="settings__wash" aria-hidden="true" />
+      <AmbientLighting />
       <header className="settings__header">
         <div>
           <span className="settings__eyebrow">San Andreas Online Control Center</span>

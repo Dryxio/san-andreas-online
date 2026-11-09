@@ -1,7 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { LanguageSelector } from './components/LanguageSelector'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Header } from './components/Header'
+import { AmbientLighting } from './components/AmbientLighting'
+import { BottomNavBar, type NavItemKey } from './components/BottomNavBar'
 import { useI18n } from './i18n'
 import { chooseLaunchLoadscreen } from './loadscreen'
+import { backend } from './backend'
+import { actions, type NetworkStats } from './store'
+import type { ServerItem } from './types'
 import { notifyMenuVisualReady, type MenuFeaturedServer, type MenuIdentity, type MenuLanguage } from './menuBridge'
 import {
   findNeonRelease,
@@ -10,6 +15,8 @@ import {
   type NeonRelease,
 } from './releaseNotes'
 import { playUiSound } from './uiSound'
+import { IconPlay } from './components/Icons'
+import { cleanGameMode, cleanMapName, cleanServerName, cleanServerText } from './textSanitizer'
 import './MainMenu.css'
 
 interface MainMenuProps {
@@ -33,13 +40,6 @@ interface MainMenuProps {
   onQuit: () => void
 }
 
-interface MenuItem {
-  id: string
-  label: string
-  caption?: string
-  action?: () => void
-}
-
 const UPDATE_PROMPT_STORAGE_KEY = 'neon:last-seen-update'
 
 function shouldShowUpdatePrompt(release: NeonRelease): boolean {
@@ -55,126 +55,107 @@ function rememberUpdatePrompt(release: NeonRelease): void {
   try {
     window.localStorage.setItem(UPDATE_PROMPT_STORAGE_KEY, String(release.build))
   } catch {
-    // A read-only browser profile should not prevent the notification from closing.
+    // Ignore read-only storage errors
   }
 }
 
-function DiscordIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M19.5 5.4a16 16 0 0 0-4-1.3l-.5 1a14.8 14.8 0 0 0-6 0l-.5-1a16 16 0 0 0-4 1.3C2 9.1 1.3 12.7 1.6 16.2a16.4 16.4 0 0 0 4.9 2.5l1.2-1.7a10.7 10.7 0 0 1-1.9-.9l.5-.4a11.5 11.5 0 0 0 11.4 0l.5.4a11 11 0 0 1-1.9.9l1.2 1.7a16.4 16.4 0 0 0 4.9-2.5c.4-4.1-.8-7.6-2.9-10.8ZM8.5 14.5c-1.1 0-2-1-2-2.2s.9-2.2 2-2.2 2 1 2 2.2-.9 2.2-2 2.2Zm7 0c-1.1 0-2-1-2-2.2s.9-2.2 2-2.2 2 1 2 2.2-.9 2.2-2 2.2Z" />
-    </svg>
-  )
+function getFeaturedBanner(server: ServerItem | null): string {
+  if (!server) return chooseLaunchLoadscreen()
+  if (server.bannerUrl) return server.bannerUrl
+  let hash = 0
+  const str = server.id || server.name
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i)
+    hash |= 0
+  }
+  return `./loadscreens/loadsc${(Math.abs(hash) % 14) + 1}.webp`
 }
 
 export function MainMenu(props: MainMenuProps) {
   const { t } = useI18n()
-  const [selectedIndex, setSelectedIndex] = useState(0)
-  const [loadscreen] = useState(chooseLaunchLoadscreen)
-  const [artReady, setArtReady] = useState(false)
+  const [currentBg, setCurrentBg] = useState(() => chooseLaunchLoadscreen())
+  const [incomingBg, setIncomingBg] = useState<string | null>(null)
+  const [isCrossFading, setIsCrossFading] = useState(false)
+  const [artReady, setArtReady] = useState(true)
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false)
-  const previousSelectedIndex = useRef(selectedIndex)
+  const [stats, setStats] = useState<NetworkStats>({ playersOnline: 0, peakPlayers: 0, serverCount: 0 })
+  const [recentServer, setRecentServer] = useState<ServerItem | null>(null)
+  const [featuredServers, setFeaturedServers] = useState<ServerItem[]>([])
+  const [featuredIndex, setFeaturedIndex] = useState(0)
   const visualReadySent = useRef(false)
   const updatePromptChecked = useRef(false)
+
   const forceUpdatePrompt = new URLSearchParams(window.location.search).has('shownews')
-  const updateRelease = findNeonRelease(props.buildNumber)
-    ?? ((props.buildNumber === 0 || forceUpdatePrompt || typeof window.mta?.triggerEvent !== 'function')
+  const updateRelease =
+    findNeonRelease(props.buildNumber) ??
+    (props.buildNumber === 0 || forceUpdatePrompt || typeof window.mta?.triggerEvent !== 'function'
       ? LATEST_NEON_RELEASE
       : undefined)
-  const discordTitle = props.identity.signingIn
-    ? t('main.discordConnecting')
-    : props.identity.authenticated
-      ? (props.identity.displayName || t('main.discordConnected'))
-      : t('main.discordLink')
-  const discordAction = props.identity.signingIn
-    ? t('common.cancel')
-    : props.identity.authenticated
-      ? t('main.discordSignOut')
-      : t('common.connect')
-  const featuredAction = props.identity.signingIn
-    ? t('main.discordConnecting')
-    : props.identity.authenticated
-      ? t('main.playFeatured')
-      : t('main.linkDiscordToPlay')
+
+  // Periodic background changing every 15 seconds with smooth Ken Burns panning and cross-fade
+  useEffect(() => {
+    if (props.inGame) return
+    const interval = setInterval(() => {
+      const nextNum = Math.floor(Math.random() * 14) + 1
+      const nextPath = `./loadscreens/loadsc${nextNum}.webp`
+      setIncomingBg(nextPath)
+      setIsCrossFading(true)
+
+      const timer = setTimeout(() => {
+        setCurrentBg(nextPath)
+        setIncomingBg(null)
+        setIsCrossFading(false)
+      }, 2000)
+
+      return () => clearTimeout(timer)
+    }, 16000)
+
+    return () => clearInterval(interval)
+  }, [props.inGame])
+
+  // Fetch real dynamic stats, recent history, and populate random featured servers pool
+  useEffect(() => {
+    let active = true
+    void backend.getNetworkStats().then((data) => {
+      if (active && data) setStats(data)
+    })
+    void backend.getHistory().then((history) => {
+      if (active && history.length > 0) setRecentServer(history[0] ?? null)
+    })
+    void backend.getServers('internet').then((servers) => {
+      if (!active || !servers.length) return
+      const online = servers.filter((s) => s.scanState !== 'offline')
+      const pool = online.length > 0 ? online : servers
+
+      const withBanner = pool.filter((s) => Boolean(s.bannerUrl))
+      const withoutBanner = pool.filter((s) => !s.bannerUrl)
+
+      const shuffle = <T,>(arr: T[]): T[] => [...arr].sort(() => Math.random() - 0.5)
+      const selected = [...shuffle(withBanner), ...shuffle(withoutBanner)].slice(0, 5)
+
+      if (selected.length > 0) {
+        setFeaturedServers(selected)
+        setFeaturedIndex(0)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  // Auto rotate featured server every 8 seconds
+  useEffect(() => {
+    if (featuredServers.length <= 1) return
+    const timer = setInterval(() => {
+      setFeaturedIndex((prev) => (prev + 1) % featuredServers.length)
+    }, 8000)
+    return () => clearInterval(timer)
+  }, [featuredServers.length])
 
   const dismissUpdatePrompt = useCallback(() => {
     if (updateRelease) rememberUpdatePrompt(updateRelease)
     setShowUpdatePrompt(false)
   }, [updateRelease])
-
-  const items = useMemo<MenuItem[]>(
-    () => props.inGame
-      ? [
-          {
-            id: 'resume',
-            label: t('main.resumeGame'),
-            action: props.onResume,
-          },
-          {
-            id: 'settings',
-            label: t('common.settings'),
-            action: props.onSettings,
-          },
-          {
-            id: 'disconnect',
-            label: t('common.disconnect'),
-            action: props.onDisconnect,
-          },
-          {
-            id: 'quit',
-            label: t('main.quitGame'),
-            action: props.onQuit,
-          },
-        ]
-      : [
-          {
-            id: 'play',
-            label: t('main.browseServers'),
-            action: props.onBrowseServers,
-          },
-          {
-            id: 'quick-connect',
-            label: t('main.quickConnect'),
-            caption: t('main.quickConnectCaption'),
-            action: props.onQuickConnect,
-          },
-          // Keep the editor route available to the native shell, but leave it
-          // out of the player-facing menu while Neon focuses this screen on
-          // joining servers and discovering public client updates.
-          // {
-          //   id: 'map-editor',
-          //   label: t('main.mapEditor'),
-          //   caption: t('main.mapEditorCaption'),
-          //   action: props.onMapEditor,
-          // },
-          {
-            id: 'settings',
-            label: t('common.settings'),
-            action: props.onSettings,
-          },
-          {
-            id: 'updates',
-            label: 'What’s new',
-            caption: 'Read the latest San Andreas Online features, fixes and earlier release notes.',
-            action: props.onUpdates,
-          },
-          {
-            id: 'about',
-            label: t('common.about'),
-            action: props.onAbout,
-          },
-          {
-            id: 'quit',
-            label: t('main.quitGame'),
-            action: props.onQuit,
-          },
-        ],
-    [props, t],
-  )
-
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [props.inGame])
 
   useEffect(() => {
     if (props.inGame) {
@@ -185,11 +166,6 @@ export function MainMenu(props: MainMenuProps) {
     updatePromptChecked.current = true
     setShowUpdatePrompt(shouldShowUpdatePrompt(updateRelease))
   }, [artReady, props.inGame, updateRelease])
-
-  useEffect(() => {
-    if (previousSelectedIndex.current !== selectedIndex) playUiSound('highlight')
-    previousSelectedIndex.current = selectedIndex
-  }, [selectedIndex])
 
   useEffect(() => {
     if (visualReadySent.current || (!props.inGame && !artReady)) return
@@ -223,149 +199,229 @@ export function MainMenu(props: MainMenuProps) {
     }
   }, [artReady, props.inGame])
 
-  const activate = (item: MenuItem) => {
+  const onBottomNav = useCallback(
+    (key: NavItemKey) => {
+      switch (key) {
+        case 'servers':
+          props.onBrowseServers()
+          break
+        case 'reconnect':
+          if (recentServer) {
+            actions.connectTo(recentServer)
+          } else {
+            props.onQuickConnect()
+          }
+          break
+        case 'resume':
+          props.onResume()
+          break
+        case 'host-game':
+          props.onQuickConnect()
+          break
+        case 'map-editor':
+          props.onMapEditor()
+          break
+        case 'settings':
+          props.onSettings()
+          break
+        case 'updates':
+          props.onUpdates()
+          break
+        case 'about':
+          props.onAbout()
+          break
+        case 'disconnect':
+          props.onDisconnect()
+          break
+        case 'quit':
+          props.onQuit()
+          break
+      }
+    },
+    [props, recentServer],
+  )
+
+  const activeFeaturedServer: ServerItem | null =
+    featuredServers.length > 0 ? featuredServers[featuredIndex] ?? null : null
+
+  const featuredServerName = activeFeaturedServer
+    ? cleanServerName(activeFeaturedServer.name)
+    : props.featuredServer?.name || 'San Andreas Online'
+
+  const featuredServerDesc = activeFeaturedServer
+    ? cleanServerText(activeFeaturedServer.description || activeFeaturedServer.tagline) ||
+      `${cleanGameMode(activeFeaturedServer.gameMode)} • ${cleanMapName(activeFeaturedServer.map)} • ${activeFeaturedServer.players}/${activeFeaturedServer.maxPlayers} Players`
+    : props.featuredServer?.tagline ||
+      'Top multiplayer server with high-action freeroam, custom races, and missions.'
+
+  const handlePlayFeatured = useCallback(() => {
     playUiSound('select')
-    item.action?.()
-  }
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (showUpdatePrompt) {
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          playUiSound('back')
-          dismissUpdatePrompt()
-        }
-        return
-      }
-      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-        event.preventDefault()
-        const direction = event.key === 'ArrowDown' ? 1 : -1
-        setSelectedIndex((current) => (current + direction + items.length) % items.length)
-      } else if (event.key === 'Enter') {
-        const item = items[selectedIndex]
-        if (item) activate(item)
-      }
+    if (activeFeaturedServer) {
+      actions.connectTo(activeFeaturedServer)
+    } else if (props.featuredServer) {
+      props.onPlayFeatured()
+    } else {
+      props.onBrowseServers()
     }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [dismissUpdatePrompt, items, selectedIndex, showUpdatePrompt])
-
-  const selected = items[selectedIndex] ?? items[0]!
+  }, [activeFeaturedServer, props])
 
   return (
     <main className={`main-menu${props.inGame ? ' main-menu--ingame' : ''}`}>
+      {/* Background artwork with Ken Burns animation and smooth cross-fade */}
       {!props.inGame && (
         <div className="main-menu__art" aria-hidden="true">
-          <img
-            className="main-menu__scene"
-            src={loadscreen}
-            alt=""
-            draggable={false}
-            fetchPriority="high"
-            onLoad={() => setArtReady(true)}
-            onError={() => setArtReady(true)}
-          />
+          <div className="main-menu__scene-layer main-menu__scene-layer--current">
+            <img
+              className="main-menu__scene"
+              src={currentBg}
+              alt=""
+              draggable={false}
+              fetchPriority="high"
+              onLoad={() => setArtReady(true)}
+              onError={() => setArtReady(true)}
+            />
+          </div>
+          {incomingBg && (
+            <div
+              className={`main-menu__scene-layer main-menu__scene-layer--incoming ${isCrossFading ? 'is-fading' : ''}`}
+            >
+              <img
+                className="main-menu__scene"
+                src={incomingBg}
+                alt=""
+                draggable={false}
+              />
+            </div>
+          )}
         </div>
       )}
       <div className="main-menu__wash" aria-hidden="true" />
+      <AmbientLighting />
 
-      <section className="main-menu__content" aria-label={t('aria.mainMenu')}>
-        <header className="main-menu__brand">
-          <h1>
-            <span>San Andreas</span>
-            <strong>Online</strong>
-          </h1>
-        </header>
+      {/* Header with Brand Logo, Live Player Counts, and Language Selector */}
+      <Header
+        title="San Andreas Online"
+        subtitle="Grand Theft Auto: San Andreas™ © 2005 Rockstar Games, Inc."
+        variant="brand"
+        stats={stats.playersOnline > 0 || stats.serverCount > 0 ? stats : undefined}
+        locale={props.locale}
+        languages={props.languages}
+        onLanguageSelect={props.onLanguage}
+      />
 
-        <nav className="main-menu__nav" aria-label={t('aria.mainNavigation')}>
-          {items.map((item, index) => {
-            const isSelected = index === selectedIndex
-            return (
+      {/* Main Center Area: Featured Server Showcase + Color Strip + Last Played */}
+      <section className="main-menu__showcase" aria-label={t('aria.mainMenu')}>
+        <div className="main-menu__featured-container">
+          <div className="main-menu__featured-eyebrow-row">
+            <h2 className="main-menu__featured-eyebrow">
+              {t('main.featuredServer').toUpperCase()}
+            </h2>
+          </div>
+
+          <div
+            className="main-menu__featured-card"
+            onClick={handlePlayFeatured}
+          >
+            <img
+              className="main-menu__card-banner"
+              src={getFeaturedBanner(activeFeaturedServer)}
+              alt={featuredServerName}
+              draggable={false}
+              onError={(e) => {
+                const target = e.currentTarget
+                const fallback = chooseLaunchLoadscreen()
+                if (!target.src.endsWith(fallback.replace('./', ''))) {
+                  target.src = fallback
+                }
+              }}
+            />
+            <div className="main-menu__card-shade" />
+
+            {/* Pagination indicator pills */}
+            <div className="main-menu__carousel-pills" aria-hidden="true">
+              {(featuredServers.length > 0 ? featuredServers : [0, 1, 2]).map((_, idx) => (
+                <span
+                  key={idx}
+                  className={`main-menu__pill${featuredIndex === idx ? ' main-menu__pill--active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    playUiSound('highlight')
+                    setFeaturedIndex(idx)
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Server Card Details & Connect Button */}
+            <div className="main-menu__card-content">
+              <div className="main-menu__card-info">
+                {activeFeaturedServer && (
+                  <div className="main-menu__card-badge-row">
+                    <span className="main-menu__card-badge main-menu__card-badge--mode">
+                      {cleanGameMode(activeFeaturedServer.gameMode)}
+                    </span>
+                    <span className="main-menu__card-badge main-menu__card-badge--players">
+                      {activeFeaturedServer.players} / {activeFeaturedServer.maxPlayers} PLAYERS
+                    </span>
+                    {activeFeaturedServer.ping !== undefined && (
+                      <span className="main-menu__card-badge main-menu__card-badge--ping">
+                        {activeFeaturedServer.ping} MS
+                      </span>
+                    )}
+                  </div>
+                )}
+                <strong className="main-menu__card-title">{featuredServerName}</strong>
+                <p className="main-menu__card-desc">{featuredServerDesc}</p>
+              </div>
+
               <button
-                key={item.id}
                 type="button"
-                className={`main-menu__item${isSelected ? ' main-menu__item--selected' : ''}`}
-                aria-current={isSelected ? 'page' : undefined}
-                onMouseEnter={() => setSelectedIndex(index)}
-                onFocus={() => setSelectedIndex(index)}
-                onClick={() => activate(item)}
+                className="main-menu__card-connect-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handlePlayFeatured()
+                }}
               >
-                <span className="main-menu__marker" aria-hidden="true">
-                  &#9656;
-                </span>
-                <span>{item.label}</span>
+                <IconPlay size={16} />
+                <span>{t('common.connect')}</span>
               </button>
-            )
-          })}
-        </nav>
+            </div>
+          </div>
 
-        {selected.caption && (
-          <p className="main-menu__caption" aria-live="polite">
-            {selected.caption}
-          </p>
-        )}
+          {/* GTA Multi-color Accent Strip */}
+          <div className="main-menu__color-strip" aria-hidden="true" />
+
+          {/* Last Played Bar */}
+          <div
+            className={`main-menu__last-played${recentServer ? ' main-menu__last-played--clickable' : ''}`}
+            onClick={() => {
+              if (recentServer) {
+                playUiSound('select')
+                actions.connectTo(recentServer)
+              } else {
+                props.onBrowseServers()
+              }
+            }}
+          >
+            <span className="main-menu__last-played-label">Last Played</span>
+            <span className="main-menu__last-played-name">
+              {recentServer
+                ? `${cleanServerName(recentServer.name)} — ${cleanGameMode(recentServer.gameMode)} • ${cleanMapName(recentServer.map)}`
+                : 'No recent server — click to browse servers'}
+            </span>
+          </div>
+        </div>
       </section>
 
-      {!props.inGame && props.featuredServer && (
-        <button
-          type="button"
-          className="main-menu__featured"
-          disabled={props.identity.signingIn}
-          aria-label={`${props.featuredServer.name}. ${featuredAction}`}
-          onClick={() => {
-            playUiSound('select')
-            props.onPlayFeatured()
-          }}
-        >
-          {props.featuredServer.bannerUrl && (
-            <img className="main-menu__featured-banner" src={props.featuredServer.bannerUrl} alt="" draggable={false} />
-          )}
-          <span className="main-menu__featured-shade" aria-hidden="true" />
-          <span className="main-menu__featured-logo">
-            {props.featuredServer.logoUrl
-              ? <img src={props.featuredServer.logoUrl} alt="" draggable={false} />
-              : <span>B</span>}
-          </span>
-          <span className="main-menu__featured-copy">
-            <span className="main-menu__featured-kicker">{t('main.featuredServer')}</span>
-            <strong>{props.featuredServer.name}</strong>
-            <span className="main-menu__featured-tagline">{props.featuredServer.tagline}</span>
-          </span>
-          <span className="main-menu__featured-action">{featuredAction} &#9656;</span>
-        </button>
-      )}
-
-      {!props.inGame && (
-        <button
-          type="button"
-          className={`main-menu__profile${props.identity.authenticated ? ' main-menu__profile--connected' : ''}`}
-          aria-label={`${discordTitle}. ${discordAction}`}
-          onClick={() => {
-            playUiSound('select')
-            props.onIdentity()
-          }}
-        >
-          <span className="main-menu__profile-icon">
-            <DiscordIcon />
-          </span>
-          <span className="main-menu__profile-copy">
-            <span className="main-menu__profile-kicker">{t('main.identity')}</span>
-            <strong>{discordTitle}</strong>
-            <span className="main-menu__profile-meta">
-              <span className="main-menu__online">
-                <i aria-hidden="true" /> {props.identity.status}
-              </span>
-              <span className="main-menu__profile-action">{discordAction} &#9656;</span>
-            </span>
-          </span>
-        </button>
-      )}
-
+      {/* Release Notes Dialog if active */}
       {showUpdatePrompt && updateRelease && (
         <div className="main-menu__update-overlay">
-          <section className="main-menu__update-prompt" role="dialog" aria-modal="true" aria-labelledby="update-prompt-title">
+          <section
+            className="main-menu__update-prompt"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="update-prompt-title"
+          >
             <header className="main-menu__update-prompt-header">
               <span>What’s new in San Andreas Online</span>
               <small>{formatReleaseVersion(updateRelease)}</small>
@@ -373,7 +429,9 @@ export function MainMenu(props: MainMenuProps) {
             <h2 id="update-prompt-title">{updateRelease.title}</h2>
             <p>{updateRelease.summary}</p>
             <ul>
-              {updateRelease.highlights.map((highlight) => <li key={highlight}>{highlight}</li>)}
+              {updateRelease.highlights.map((highlight) => (
+                <li key={highlight}>{highlight}</li>
+              ))}
             </ul>
             <footer className="main-menu__update-prompt-actions">
               <button
@@ -403,21 +461,15 @@ export function MainMenu(props: MainMenuProps) {
         </div>
       )}
 
-      <footer className="main-menu__footer">
-        <span>{props.inGame ? t('main.inGame') : t('main.preview')}</span>
-        <span className="main-menu__controls">
-          {props.inGame && <><kbd>Esc</kbd> {t('common.resume')}&nbsp;&nbsp; </>}
-          <kbd>↑</kbd><kbd>↓</kbd> {t('common.select')}&nbsp;&nbsp; <kbd>Enter</kbd> {t('common.confirm')}
-        </span>
-      </footer>
-
-      {!props.inGame && (
-        <LanguageSelector
-          locale={props.locale}
-          languages={props.languages}
-          onSelect={props.onLanguage}
-        />
-      )}
+      {/* Global Bottom Navigation Dock */}
+      <BottomNavBar
+        currentView="main-menu"
+        inGame={props.inGame}
+        identity={props.identity}
+        recentServerName={recentServer?.name ? cleanServerName(recentServer.name) : undefined}
+        onNavigate={onBottomNav}
+        onIdentity={props.onIdentity}
+      />
     </main>
   )
 }

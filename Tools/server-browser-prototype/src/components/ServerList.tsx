@@ -1,17 +1,14 @@
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useI18n } from '../i18n'
 import type { ServerItem } from '../types'
-import { Flag, IconLock, IconStar, IconStarFilled } from './Icons'
+import { cleanGameMode, cleanMapName, cleanServerName } from '../textSanitizer'
+import { Flag, IconLock, IconPlay, IconStar, IconStarFilled } from './Icons'
 
-// Keep these values aligned with `.server-row`: the virtualizer needs the
-// painted card height and the intentional breathing room between cards.
-const ROW_HEIGHT = 118
-const ROW_GAP = 4
+const ROW_HEIGHT = 88
+const ROW_GAP = 8
 const STRIDE = ROW_HEIGHT + ROW_GAP
 const VIRTUALIZATION_THRESHOLD = 30
-// Three rows absorb fast wheel bursts without keeping a large stack of
-// off-screen cards in CEF's paint tree.
-const OVERSCAN = 3
+const OVERSCAN = 4
 
 function visibleWindow(scrollTop: number, viewport: number, serverCount: number) {
   return {
@@ -34,6 +31,11 @@ function serverCountries(server: ServerItem): string[] {
   return server.country ? [server.country] : []
 }
 
+function serverInitials(name: string): string {
+  const words = name.replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(/\s+/)
+  return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase() || 'SA'
+}
+
 const Row = memo(function Row({
   server,
   top,
@@ -53,76 +55,109 @@ const Row = memo(function Row({
 }) {
   const { formatNumber, t } = useI18n()
   const offline = server.scanState === 'offline'
+
+  const pingClass =
+    server.ping !== undefined
+      ? server.ping < 70
+        ? 'sao-ping--good'
+        : server.ping < 160
+          ? 'sao-ping--medium'
+          : 'sao-ping--high'
+      : ''
+
   return (
     <div
-      className={`server-row${flow ? ' server-row--flow' : ''}${selected ? ' server-row--selected' : ''}${server.isFeatured ? ' server-row--featured' : ''}${offline ? ' server-row--offline' : ''}`}
+      className={`sao-server-card${flow ? ' sao-server-card--flow' : ''}${selected ? ' sao-server-card--selected' : ''}${server.isFeatured ? ' sao-server-card--featured' : ''}${offline ? ' sao-server-card--offline' : ''}`}
       style={top === undefined ? undefined : { top }}
       onClick={() => onSelect(server.id)}
       onDoubleClick={() => onJoin(server)}
       role="row"
       aria-selected={selected}
     >
-      <span
-        className="server-row__logo"
-        style={{ '--server-accent': server.accent ?? '#accbf1' } as CSSProperties}
-        aria-hidden="true"
-      >
-        <span>{serverInitials(server.name)}</span>
-        {server.logoUrl && <img src={server.logoUrl} alt="" draggable={false} referrerPolicy="no-referrer" />}
-      </span>
-      <div className="server-row__body">
-        <div className="server-row__top">
-          <span className="server-row__name">{server.name}</span>
-        </div>
-        <div className="server-row__bottom">
-          <span className="server-row__tagline">{server.tagline}</span>
-          {server.isFeatured && <span className="server-row__featured">{t('server.featured')}</span>}
+      <div className="sao-server-card__left">
+        <span
+          className="sao-server-card__logo"
+          style={{ '--server-accent': server.accent ?? '#ffbb4e' } as CSSProperties}
+          aria-hidden="true"
+        >
+          <span className="sao-server-card__initials">{serverInitials(server.name)}</span>
+          {server.logoUrl && (
+            <img
+              src={server.logoUrl}
+              alt=""
+              draggable={false}
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          )}
+        </span>
+
+        <div className="sao-server-card__body">
+          <div className="sao-server-card__title-row">
+            <span className="sao-server-card__name">{cleanServerName(server.name)}</span>
+            {server.passworded && (
+              <span className="sao-server-card__lock" title={t('server.passwordProtected')}>
+                <IconLock size={13} />
+              </span>
+            )}
+            {server.isFeatured && (
+              <span className="sao-server-card__featured-badge">{t('server.featured')}</span>
+            )}
+          </div>
+          <div className="sao-server-card__sub-row">
+            <span className="sao-server-card__mode">{cleanGameMode(server.gameMode)}</span>
+            <span className="sao-server-card__divider">•</span>
+            <span className="sao-server-card__map">{cleanMapName(server.map)}</span>
+          </div>
         </div>
       </div>
-      <div className="server-row__side">
-        {server.passworded && (
-          <span className="server-row__lock" title={t('server.passwordProtected')}>
-            <IconLock size={13} />
-          </span>
-        )}
-        <span className="server-row__countries" title={serverCountries(server).join(' / ')}>
+
+      <div className="sao-server-card__right">
+        <span className="sao-server-card__countries">
           {serverCountries(server).map((country) => (
             <Flag key={country} country={country} />
           ))}
         </span>
+
         <button
           type="button"
-          className={`server-row__star${server.isFavourite ? ' server-row__star--active' : ''}`}
+          className={`sao-server-card__star${server.isFavourite ? ' sao-server-card__star--active' : ''}`}
           title={server.isFavourite ? t('server.removeFavourite') : t('server.addFavourite')}
           onClick={(e) => {
             e.stopPropagation()
             onToggleFavourite(server)
           }}
         >
-          {server.isFavourite ? <IconStarFilled size={17} /> : <IconStar size={17} />}
+          {server.isFavourite ? <IconStarFilled size={16} /> : <IconStar size={16} />}
         </button>
-        <div className="server-row__meta">
-          <span
-            className={`server-row__players${server.isStatusVerified ? '' : ' server-row__players--unverified'}`}
-            title={server.isStatusVerified ? undefined : t('server.playersUnverified')}
-          >
-            {offline
-              ? '—'
-              : `${formatNumber(server.players)} / ${formatNumber(server.maxPlayers)}${server.isStatusVerified ? '' : ' *'}`}
+
+        <div className="sao-server-card__stats">
+          <span className="sao-server-card__players">
+            {offline ? '—' : `${formatNumber(server.players)} / ${formatNumber(server.maxPlayers)}`}
           </span>
-          <span className="server-row__ping">
+          <span className={`sao-server-card__ping ${pingClass}`}>
             {offline ? t('server.offline') : server.ping !== undefined ? `${server.ping} ms` : '…'}
           </span>
         </div>
+
+        <button
+          type="button"
+          className="sao-server-card__connect-btn"
+          title={t('common.connect')}
+          onClick={(e) => {
+            e.stopPropagation()
+            onJoin(server)
+          }}
+        >
+          <IconPlay size={13} />
+          <span>{t('common.connect')}</span>
+        </button>
       </div>
     </div>
   )
 })
-
-function serverInitials(name: string): string {
-  const words = name.replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(/\s+/)
-  return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase() || 'N'
-}
 
 export const ServerList = memo(function ServerList(props: ServerListProps) {
   const { t } = useI18n()
@@ -150,47 +185,44 @@ export const ServerList = memo(function ServerList(props: ServerListProps) {
     if (el) updateVisibleWindow(el)
   }, [props.servers.length, updateVisibleWindow])
 
-  // Garde la sélection visible lors de la navigation clavier — uniquement
-  // quand la sélection change, pas quand la liste bouge pendant le scan.
-  const lastSelected = useRef<string | null>(null)
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el || !props.selectedId || props.selectedId === lastSelected.current) return
-    lastSelected.current = props.selectedId
-    const index = props.servers.findIndex((s) => s.id === props.selectedId)
-    if (index < 0) return
-    const rowTop = index * STRIDE
-    const rowBottom = rowTop + ROW_HEIGHT
-    if (rowTop < el.scrollTop) el.scrollTo({ top: rowTop })
-    else if (rowBottom > el.scrollTop + el.clientHeight) {
-      el.scrollTo({ top: rowBottom - el.clientHeight })
-    }
-  }, [props.selectedId, props.servers])
+  const totalHeight = props.servers.length * STRIDE
+  const useVirtual = props.servers.length > VIRTUALIZATION_THRESHOLD
+  const renderedServers = useVirtual
+    ? props.servers.slice(visibleRange.first, visibleRange.last)
+    : props.servers
 
-  if (props.servers.length === 0) {
-    return (
-      <div className="server-list">
-        {props.directTarget ? (
-          <div className="list-empty list-empty--direct">
-            <strong>{t('browser.directReady')}</strong>
-            <code>{props.directTarget}</code>
-            <span>{t('browser.directHint')}</span>
-          </div>
-        ) : (
-          <div className="list-empty">
-            {t('browser.empty')}
-            <br />
-            {t('browser.emptyHint')}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  if (props.servers.length <= VIRTUALIZATION_THRESHOLD) {
-    return (
-      <div className="server-list server-list--flow" ref={scrollRef} role="grid" aria-label={t('aria.serverList')}>
-        <div className="server-list__flow-content">
+  return (
+    <div
+      ref={scrollRef}
+      className="sao-server-list"
+      role="feed"
+      aria-label={t('aria.serverList')}
+      onScroll={(e) => updateVisibleWindow(e.currentTarget)}
+    >
+      {props.servers.length === 0 ? (
+        <div className="sao-server-list__empty">
+          <p>{t('browser.empty')}</p>
+          <small>{t('browser.emptyHint')}</small>
+        </div>
+      ) : useVirtual ? (
+        <div className="sao-server-list__canvas" style={{ height: totalHeight }}>
+          {renderedServers.map((server, index) => {
+            const actualIndex = visibleRange.first + index
+            return (
+              <Row
+                key={server.id}
+                server={server}
+                top={actualIndex * STRIDE}
+                selected={server.id === props.selectedId}
+                onSelect={props.onSelect}
+                onJoin={props.onJoin}
+                onToggleFavourite={props.onToggleFavourite}
+              />
+            )
+          })}
+        </div>
+      ) : (
+        <div className="sao-server-list__flow">
           {props.servers.map((server) => (
             <Row
               key={server.id}
@@ -203,31 +235,7 @@ export const ServerList = memo(function ServerList(props: ServerListProps) {
             />
           ))}
         </div>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className="server-list"
-      ref={scrollRef}
-      onScroll={(e) => updateVisibleWindow(e.currentTarget)}
-      role="grid"
-      aria-label={t('aria.serverList')}
-    >
-      <div className="server-list__spacer" style={{ height: props.servers.length * STRIDE - ROW_GAP }}>
-        {props.servers.slice(visibleRange.first, visibleRange.last).map((server, i) => (
-          <Row
-            key={server.id}
-            server={server}
-            top={(visibleRange.first + i) * STRIDE}
-            selected={server.id === props.selectedId}
-            onSelect={props.onSelect}
-            onJoin={props.onJoin}
-            onToggleFavourite={props.onToggleFavourite}
-          />
-        ))}
-      </div>
+      )}
     </div>
   )
 })

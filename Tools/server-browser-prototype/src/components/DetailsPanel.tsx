@@ -1,16 +1,24 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n'
-import { formatNeonServerLink, type ServerItem } from '../types'
+import type { ServerItem, ServerPlayer } from '../types'
+import { cleanGameMode, cleanMapName, cleanServerName, cleanServerText } from '../textSanitizer'
+
+function serverFallbackArt(id: string): string {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash << 5) - hash + id.charCodeAt(i)
+    hash |= 0
+  }
+  return `./loadscreens/loadsc${(Math.abs(hash) % 14) + 1}.webp`
+}
 import { playUiSound } from '../uiSound'
 import {
+  Flag,
   IconArrowLeft,
   IconAt,
   IconCheck,
   IconCopy,
-  IconGlobe,
   IconPlay,
-  Flag,
-  LINK_ICONS,
 } from './Icons'
 
 interface DetailsPanelProps {
@@ -20,8 +28,11 @@ interface DetailsPanelProps {
   onClosePlayers: () => void
   onConnect: (server: ServerItem) => void
   onCopyLink: (server: ServerItem) => Promise<boolean>
-  /** Retourne true si le lien est pris en charge nativement (CEF). */
-  onOpenLink: (url: string) => boolean
+  onOpenLink?: (url: string) => boolean
+}
+
+function shortName(name: string): string {
+  return name.replace(/\s*\|.*$/, '').trim() || name
 }
 
 export function DetailsPanel({
@@ -59,8 +70,8 @@ export function DetailsPanel({
 
   if (!server) {
     return (
-      <aside className="details-empty">
-        {t('details.selectServer')}
+      <aside className="sao-details sao-details--empty">
+        <p>{t('details.selectServer')}</p>
       </aside>
     )
   }
@@ -76,11 +87,12 @@ export function DetailsPanel({
     copyResetTimer.current = setTimeout(() => setCopyState('idle'), 1600)
   }
 
-  const serverLink = formatNeonServerLink({ ip: server.publicHost || server.ip, port: server.gamePort })
+  const serverAddress = `${server.publicHost || server.ip}:${server.gamePort}`
+  const primaryLang = server.languages?.[0] ?? 'English'
 
   return (
-    <aside className="details">
-      <div className="details__scroll">
+    <aside className="sao-details">
+      <div className="sao-details__scroll">
         {playersViewOpen ? (
           <section id="server-player-list" className="players-view" aria-labelledby="players-view-title">
             <button
@@ -98,191 +110,159 @@ export function DetailsPanel({
               </span>
               <div>
                 <span className="details__kicker">{shortName(server.name)}</span>
-                <h2 id="players-view-title">{t('common.players')}</h2>
+                <h2 id="players-view-title" className="details__title">
+                  {t('common.players')} ({formatNumber(server.players)})
+                </h2>
               </div>
-              <span className="players-view__count">
-                {formatNumber(server.players)} / {formatNumber(server.maxPlayers)}
-              </span>
             </div>
-            {server.players === 0 ? (
-              <p className="players-view__empty">{t('details.noPlayersOnline')}</p>
-            ) : (
-              <ul
-                className="players-view__list"
-                aria-label={t('details.playersOnline', { count: formatNumber(server.players) })}
-              >
-                {server.playerList.map((player, index) => (
-                  <li key={`${player.name}-${index}`}>
-                    <span className="players-view__marker" aria-hidden="true">@</span>
+            {server.playerList && server.playerList.length > 0 ? (
+              <ul className="players-view__list">
+                {server.playerList.map((player: ServerPlayer) => (
+                  <li key={`${player.name}-${player.ping}`} className="players-view__row">
                     <span className="players-view__name">{player.name}</span>
-                    {player.ping !== undefined && <span className="players-view__ping">{player.ping} ms</span>}
+                    <span className="players-view__meta">
+                      {player.score !== undefined && <span className="players-view__score">{player.score}</span>}
+                      {player.ping !== undefined && <span className="players-view__ping">{player.ping} ms</span>}
+                    </span>
                   </li>
                 ))}
               </ul>
+            ) : (
+              <p className="players-view__empty">{t('details.noPlayersOnline')}</p>
             )}
           </section>
         ) : (
-          <>
-            {server.bannerUrl && (
-              <div className="details__banner" aria-hidden="true">
-                <img src={server.bannerUrl} alt="" draggable={false} referrerPolicy="no-referrer" />
-              </div>
-            )}
-            <div className="details__identity">
-              <span
-                className="details__logo"
-                style={{ '--server-accent': server.accent ?? '#accbf1' } as CSSProperties}
-                aria-hidden="true"
-              >
-                <span>{serverInitials(server.name)}</span>
-                {server.logoUrl && <img src={server.logoUrl} alt="" draggable={false} referrerPolicy="no-referrer" />}
-              </span>
-              <div className="details__heading">
-                <span className="details__kicker">{t('details.selectedDestination')}</span>
-                <div className="details__name">
-                  <span>{shortName(server.name)}</span>
-                </div>
-              </div>
+          <div className="sao-details__content">
+            {/* Server Banner Image */}
+            <div className="sao-details__banner">
+              <img
+                src={server.bannerUrl || serverFallbackArt(server.id)}
+                alt={cleanServerName(server.name)}
+                draggable={false}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const target = e.currentTarget
+                  const fallback = serverFallbackArt(server.id)
+                  if (!target.src.endsWith(fallback.replace('./', ''))) {
+                    target.src = fallback
+                  }
+                }}
+              />
+              <div className="sao-details__banner-gradient" />
             </div>
 
-            <p className="details__desc">{server.description}</p>
-
-            <div className={`details__share details__share--${copyState}`}>
-              <div>
-                <span>{t('details.serverLink')}</span>
-                <code>{serverLink}</code>
+            {/* Server Header info */}
+            <div className="sao-details__header">
+              <div className="sao-details__title-row">
+                <h2 className="sao-details__name">{cleanServerName(server.name)}</h2>
+                <div className="sao-details__lang-tag">
+                  {server.country && <Flag country={server.country} />}
+                  <span>{primaryLang}</span>
+                </div>
               </div>
+              <p className="sao-details__desc">
+                {cleanServerText(server.description || server.tagline) || 'Experience San Andreas Online multiplayer.'}
+              </p>
+            </div>
+
+            {/* Action Buttons: Connect & Copy IP */}
+            <div className="sao-details__actions">
               <button
                 type="button"
-                title={t('details.copyAddress', { address: serverLink })}
-                onClick={() => void copyAddress()}
+                className="sao-btn-connect"
+                onClick={() => onConnect(server)}
               >
-                {copyState === 'copied' ? <IconCheck size={14} /> : <IconCopy size={14} />}
-                <span aria-live="polite">
-                  {copyState === 'copied'
-                    ? t('details.copied')
-                    : copyState === 'failed'
-                      ? t('details.copyFailed')
-                      : t('details.copyLink')}
-                </span>
+                <IconPlay size={15} />
+                <span>{t('common.connect')}</span>
+              </button>
+
+              <button
+                type="button"
+                className="sao-btn-secondary"
+                onClick={copyAddress}
+                title={t('details.copyAddress', { address: serverAddress })}
+              >
+                {copyState === 'copied' ? <IconCheck size={15} /> : <IconCopy size={15} />}
+                <span>{copyState === 'copied' ? t('details.copied') : 'Copy IP'}</span>
               </button>
             </div>
 
-            <div className="details__facts">
-              <div>
-                <span>{t('common.players')}</span>
-                <strong>{formatNumber(server.players)} / {formatNumber(server.maxPlayers)}</strong>
+            {/* Server Metadata Grid/Table */}
+            <div className="sao-details__meta-table">
+              <div className="sao-meta-row">
+                <span className="sao-meta-label">IP:Port</span>
+                <span className="sao-meta-value sao-meta-value--code">{serverAddress}</span>
               </div>
-              <div>
-                <span>{t('common.ping')}</span>
-                <strong>{server.ping !== undefined ? `${server.ping} ms` : '—'}</strong>
+
+              <div className="sao-meta-row">
+                <span className="sao-meta-label">Players</span>
+                <span className="sao-meta-value">
+                  {formatNumber(server.players)} / {formatNumber(server.maxPlayers)}
+                </span>
               </div>
-              <div>
-                <span>{t('common.mode')}</span>
-                <strong>{server.gameMode}</strong>
+
+              <div className="sao-meta-row">
+                <span className="sao-meta-label">Ping</span>
+                <span className="sao-meta-value sao-meta-value--ping">
+                  {server.ping !== undefined ? `${server.ping} ms` : '—'}
+                </span>
+              </div>
+
+              <div className="sao-meta-row">
+                <span className="sao-meta-label">Gamemode</span>
+                <span className="sao-meta-value">{cleanGameMode(server.gameMode)}</span>
+              </div>
+
+              <div className="sao-meta-row">
+                <span className="sao-meta-label">Map</span>
+                <span className="sao-meta-value">{cleanMapName(server.map)}</span>
+              </div>
+
+              <div className="sao-meta-row">
+                <span className="sao-meta-label">Version</span>
+                <span className="sao-meta-value">{server.version || '1.6'}</span>
+              </div>
+
+              <div className="sao-meta-row">
+                <span className="sao-meta-label">Language</span>
+                <span className="sao-meta-value">
+                  {server.languages?.join(', ') || primaryLang}
+                </span>
               </div>
             </div>
 
-            {server.links.length > 0 && (
-              <div className="details__links">
-                {server.links.map((link) => {
-                  const Icon = LINK_ICONS[link.kind]
-                  return (
-                    <a
-                      key={link.kind + link.label}
-                      className="details__link"
-                      href={link.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => {
-                        playUiSound('select')
-                        if (onOpenLink(link.url)) e.preventDefault()
-                      }}
-                    >
-                      <Icon size={14} />
-                      {link.label}
-                    </a>
-                  )
-                })}
+            {server.links && server.links.length > 0 && onOpenLink && (
+              <div className="sao-details__links">
+                {server.links.map((link) => (
+                  <button
+                    key={link.url}
+                    type="button"
+                    className="sao-btn-players"
+                    onClick={() => onOpenLink(link.url)}
+                  >
+                    <span>{link.label}</span>
+                  </button>
+                ))}
               </div>
             )}
 
-            <section className="details__section">
-              <div className="details__section-head">
-                <IconGlobe size={14} />
-                {t('details.regionsLanguages')}
-              </div>
-              <div className="details__chips">
-                {(server.countries?.length ? server.countries : server.country ? [server.country] : []).map(
-                  (country) => <Flag key={country} country={country} />,
-                )}
-                {server.languages.map((lang) => (
-                  <span key={lang} className="chip">
-                    {lang}
-                  </span>
-                ))}
-              </div>
-            </section>
-
-            <section className="details__section details__players-preview" aria-labelledby="players-preview-title">
-              <div className="details__section-head">
-                <IconAt size={14} />
-                <span id="players-preview-title">
-                  {t('details.playersOnline', { count: formatNumber(server.players) })}
-                </span>
-                {server.players > 0 && (
-                  <button
-                    ref={playersButtonRef}
-                    type="button"
-                    className="details__view-all"
-                    aria-controls="server-player-list"
-                    aria-expanded={playersViewOpen}
-                    onClick={onOpenPlayers}
-                  >
-                    {t('details.viewAllPlayers', { count: formatNumber(server.players) })}
-                  </button>
-                )}
-              </div>
-              {server.players === 0 ? (
-                <p className="details__players-empty">{t('details.noPlayersOnline')}</p>
-              ) : (
-                <ul
-                  className="details__player-chips"
-                  aria-label={t('details.playersOnline', { count: formatNumber(server.players) })}
+            {/* Players list button if players exist */}
+            {server.players > 0 && (
+              <div className="sao-details__footer">
+                <button
+                  ref={playersButtonRef}
+                  type="button"
+                  className="sao-btn-players"
+                  onClick={onOpenPlayers}
                 >
-                  {server.playerList.slice(0, 6).map((player, index) => (
-                    <li key={`${player.name}-${index}`} className="details__player-chip">
-                      <span aria-hidden="true">@</span>
-                      {player.name}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          </>
+                  <IconAt size={14} />
+                  <span>{t('details.viewAllPlayers', { count: formatNumber(server.players) })}</span>
+                </button>
+              </div>
+            )}
+          </div>
         )}
-      </div>
-
-      <div className="details__footer" key={server.id}>
-        <button type="button" className="connect-btn" onClick={() => onConnect(server)}>
-          <IconPlay size={18} />
-          {t('details.joinServer')}
-        </button>
       </div>
     </aside>
   )
-}
-
-/** Tronque les noms décorés ("[HUN] X | Y | discord…") pour la bannière. */
-function shortName(name: string): string {
-  const cleaned = name
-    .replace(/[|[\]=-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return cleaned.length > 26 ? `${cleaned.slice(0, 26)}…` : cleaned
-}
-
-function serverInitials(name: string): string {
-  const words = name.replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(/\s+/)
-  return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase() || 'N'
 }
