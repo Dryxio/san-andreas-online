@@ -1,0 +1,742 @@
+{
+    "references": {
+        "colors": {
+            "red":    { "red": 255, "blue":   0, "green":   153, "alpha": 180 },
+			"white":  { "red": 255, "blue": 255, "green": 255, "alpha": 180 },
+			"yellow": { "red": 255, "blue": 0, "green": 153, "alpha": 180 },
+            "doorblue": { "red": 255, "blue": 0, "green": 153, "alpha": 190 },
+			"blue": { "red": 255, "blue": 0, "green": 153, "alpha": 180 }
+	    },
+		
+		"strobe": {
+            "size": 0.2,
+
+            "diffuse": true
+	    },
+		
+		"doorled": {
+            "size": 0.4,
+			
+			"color": "doorblue",
+
+            "diffuse": true,
+
+			"shadow": {
+                "offset": 0.4,
+
+                "size": 1.0,
+	
+                "type": 10
+			}
+	    }
+	},
+
+    "states": {
+        "1.Emergency": {
+			"1": {
+                "color": "yellow",
+
+                "pattern": [ 600, 600 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"2": {
+                "color": "yellow",
+
+                "pattern": [ 600, 600 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"5": {
+                "color": "yellow",
+
+                "pattern": [ 600, 600 ],
+
+                "state": 1,
+
+                "reference": "strobe"
+			},
+			
+			"6": {
+                "color": "yellow",
+
+                "pattern": [ 600, 600 ],
+
+                "state": 1,
+
+                "reference": "strobe"
+			},
+			
+			"41": {
+                "color": "red",
+
+                "pattern": [ 0, 100, 300 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"40": {
+                "color": "red",
+
+                "pattern": [ 100, 100, 100, 100 ],
+
+                "state": 0,
+
+                "reference": "strobe"	
+			},
+			
+			"39": {
+                "color": "red",
+
+                "pattern": [ 200, 100, 100 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"38": {
+                "color": "blue",
+
+                "pattern": [ 0, 100, 300 ],
+
+                "state": 0,
+
+                "reference": "strobe"	
+			},
+			
+			"37": {
+                "color": "blue",
+
+                "pattern": [ 100, 100, 100, 100 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"36": {
+                "color": "blue",
+
+                "pattern": [ 200, 100, 100 ],
+
+                "state": 0,
+
+                "reference": "strobe"		
+			},
+			
+			"35": {
+                "color": "blue",
+
+                "pattern": [ [2, 600, 600] ],
+
+                "state": 0,
+
+                "reference": "strobe"
+            },
+			
+			"42": {
+                "color": "red",
+
+                "pattern": [ [2, 600, 600] ],
+
+                "state": 1,
+
+                "reference": "strobe"	
+            },
+			
+			"27": {
+                "color": "white",
+
+                "pattern": [ 300, 300 ],
+
+                "state": 1,
+
+                "reference": "strobe"
+            },
+			
+			"28": {
+                "color": "white",
+
+                "pattern": [ 300, 300 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+            },
+			
+			"31": {
+                "color": "red",
+
+                "pattern": [ 400, 400 ],
+
+                "state": 1,
+
+                "reference": "strobe"
+            },
+			
+			"32": {
+                "color": "blue",
+
+                "pattern": [ 400, 400 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+            },
+			
+			"30": {
+                "color": "red",
+
+                "pattern": [ 400, 400 ],
+
+                "state": 1,
+
+                "reference": "strobe"
+            },
+			
+			"33": {
+                "color": "blue",
+
+                "pattern": [ 400, 400 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+            },
+			
+			"29": {
+                "color": "red",
+
+                "pattern": [ 400, 400 ],
+
+                "state": 1,
+
+                "reference": "strobe"
+            },
+			
+			"34": {
+                "color": "blue",
+
+                "pattern": [ 400, 400 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"15": {
+                "color": "yellow",
+
+                "pattern": [ 400, 400 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"16": {
+                "color": "yellow",
+
+                "pattern": [ 400, 400 ],
+
+                "state": 1,
+
+                "reference": "strobe"
+	        }
+     	},
+
+		"2. Right": {		
+			"26": {
+                "pattern": [ 0, 50, 850 ],
+
+                "reference": "doorled"	
+			},
+			
+			"25": {
+                "pattern": [ 50, 50, 800 ],
+
+                "reference": "doorled"	
+			},
+			
+			"24": {
+                "pattern": [ 100, 50, 750 ],
+
+                "reference": "doorled"	
+			},
+			
+			"23": {
+                "pattern": [ 150, 50, 700 ],
+
+                "reference": "doorled"	
+			},
+			
+			"22": {
+                "pattern": [ 200, 50, 650 ],
+
+                "reference": "doorled"	
+			},
+			
+			"21": {
+                "pattern": [ 250, 50, 600 ],
+
+                "reference": "doorled"	
+			},
+			
+			"20": {
+                "pattern": [ 300, 50, 550 ],
+
+                "reference": "doorled"	
+			},
+			
+			"19": {
+                "pattern": [ 350, 50, 500 ],
+
+                "reference": "doorled"	
+			},
+			
+			"18": {
+                "pattern": [ 400, 50, 450 ],
+
+                "reference": "doorled"	
+			},
+			
+			"17": {
+                "pattern": [ 450, 50, 100, 100, 100, 100 ],
+
+                "reference": "doorled"					
+			},
+			
+			"41": {
+                "color": "red",
+
+                "pattern": [ 0, 100, 900 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"40": {
+                "color": "red",
+
+                "pattern": [ 100, 100, 800 ],
+
+                "state": 0,
+
+                "reference": "strobe"	
+			},
+			
+			"39": {
+                "color": "red",
+
+                "pattern": [ 200, 100, 700 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"38": {
+                "color": "blue",
+
+                "pattern": [ 300, 100, 600 ],
+
+                "state": 0,
+
+                "reference": "strobe"	
+			},
+			
+			"37": {
+                "color": "blue",
+
+                "pattern": [ 400, 100, 500 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"36": {
+                "color": "blue",
+
+                "pattern": [ 500, 100, 100, 100, 100, 100 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"6": {
+                "color": "yellow",
+
+                "pattern": [ 0, 2000 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"5": {
+                "color": "yellow",
+
+                "pattern": [ 200, 1800 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"4": {
+                "color": "yellow",
+
+                "pattern": [ 400, 1600 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"3": {
+                "color": "yellow",
+
+                "pattern": [ 600, 1400 ],
+				
+                "state": 0,
+
+                "reference": "strobe"	
+			},
+			
+			"2": {
+                "color": "yellow",
+
+                "pattern": [ 800, 1200 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"1": {
+                "color": "yellow",
+
+                "pattern": [ 1000, 1000 ],
+				
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"11": {
+                "color": "yellow",
+
+                "pattern": [ 1000, 1000 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"12": {
+                "color": "yellow",
+
+                "pattern": [ 1000, 1000 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"13": {
+                "color": "yellow",
+
+                "pattern": [ 1000, 1000 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"14": {
+                "color": "yellow",
+
+                "pattern": [ 1000, 1000 ],
+
+                "state": 0,
+
+                "reference": "strobe"	
+			},
+			
+			"15": {
+                "color": "yellow",
+
+                "pattern": [ 400, 400 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"16": {
+                "color": "yellow",
+
+                "pattern": [ 400, 400 ],
+
+                "state": 1,
+
+                "reference": "strobe"	
+            }
+        },			
+
+		
+		"3. Left": {
+			"26": {
+                "pattern": [ 0, 50, 850 ],
+
+                "reference": "doorled"	
+			},
+			
+			"25": {
+                "pattern": [ 50, 50, 800 ],
+
+                "reference": "doorled"	
+			},
+			
+			"24": {
+                "pattern": [ 100, 50, 750 ],
+
+                "reference": "doorled"	
+			},
+			
+			"23": {
+                "pattern": [ 150, 50, 700 ],
+
+                "reference": "doorled"	
+			},
+			
+			"22": {
+                "pattern": [ 200, 50, 650 ],
+
+                "reference": "doorled"	
+			},
+			
+			"21": {
+                "pattern": [ 250, 50, 600 ],
+
+                "reference": "doorled"	
+			},
+			
+			"20": {
+                "pattern": [ 300, 50, 550 ],
+
+                "reference": "doorled"	
+			},
+			
+			"19": {
+                "pattern": [ 350, 50, 500 ],
+
+                "reference": "doorled"	
+			},
+			
+			"18": {
+                "pattern": [ 400, 50, 450 ],
+
+                "reference": "doorled"	
+			},
+			
+			"17": {
+                "pattern": [ 450, 50, 100, 100, 100, 100 ],
+
+                "reference": "doorled"					
+			},
+			
+			"36": {
+                "color": "blue",
+
+                "pattern": [ 0, 100, 900 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"37": {
+                "color": "blue",
+
+                "pattern": [ 100, 100, 800 ],
+
+                "state": 0,
+
+                "reference": "strobe"	
+			},
+			
+			"38": {
+                "color": "blue",
+
+                "pattern": [ 200, 100, 700 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"39": {
+                "color": "red",
+
+                "pattern": [ 300, 100, 600 ],
+
+                "state": 0,
+
+                "reference": "strobe"	
+			},
+			
+			"40": {
+                "color": "red",
+
+                "pattern": [ 400, 100, 500 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"41": {
+                "color": "red",
+
+                "pattern": [ 500, 100, 100, 100, 100, 100 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"1": {
+                "color": "yellow",
+
+                "pattern": [ 0, 2000 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"2": {
+                "color": "yellow",
+
+                "pattern": [ 200, 1800 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"3": {
+                "color": "yellow",
+
+                "pattern": [ 400, 1600 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"4": {
+                "color": "yellow",
+
+                "pattern": [ 600, 1400 ],
+
+                "state": 0,
+
+                "reference": "strobe"	
+			},
+			
+			"5": {
+                "color": "yellow",
+
+                "pattern": [ 800, 1200 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"6": {
+                "color": "yellow",
+
+                "pattern": [ 1000, 1000 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"7": {
+                "color": "yellow",
+
+                "pattern": [ 1000, 1000 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"8": {
+                "color": "yellow",
+
+                "pattern": [ 1000, 1000 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"9": {
+                "color": "yellow",
+
+                "pattern": [ 1000, 1000 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"10": {
+                "color": "yellow",
+
+                "pattern": [ 1000, 1000 ],
+
+                "state": 0,
+
+                "reference": "strobe"	
+			},
+			
+			"15": {
+                "color": "yellow",
+
+                "pattern": [ 400, 400 ],
+
+                "state": 0,
+
+                "reference": "strobe"
+			},
+			
+			"16": {
+                "color": "yellow",
+
+                "pattern": [ 400, 400 ],
+
+                "state": 1,
+
+                "reference": "strobe"								
+            }				
+		}				
+    }
+}

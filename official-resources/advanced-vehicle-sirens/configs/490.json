@@ -1,0 +1,395 @@
+{
+    "references": {
+        "colors": {
+            "red":    { "red": 255, "blue":   0, "green":   0, "alpha": 180 },
+			"white":  { "red": 255, "blue": 255, "green": 255, "alpha": 200 },
+			"yellow": { "red": 255, "blue": 0, "green": 180, "alpha": 150 },
+			"altyellow": { "red": 255, "blue": 0, "green": 80, "alpha": 180 },
+			"blue": { "red": 2, "green": 96, "blue": 255, "alpha": 180 }
+        },
+		
+		"rotator": {
+            "size": 0.25,
+
+            "state": 1,
+
+            "type": "rotator",
+
+            "rotator": {
+                "type": "linear"
+		    }
+	    },
+		
+		"strobe": {
+            "size": 0.2,
+
+            "diffuse": true
+	    },
+		
+		"advisor": {
+		    "color": "yellow",
+			
+			"size": 0.2,
+			
+			"diffuse": true
+	    }
+	},
+
+    "states": {
+        "1. Code 3": {
+            "1": {
+                "color": "blue",
+				
+				"state": 0,
+
+                "pattern": [ 80, 80, 80, 80, 80, 80, 80, 80, 100, 100, 100, 100, 740, 100, 100, 100 ],
+
+                "reference": "strobe"
+            },
+
+            "2": {
+                "color": "red",
+				
+				"state": 0,
+
+                "pattern": [ 740, 100, 100, 100, 80, 80, 80, 80, 80, 80, 80, 80, 100, 100, 100, 100 ],
+
+                "reference": "strobe"
+            },
+
+            "14": {
+                "color": "blue",
+				
+                "state": 0,
+
+                "pattern": [ 50, 50, 50, 300, 400 ],
+
+                "reference": "strobe"
+            },
+
+            "15": {
+                "color": "red",
+				
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 300 ],
+
+                "reference": "strobe"
+            },
+
+            "25": {
+                "color": "red",
+				
+                "state": 0,
+
+                "pattern": [ 50, 50, 50, 50, 50, 50, 550 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "size": 0.4
+            },
+
+            "26": {
+                "color": "red",
+				
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50, 150 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "size": 0.4
+            },
+
+            "27": {
+                "color": "white",
+				
+                "state": 0,
+
+                "pattern": [ 50, 50, 50, 50, 50, 50, 550 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "reference": "strobe"
+            },
+
+            "28": {
+                "color": "white",
+				
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50, 150 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "reference": "strobe"
+			}
+		},
+		
+        "2. Code 3 Alt": {
+            "1": {
+                "color": "blue",
+				
+				"state": 1,
+
+                "pattern": [ 200, 200 ],
+
+                "reference": "strobe"
+            },
+
+            "2": {
+                "color": "red",
+				
+				"state": 0,
+
+                "pattern": [ 200, 200 ],
+
+                "reference": "strobe"
+            },
+
+            "14": {
+                "color": "blue",
+				
+                "state": 1,
+
+                "pattern": [ 200, 200 ],
+
+                "reference": "strobe"
+            },
+
+            "15": {
+                "color": "red",
+				
+                "state": 0,
+
+                "pattern": [ 200, 200 ],
+
+                "reference": "strobe"
+            },
+
+            "25": {
+                "color": "red",
+				
+                "state": 0,
+
+                "pattern": [ 50, 50, 50, 50, 50, 50, 550 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "size": 0.4
+            },
+
+            "26": {
+                "color": "red",
+				
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50, 150 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "size": 0.4
+            },
+
+            "27": {
+                "color": "white",
+				
+                "state": 0,
+
+                "pattern": [ 50, 50, 50, 50, 50, 50, 550 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "reference": "strobe"
+            },
+
+            "28": {
+                "color": "white",
+				
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50, 150 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "reference": "strobe"
+            }
+		},
+		
+        "3. Hazard rear": {
+            "14": {
+                "color": "blue",
+				
+                "state": 0,
+
+                "pattern": [ 50, 50, 50, 300, 400 ],
+
+                "reference": "strobe"
+            },
+
+            "15": {
+                "color": "red",
+				
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 300 ],
+
+                "reference": "strobe"
+            },
+
+            "25": {
+                "color": "red",
+				
+                "state": 0,
+
+                "pattern": [ 50, 50, 50, 50, 50, 50, 550 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "size": 0.4
+            },
+
+            "26": {
+                "color": "red",
+				
+                "state": 0,
+
+                "pattern": [ 450, 50, 50, 50, 50, 50, 150 ],
+				
+			    "shadow": {
+                    "offset": 0.5,
+
+                    "size": 1.5,
+	
+                    "type": 0
+				},
+
+                "size": 0.4
+			}
+		},
+
+        "4. Spotlight Light": {
+            "8": {
+                "color": "white",
+                
+				"size": 0.3,
+
+				"diffuse": { "color": true },
+
+                "type": "rotator",
+				
+				"state": 1,
+				
+				"rotator": {
+                    "direction": "switch",
+					
+			        "radius": 0.0,
+
+                    "offset": 0.0,
+					
+					"type": "linear",
+				
+				    "time": 100
+                }
+			},
+				
+            "9": {
+                "color": "white",
+                
+				"size": 0.3,
+
+				"diffuse": { "color": true },
+
+                "type": "rotator",
+				
+				"state": 1,
+				
+				"rotator": {
+                    "direction": "switch",
+					
+			        "radius": 0.0,
+
+                    "offset": 0.0,
+					
+					"type": "linear",
+				
+				    "time": 100
+				}
+            },
+
+            "13": {
+                "color": "white",
+				
+		        "state": 0, 
+
+                "pattern": [ 500, 500  ],
+
+                "reference": "strobe"
+            },
+
+            "12": {
+                "color": "white",
+				
+				"state": 1, 
+
+                "pattern": [ 500, 500  ],
+
+                "reference": "strobe"
+			}
+        }
+    }
+}

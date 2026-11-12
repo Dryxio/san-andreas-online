@@ -9,6 +9,7 @@
  *****************************************************************************/
 
 #include "StdInc.h"
+#include "CClientVehicleSirenManager.h"
 #include <game/TaskCar.h>
 #include <enums/VehicleType.h>
 
@@ -676,6 +677,13 @@ bool CClientVehicleManager::HasTurret(unsigned long ulModel)
 bool CClientVehicleManager::HasSirens(unsigned long ulModel)
 {
     ulModel = ResolveVehicleParentModel(ulModel);
+
+    // If an Advanced Vehicle Sirens (AVS) configuration is registered for this vehicle model,
+    // recognize it as having sirens so that GTA input handling and multiplayer packet sync
+    // treat the vehicle as an emergency vehicle.
+    if (CClientVehicleSirenManager::GetSingleton().HasModelConfig(ulModel))
+        return true;
+
     return (IsStandardModel(ulModel) && (g_ulVehicleAttributes[ulModel - 400] & VEHICLE_HAS_SIRENS));
 }
 
@@ -792,6 +800,7 @@ void CClientVehicleManager::OnCreation(CClientVehicle* pVehicle)
 void CClientVehicleManager::OnDestruction(CClientVehicle* pVehicle)
 {
     ListRemove(m_StreamedIn, pVehicle);
+    CClientVehicleSirenManager::GetSingleton().OnVehicleDestroyed(pVehicle);
 }
 
 void CClientVehicleManager::RestreamVehicles(unsigned short usModel)
