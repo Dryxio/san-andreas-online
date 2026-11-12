@@ -110,6 +110,20 @@ export function MainMenu(props: MainMenuProps) {
             label: t('main.resumeGame'),
             action: props.onResume,
           },
+          // As in MTA's classic pause menu, a player can look for another
+          // server without leaving the current one first. Joining from the
+          // list switches servers (the engine unloads the current one), and
+          // Quick Connect asks before it reconnects to the last server.
+          {
+            id: 'play',
+            label: t('main.browseServers'),
+            action: props.onBrowseServers,
+          },
+          {
+            id: 'quick-connect',
+            label: t('main.quickConnect'),
+            action: props.onQuickConnect,
+          },
           {
             id: 'settings',
             label: t('common.settings'),

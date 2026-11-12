@@ -4147,6 +4147,27 @@ void CServerBrowserWeb::Events_OnConsoleMessage(const std::string& message, cons
     WriteDebugEvent(SString("Neon menu console: %s (%s:%d)", message.c_str(), source.c_str(), line));
 }
 
+void CServerBrowserWeb::StartQuickConnect()
+{
+    // The always-mounted menu shell owns the lightweight connection modal,
+    // so Quick Connect can remain immediate without loading server data or
+    // starting the lazy Server Browser scan. The flag is set before the
+    // attempt so even an immediate failure is shown by the web modal.
+    m_connectionUiActive = true;
+    if (!m_mainMenu.OnQuickConnectButtonClick(nullptr, true))
+        m_connectionUiActive = false;
+}
+
+void CServerBrowserWeb::StaticQuickConnectAnswer(void* data, unsigned int button)
+{
+    auto* browser = static_cast<CServerBrowserWeb*>(data);
+    if (!browser || browser != ms_instance)
+        return;
+    browser->m_mainMenu.GetQuestionWindow()->Reset();
+    if (button == 1)
+        browser->StartQuickConnect();
+}
+
 void CServerBrowserWeb::HandleMenuEvent(const SString& eventName, const std::vector<std::string>& arguments)
 {
     if (eventName == "menu:ready")
@@ -4211,12 +4232,24 @@ void CServerBrowserWeb::HandleMenuEvent(const SString& eventName, const std::vec
     }
     else if (eventName == "menu:quickConnect")
     {
-        // The always-mounted menu shell owns the lightweight connection modal,
-        // so Quick Connect can remain immediate without loading server data or
-        // starting the lazy Server Browser scan.
-        m_connectionUiActive = true;
-        if (!m_mainMenu.OnQuickConnectButtonClick(nullptr, true))
-            m_connectionUiActive = false;
+        // In game, Quick Connect reconnects to the last server and so leaves
+        // the current one. The classic menu asks first (CMainMenu::OnMenuClick
+        // routes it through AskUserIfHeWantsToDisconnect); the pause menu now
+        // offers Quick Connect too, so it asks the same question here.
+        if (g_pCore->IsConnected() && g_pCore->GetCVars()->GetValue("ask_before_disconnect", true))
+        {
+            CQuestionBox* questionBox = m_mainMenu.GetQuestionWindow();
+            questionBox->Reset();
+            questionBox->SetTitle(_("DISCONNECT WARNING"));
+            questionBox->SetMessage(_("This will disconnect you from the current server.\n\nAre you sure you want to disconnect?"));
+            questionBox->SetButton(0, _("No"));
+            questionBox->SetButton(1, _("Yes"));
+            questionBox->SetCallback(StaticQuickConnectAnswer, this);
+            SetNativeDialogVisible(true);
+            questionBox->Show();
+        }
+        else
+            StartQuickConnect();
     }
     else if (eventName == "menu:resume" && m_mainMenu.GetIsIngame())
         m_mainMenu.OnResumeButtonClick(nullptr);

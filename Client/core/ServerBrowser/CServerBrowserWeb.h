@@ -83,6 +83,8 @@ private:
     };
 
     void HandleMenuEvent(const SString& eventName, const std::vector<std::string>& arguments);
+    void StartQuickConnect();
+    static void StaticQuickConnectAnswer(void* data, unsigned int button);
     void HandleServerBrowserEvent(const SString& eventName, const std::vector<std::string>& arguments);
     void HandleSettingsEvent(const SString& eventName, const std::vector<std::string>& arguments);
     bool InitialiseWebView();
