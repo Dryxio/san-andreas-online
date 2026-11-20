@@ -335,6 +335,11 @@ requests can arrive exclusively through that proxy, and keep request query,
 cookie, and authorization headers out of proxy logs. The service itself omits
 request URLs from structured logs and redacts credential-bearing headers.
 
+To offer sign-in through the installed Discord app, also register
+`com.worldrpg.neonlauncher:/authorize/callback` in the Discord application's
+OAuth2 redirect list and set `DISCORD_ANDROID_APP_SIGN_IN=true` on the identity
+service. The existing HTTPS redirect continues to serve browser sign-in.
+
 ## Identity security allowlist
 
 `NEON_SERVER_REGISTRY` remains a required compatibility map for manually

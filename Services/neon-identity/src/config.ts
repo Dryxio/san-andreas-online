@@ -34,6 +34,7 @@ const environmentSchema = z.object({
     DISCORD_CLIENT_ID: z.string().regex(/^\d+$/),
     DISCORD_CLIENT_SECRET: z.string().min(16),
     DISCORD_REDIRECT_URI: z.url(),
+    DISCORD_ANDROID_APP_SIGN_IN: booleanFromString,
     DISCORD_API_BASE_URL: z.url().default("https://discord.com/api/v10"),
     DISCORD_REQUIRED_GUILD_ID: z.string().regex(/^\d+$/).optional().or(z.literal("")),
     DISCORD_REQUIRED_ROLE_IDS: z.string().optional().default(""),
@@ -64,6 +65,7 @@ export interface ServiceConfig {
         clientId: string;
         clientSecret: string;
         redirectUri: string;
+        androidAppSignIn?: boolean;
         apiBaseUrl: string;
         requiredGuildId: string | null;
         requiredRoleIds: string[];
@@ -134,6 +136,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): Servic
             clientId: parsed.DISCORD_CLIENT_ID,
             clientSecret: parsed.DISCORD_CLIENT_SECRET,
             redirectUri: redirectUri.href,
+            androidAppSignIn: parsed.DISCORD_ANDROID_APP_SIGN_IN,
             apiBaseUrl: parsed.DISCORD_API_BASE_URL.replace(/\/$/, ""),
             requiredGuildId,
             requiredRoleIds: parsed.DISCORD_REQUIRED_ROLE_IDS.split(",")

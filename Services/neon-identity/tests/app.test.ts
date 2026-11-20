@@ -19,16 +19,19 @@ class FakeDiscordClient implements DiscordClient {
     };
     exchangedCode: string | null = null;
     exchangedVerifier: string | null = null;
+    exchangedRedirect: string | undefined;
 
-    createAuthorizationUrl(state: string, codeChallenge: string): string {
+    createAuthorizationUrl(state: string, codeChallenge: string, redirectUri?: string): string {
         const url = new URL("https://discord.test/oauth2/authorize");
         url.search = new URLSearchParams({ state, code_challenge: codeChallenge, scope: "identify" }).toString();
+        if (redirectUri) url.searchParams.set("redirect_uri", redirectUri);
         return url.href;
     }
 
-    async exchangeCode(code: string, codeVerifier: string): Promise<string> {
+    async exchangeCode(code: string, codeVerifier: string, redirectUri?: string): Promise<string> {
         this.exchangedCode = code;
         this.exchangedVerifier = codeVerifier;
+        this.exchangedRedirect = redirectUri;
         return "discord-access-token";
     }
 
@@ -82,6 +85,7 @@ function firstCookie(value: string | string[] | undefined): string | undefined {
 
 describe("Neon Identity HTTP contract", () => {
     let app: Awaited<ReturnType<typeof buildApp>>;
+    let config: ServiceConfig;
     let store: MemoryIdentityStore;
     let discord: FakeDiscordClient;
     let signer: TicketSigner;
@@ -141,7 +145,7 @@ describe("Neon Identity HTTP contract", () => {
         const keys = await generateKeyPair("EdDSA", { crv: "Ed25519", extractable: true });
         const privateJwk = await exportJWK(keys.privateKey);
         publicKey = await importJWK((await exportJWK(keys.publicKey)) as JWK, "EdDSA") as CryptoKey;
-        const config = testConfig(privateJwk);
+        config = testConfig(privateJwk);
         signer = await TicketSigner.create(privateJwk, config.issuer, config.ticketKeyId, config.ticketTtlSeconds);
         store = new MemoryIdentityStore();
         discord = new FakeDiscordClient();
@@ -359,6 +363,56 @@ describe("Neon Identity HTTP contract", () => {
         });
         expect(replay.statusCode).toBe(401);
         expect(replay.json()).toEqual({ error: "replay" });
+    });
+
+    it("offers an app flow only when opted in and binds its completion to the launcher", async () => {
+        const start = () => app.inject({
+            method: "POST", url: "/v1/auth/discord/start", payload: { prefer_discord_app: true },
+        });
+        expect((await start()).json().discord_app).toBeUndefined();
+        config.discord.androidAppSignIn = true;
+        const started = (await start()).json<{
+            flow_id: string;
+            poll_token: string;
+            discord_app: { authorization_url: string; grant: string; state: string };
+        }>();
+        const address = new URL(started.discord_app.authorization_url);
+        expect(address.protocol + "//" + address.host + address.pathname).toBe("discord://action/oauth2/authorize");
+        const redirect = "com.worldrpg.neonlauncher:/authorize/callback";
+        expect(address.searchParams.get("redirect_uri")).toBe(redirect);
+        expect(address.searchParams.get("state")).toBe(started.discord_app.state);
+        expect(address.searchParams.get("code_challenge")).toBeTruthy();
+        expect(address.href).not.toContain(started.discord_app.grant);
+        expect(address.href).not.toContain(started.poll_token);
+
+        const payload = {
+            flow_id: started.flow_id, poll_token: started.poll_token,
+            code: "discord-code", state: started.discord_app.state, grant: started.discord_app.grant,
+        };
+        const finish = (overrides = {}) => app.inject({
+            method: "POST", url: "/v1/auth/discord/android/complete", payload: { ...payload, ...overrides },
+        });
+        expect((await finish({ poll_token: "a".repeat(43) })).statusCode).toBe(400);
+        expect((await finish({ state: "b".repeat(43) })).statusCode).toBe(400);
+        expect((await finish({ grant: "c".repeat(43) })).statusCode).toBe(400);
+        expect(discord.exchangedCode).toBeNull();
+        const browser = await app.inject({
+            method: "GET",
+            url: `/v1/auth/discord/callback?code=discord-code&state=${payload.state}`,
+            headers: { cookie: `neon_oauth_v1=${payload.grant}` },
+        });
+        expect(browser.statusCode).toBe(400);
+        expect(discord.exchangedCode).toBeNull();
+
+        expect((await finish()).statusCode).toBe(200);
+        expect(discord.exchangedCode).toBe("discord-code");
+        expect(discord.exchangedRedirect).toBe(redirect);
+        expect((await finish()).statusCode).toBe(400);
+        const polled = await app.inject({
+            method: "POST", url: "/v1/auth/discord/poll",
+            payload: { flow_id: started.flow_id, poll_token: started.poll_token },
+        });
+        expect(polled.json().session_token).toMatch(/^ns_v1_/);
     });
 
     it("completes OAuth once and issues a server-bound Ed25519 ticket", async () => {

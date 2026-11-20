@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import cookie from "@fastify/cookie";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
-import Fastify, { type FastifyServerOptions } from "fastify";
+import Fastify, { type FastifyBaseLogger, type FastifyServerOptions } from "fastify";
 import { z } from "zod";
 
 import { probeMtaAse, type AseProbe } from "./ase-probe.js";
@@ -24,6 +24,7 @@ import {
 import type { TicketSigner } from "./tickets.js";
 
 const OAUTH_COOKIE_NAME = "neon_oauth_v1";
+const ANDROID_DISCORD_REDIRECT = "com.worldrpg.neonlauncher:/authorize/callback";
 const SERVER_REGISTRY_ACTIVE_SECONDS = 5 * 60;
 const SERVER_ASSET_REFRESH_SECONDS = 6 * 60 * 60;
 const serverAssetHashSchema = z.string().regex(/^[0-9a-f]{64}$/);
@@ -35,6 +36,11 @@ const startAuthorizationSchema = z.object({
 const pollSchema = z.object({
     flow_id: z.uuid(),
     poll_token: z.string().min(32).max(256),
+});
+const androidCompleteSchema = pollSchema.extend({
+    state: z.string().min(32).max(256),
+    grant: z.string().min(32).max(4096),
+    code: z.string().min(1).max(2048),
 });
 const ticketRequestSchema = z.object({
     server_id: serverIdSchema,
@@ -131,6 +137,28 @@ export async function buildApp(dependencies: AppDependencies) {
     const aseProbe = dependencies.aseProbe ?? probeMtaAse;
     const serverAssetFetcher = dependencies.serverAssetFetcher ?? fetchServerAsset;
     const now = dependencies.now ?? (() => new Date());
+
+    async function completeDiscordAuthorization(
+        code: string, authorization: OAuthCookieState, currentTime: Date, log: FastifyBaseLogger, redirectUri?: string,
+    ): Promise<200 | 400 | 403 | 502> {
+        const stateHash = hashToken(authorization.state);
+        try {
+            const accessToken = await discord.exchangeCode(code, authorization.verifier, redirectUri);
+            const profile = await discord.getCurrentUser(accessToken);
+            const policyResult = await policy.evaluate(profile);
+            if (!policyResult.allowed) {
+                await store.denyFlow(authorization.flowId, stateHash, policyResult.code, currentTime);
+                return 403;
+            }
+            const account = await store.completeFlow(authorization.flowId, stateHash, profile, currentTime);
+            return account ? 200 : 400;
+        } catch (error) {
+            log.warn({ err: error, flowId: authorization.flowId }, "Discord OAuth callback failed");
+            await store.denyFlow(authorization.flowId, stateHash, "discord_oauth_unavailable", currentTime);
+            return 502;
+        }
+    }
+
     const app = Fastify({
         logger: dependencies.logger ?? false,
         trustProxy: config.trustProxy,
@@ -361,7 +389,7 @@ export async function buildApp(dependencies: AppDependencies) {
     app.post(
         "/v1/auth/discord/start",
         { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
-        async (_request, reply) => {
+        async (request, reply) => {
             const currentTime = now();
             const flowId = randomUUID();
             const pollToken = randomToken();
@@ -383,11 +411,32 @@ export async function buildApp(dependencies: AppDependencies) {
             // A fragment keeps the one-time browser capability out of HTTP access
             // logs and Referer headers; the bridge page posts it same-origin.
             authorizationUrl.hash = new URLSearchParams({ flow_id: flowId, browser_token: browserToken }).toString();
+            const preferApp = (request.body as { prefer_discord_app?: unknown } | undefined)?.prefer_discord_app === true;
+            let discordApp;
+            if (preferApp && config.discord.androidAppSignIn) {
+                const state = randomToken();
+                const verifier = randomToken(48);
+                if (await store.beginFlow(flowId, hashToken(browserToken), hashToken(state), currentTime)) {
+                    const webUrl = new URL(discord.createAuthorizationUrl(state, pkceChallenge(verifier), ANDROID_DISCORD_REDIRECT));
+                    const appUrl = new URL("discord://action/oauth2/authorize");
+                    appUrl.search = webUrl.search;
+                    const authorization: OAuthCookieState = { flowId, verifier, state, expiresAt: expiresAt.getTime() };
+                    // The launcher keeps the sealed verifier and its poll capability. The Discord
+                    // app receives only the public authorization parameters and the PKCE challenge.
+                    discordApp = {
+                        authorization_url: appUrl.href,
+                        state,
+                        grant: sealJson({ android: authorization }, config.oauthCookieKey),
+                    };
+                }
+            }
+            reply.header("cache-control", "no-store");
             return reply.code(201).send({
                 flow_id: flowId,
                 poll_token: pollToken,
                 authorization_url: authorizationUrl.href,
                 expires_at: expiresAt.toISOString(),
+                discord_app: discordApp,
             });
         },
     );
@@ -476,23 +525,34 @@ export async function buildApp(dependencies: AppDependencies) {
             return reply.code(403).send(resultHtml(false));
         }
 
-        try {
-            const accessToken = await discord.exchangeCode(query.code, state.verifier);
-            const profile = await discord.getCurrentUser(accessToken);
-            const policyResult = await policy.evaluate(profile);
-            if (!policyResult.allowed) {
-                await store.denyFlow(state.flowId, hashToken(state.state), policyResult.code, currentTime);
-                return reply.code(403).send(resultHtml(false));
-            }
-            const account = await store.completeFlow(state.flowId, hashToken(state.state), profile, currentTime);
-            if (!account) return reply.code(400).send(resultHtml(false));
-            return reply.code(200).send(resultHtml(true));
-        } catch (error) {
-            request.log.warn({ err: error, flowId: state.flowId }, "Discord OAuth callback failed");
-            await store.denyFlow(state.flowId, hashToken(state.state), "discord_oauth_unavailable", currentTime);
-            return reply.code(502).send(resultHtml(false));
-        }
+        const status = await completeDiscordAuthorization(query.code, state, currentTime, request.log);
+        return reply.code(status).send(resultHtml(status === 200));
     });
+
+    app.post(
+        "/v1/auth/discord/android/complete",
+        { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
+        async (request, reply) => {
+            if (!config.discord.androidAppSignIn) return reply.code(404).send({ error: "unavailable" });
+            reply.header("cache-control", "no-store");
+            const parsed = androidCompleteSchema.safeParse(request.body);
+            if (!parsed.success) return reply.code(400).send({ error: "invalid_authorization_request" });
+
+            const currentTime = now();
+            const data = parsed.data;
+            const authorization = openJson<{ android?: OAuthCookieState }>(data.grant, config.oauthCookieKey)?.android;
+            if (!authorization || authorization.expiresAt <= currentTime.getTime() ||
+                authorization.flowId !== data.flow_id || !constantTimeStringEqual(data.state, authorization.state)) {
+                return reply.code(400).send({ error: "invalid_or_expired_flow" });
+            }
+            const flow = await store.inspectFlow(data.flow_id, hashToken(data.poll_token), currentTime);
+            if (flow?.status !== "pending") return reply.code(400).send({ error: "invalid_or_expired_flow" });
+
+            const status = await completeDiscordAuthorization(data.code, authorization, currentTime, request.log,
+                ANDROID_DISCORD_REDIRECT);
+            return reply.code(status).send(status === 200 ? { status: "authorized" } : { error: "authorization_failed" });
+        },
+    );
 
     app.post(
         "/v1/auth/discord/poll",

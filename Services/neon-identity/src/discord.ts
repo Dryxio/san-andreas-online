@@ -25,8 +25,8 @@ export interface DiscordGuildMember {
 }
 
 export interface DiscordClient {
-    createAuthorizationUrl(state: string, codeChallenge: string): string;
-    exchangeCode(code: string, codeVerifier: string): Promise<string>;
+    createAuthorizationUrl(state: string, codeChallenge: string, redirectUri?: string): string;
+    exchangeCode(code: string, codeVerifier: string, redirectUri?: string): Promise<string>;
     getCurrentUser(accessToken: string): Promise<DiscordProfile>;
     getGuildMember(guildId: string, userId: string, botToken: string): Promise<DiscordGuildMember | null>;
 }
@@ -50,12 +50,12 @@ interface DiscordClientConfig {
 export class HttpDiscordClient implements DiscordClient {
     constructor(private readonly config: DiscordClientConfig) {}
 
-    createAuthorizationUrl(state: string, codeChallenge: string): string {
+    createAuthorizationUrl(state: string, codeChallenge: string, redirectUri = this.config.redirectUri): string {
         const url = new URL("https://discord.com/oauth2/authorize");
         url.search = new URLSearchParams({
             client_id: this.config.clientId,
             response_type: "code",
-            redirect_uri: this.config.redirectUri,
+            redirect_uri: redirectUri,
             scope: "identify",
             state,
             code_challenge: codeChallenge,
@@ -64,11 +64,11 @@ export class HttpDiscordClient implements DiscordClient {
         return url.href;
     }
 
-    async exchangeCode(code: string, codeVerifier: string): Promise<string> {
+    async exchangeCode(code: string, codeVerifier: string, redirectUri = this.config.redirectUri): Promise<string> {
         const body = new URLSearchParams({
             grant_type: "authorization_code",
             code,
-            redirect_uri: this.config.redirectUri,
+            redirect_uri: redirectUri,
             code_verifier: codeVerifier,
         });
         const response = await this.request("exchange", `${this.config.apiBaseUrl}/oauth2/token`, {
