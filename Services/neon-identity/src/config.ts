@@ -4,6 +4,24 @@ import { OFFICIAL_NEON_ISSUER, OFFICIAL_NEON_TICKET_KEY_ID, OFFICIAL_NEON_TICKET
 
 export const SERVER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 
+const androidPolicySchema = z.object({
+    key_id: z.string().min(1).max(128),
+    server_ids: z.array(z.string().regex(SERVER_ID_PATTERN)).min(1),
+    package_name: z.string().regex(/^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$/),
+    signer_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    minimum_version: z.number().int().positive().max(2147483647),
+    verifier: z.string().startsWith("/"),
+}).strict();
+
+export type AndroidPolicy = z.infer<typeof androidPolicySchema>;
+
+const androidInstallSchema = androidPolicySchema.pick({ package_name: true, signer_sha256: true, minimum_version: true }).extend({
+    play_project_number: z.string().regex(/^[1-9][0-9]{0,15}$/),
+    ca_cert_file: z.string().startsWith("/"),
+    ca_key_file: z.string().startsWith("/"),
+}).strict();
+export type AndroidInstallPolicy = z.infer<typeof androidInstallSchema>;
+
 export function isCanonicalIpv4Endpoint(value: string): boolean {
     const match = /^([^:]+):([0-9]{1,5})$/.exec(value);
     if (!match) return false;
@@ -42,6 +60,9 @@ const environmentSchema = z.object({
         .enum(["true", "false"])
         .default("true")
         .transform((value) => value === "true"),
+    NEON_ANDROID_TICKET_PRIVATE_JWK: z.string().optional(),
+    NEON_ANDROID_ADMISSION: z.string().optional(),
+    NEON_ANDROID_INSTALL_ENROLLMENT: z.string().optional(),
     NEON_ISSUER: z.url(),
     NEON_SERVER_REGISTRY: z.string().min(1),
     NEON_TICKET_KEY_ID: z.string().min(1).max(128),
@@ -70,6 +91,9 @@ export interface ServiceConfig {
         botToken: string | null;
         requireCompletedScreening: boolean;
     };
+    androidAdmission?: AndroidPolicy;
+    androidInstall?: AndroidInstallPolicy;
+    androidTicketPrivateJwk?: JsonWebKey;
     issuer: string;
     serverRegistry: ReadonlyMap<string, ReadonlySet<string>>;
     ticketKeyId: string;
@@ -108,6 +132,22 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): Servic
     if (ticketPrivateJwk.kty !== "OKP" || ticketPrivateJwk.crv !== "Ed25519" || !ticketPrivateJwk.d) {
         throw new Error("NEON_TICKET_PRIVATE_JWK must be a private Ed25519 JWK");
     }
+    const androidAdmission = parsed.NEON_ANDROID_ADMISSION === undefined ? undefined :
+        androidPolicySchema.parse(JSON.parse(parsed.NEON_ANDROID_ADMISSION));
+    const androidInstall = parsed.NEON_ANDROID_INSTALL_ENROLLMENT === undefined ? undefined :
+        androidInstallSchema.parse(JSON.parse(parsed.NEON_ANDROID_INSTALL_ENROLLMENT));
+    let androidTicketPrivateJwk: JsonWebKey | undefined;
+    if (androidAdmission) {
+        androidTicketPrivateJwk = z.object({
+            kty: z.literal("OKP"), crv: z.literal("Ed25519"),
+            d: z.string().regex(/^[A-Za-z0-9_-]{43}$/), x: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+        }).parse(JSON.parse(parsed.NEON_ANDROID_TICKET_PRIVATE_JWK ?? "null"));
+        if (androidTicketPrivateJwk.x === ticketPrivateJwk.x || androidTicketPrivateJwk.d === ticketPrivateJwk.d ||
+            androidAdmission.key_id === parsed.NEON_TICKET_KEY_ID) {
+            throw new Error("Android admission requires a dedicated signing key and key ID");
+        }
+    }
+
     const issuer = parsed.NEON_ISSUER.replace(/\/$/, "");
     if (
         parsed.NODE_ENV === "production" &&
@@ -124,6 +164,8 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): Servic
     }
 
     return {
+        ...(androidAdmission && androidTicketPrivateJwk ? { androidAdmission, androidTicketPrivateJwk } : {}),
+        ...(androidInstall ? { androidInstall } : {}),
         nodeEnv: parsed.NODE_ENV,
         host: parsed.HOST,
         port: parsed.PORT,

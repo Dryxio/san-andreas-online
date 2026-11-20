@@ -4340,7 +4340,7 @@ retry:
 
                     // Shallow then visible, as water.dat flag bits (WaterFlags.h).
                     // Before netcode 0x1E7 only a "shallow" bit was sent, which
-                    // meant invisible water; that epoch can no longer connect.
+                    // meant invisible water. This client uses the two-bit layout.
                     bool bShallow = false;
                     bool bVisible = true;
                     bitStream.ReadBit(bShallow);

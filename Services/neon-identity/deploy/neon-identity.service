@@ -9,6 +9,7 @@ User=neon-identity
 Group=neon-identity
 WorkingDirectory=/opt/neon-identity/current
 EnvironmentFile=/etc/neon-identity/neon-identity.env
+EnvironmentFile=-/etc/neon-identity/android-install.env
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
 RestartSec=3

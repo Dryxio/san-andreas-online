@@ -34,6 +34,20 @@ function hashesEqual(left: Buffer, right: Buffer): boolean {
 }
 
 export class MemoryIdentityStore implements IdentityStore {
+    private readonly androidChallenges = new Map<string, { challenge: string; expiresAt: Date }>();
+    async setAndroidChallenge(binding: Buffer, challenge: string, expiresAt: Date, now: Date): Promise<void> {
+        for (const [key, value] of this.androidChallenges) {
+            if (value.expiresAt <= now) this.androidChallenges.delete(key);
+        }
+        this.androidChallenges.set(binding.toString("hex"), { challenge, expiresAt });
+    }
+    async takeAndroidChallenge(binding: Buffer, challenge: string, now: Date): Promise<boolean> {
+        const key = binding.toString("hex");
+        const value = this.androidChallenges.get(key);
+        if (!value || value.expiresAt <= now || value.challenge !== challenge) return false;
+        return this.androidChallenges.delete(key);
+    }
+
     readonly flows = new Map<string, OAuthFlow>();
     readonly accounts = new Map<string, NeonAccount>();
     readonly sessions: MemorySession[] = [];

@@ -63,7 +63,7 @@ void CPlayerManager::PulseZombieCheck()
             // Remove any players that are joined, but not sending sync and have incorrect connection info
             if (pPlayer->GetTimeSinceReceivedSync() > 20000)
             {
-                if (!g_pRealNetServer->IsValidSocket(pPlayer->GetSocket()))
+                if (!pPlayer->GetSocket().IsQuic() && !g_pRealNetServer->IsValidSocket(pPlayer->GetSocket().Stock()))
                 {
                     CLogger::LogPrintf("INFO: %s (%s) connection gone away\n", pPlayer->GetNick(), pPlayer->GetSourceIP());
                     pPlayer->Send(CPlayerDisconnectedPacket(CPlayerDisconnectedPacket::KICK, "hacky code"));
@@ -74,7 +74,7 @@ void CPlayerManager::PulseZombieCheck()
     }
 }
 
-CPlayer* CPlayerManager::Create(const NetServerPlayerID& PlayerSocket)
+CPlayer* CPlayerManager::Create(const GamePeer& PlayerSocket)
 {
     // Check socket is free
     CPlayer* pOtherPlayer = MapFindRef(m_SocketPlayerMap, PlayerSocket);
@@ -110,7 +110,7 @@ bool CPlayerManager::Exists(CPlayer* pPlayer)
     return m_Players.Contains(pPlayer);
 }
 
-CPlayer* CPlayerManager::Get(const NetServerPlayerID& PlayerSocket)
+CPlayer* CPlayerManager::Get(const GamePeer& PlayerSocket)
 {
     return MapFindRef(m_SocketPlayerMap, PlayerSocket);
 }
@@ -211,7 +211,7 @@ size_t CPlayerManager::BroadcastOnlySubscribed(const CPacket& Packet, CElement* 
 }
 
 // Send one packet to a list of players, grouped by bitstream version
-static void DoBroadcast(const CPacket& Packet, const std::multimap<ushort, CPlayer*>& groupMap)
+static void DoBroadcast(const CPacket& Packet, const std::multimap<std::pair<ushort, bool>, CPlayer*>& groupMap)
 {
     if (!CNetBufferWatchDog::CanSendPacket(Packet.GetPacketID()))
         return;
@@ -252,22 +252,23 @@ static void DoBroadcast(const CPacket& Packet, const std::multimap<ushort, CPlay
     }
 
     // For each bitstream version, make and send a packet
-    typedef std::multimap<ushort, CPlayer*>::const_iterator mapIter;
+    typedef std::multimap<std::pair<ushort, bool>, CPlayer*>::const_iterator mapIter;
     mapIter                                                 m_it, s_it;
     for (m_it = groupMap.begin(); m_it != groupMap.end(); m_it = s_it)
     {
-        ushort usBitStreamVersion = (*m_it).first;
+        const auto& protocol = m_it->first;
+        ushort usBitStreamVersion = protocol.first;
 
         // Allocate a bitstream
         NetBitStreamInterface* pBitStream = g_pNetServer->AllocateNetServerBitStream(usBitStreamVersion);
 
         // Write the content
-        if (Packet.Write(*pBitStream))
+        if (Packet.WriteForProtocol(*pBitStream, protocol.second))
         {
             g_pGame->SendPacketBatchBegin(Packet.GetPacketID(), pBitStream);
 
             // For each player, send the packet
-            const pair<mapIter, mapIter> keyRange = groupMap.equal_range(usBitStreamVersion);
+            const pair<mapIter, mapIter> keyRange = groupMap.equal_range(protocol);
             for (s_it = keyRange.first; s_it != keyRange.second; ++s_it)
             {
                 CPlayer* pPlayer = s_it->second;
@@ -281,7 +282,7 @@ static void DoBroadcast(const CPacket& Packet, const std::multimap<ushort, CPlay
         else
         {
             // Skip
-            const pair<mapIter, mapIter> keyRange = groupMap.equal_range(usBitStreamVersion);
+            const pair<mapIter, mapIter> keyRange = groupMap.equal_range(protocol);
             for (s_it = keyRange.first; s_it != keyRange.second; ++s_it)
             {
             }
@@ -297,14 +298,14 @@ template <class T>
 static void DoBroadcast(const CPacket& Packet, const T& sendList)
 {
     // Group players by bitstream version
-    std::multimap<ushort, CPlayer*> groupMap;
+    std::multimap<std::pair<ushort, bool>, CPlayer*> groupMap;
     for (typename T::const_iterator iter = sendList.begin(); iter != sendList.end(); ++iter)
     {
         CPlayer* player = *iter;
 
         if (!player->IsLeavingServer())
         {
-            MapInsert(groupMap, player->GetBitStreamVersion(), player);
+            MapInsert(groupMap, std::make_pair(player->GetBitStreamVersion(), player->UsesRelease189Protocol()), player);
         }
     }
 
@@ -330,7 +331,7 @@ void CPlayerManager::Broadcast(const CPacket& Packet, const std::vector<CPlayer*
 }
 
 // Send one packet to a list of players
-void CPlayerManager::Broadcast(const CPacket& Packet, const std::multimap<ushort, CPlayer*>& groupMap)
+void CPlayerManager::Broadcast(const CPacket& Packet, const std::multimap<std::pair<ushort, bool>, CPlayer*>& groupMap)
 {
     DoBroadcast(Packet, groupMap);
 }

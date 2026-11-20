@@ -40,6 +40,7 @@ void CLuaPlayerDefs::LoadFunctions()
         {"isPlayerNametagShowing", IsPlayerNametagShowing},
         {"getPlayerSerial", GetPlayerSerial},
         {"isPlayerNeonAuthenticated", IsPlayerNeonAuthenticated},
+        {"isPlayerAndroid", IsPlayerAndroid},
         {"getPlayerNeonID", GetPlayerNeonID},
         {"getPlayerDiscordID", GetPlayerDiscordID},
         {"getPlayerUserName", GetPlayerUserName},
@@ -174,6 +175,7 @@ void CLuaPlayerDefs::AddClass(lua_State* luaVM)
     lua_classfunction(luaVM, "getWantedLevel", "getPlayerWantedLevel");
     lua_classfunction(luaVM, "getSerial", "getPlayerSerial");
     lua_classfunction(luaVM, "isNeonAuthenticated", "isPlayerNeonAuthenticated");
+    lua_classfunction(luaVM, "isAndroid", "isPlayerAndroid");
     lua_classfunction(luaVM, "getNeonID", "getPlayerNeonID");
     lua_classfunction(luaVM, "getDiscordID", "getPlayerDiscordID");
     lua_classfunction(luaVM, "getIP", "getPlayerIP");
@@ -210,6 +212,7 @@ void CLuaPlayerDefs::AddClass(lua_State* luaVM)
     lua_classvariable(luaVM, "nametagText", "setPlayerNametagText", "getPlayerNametagText");
     lua_classvariable(luaVM, "nametagShowing", "setPlayerNametagShowing", "isPlayerNametagShowing");
     lua_classvariable(luaVM, "scriptDebugLevel", "setPlayerScriptDebugLevel", "getPlayerScriptDebugLevel");
+    lua_classvariable(luaVM, "android", NULL, "isPlayerAndroid");
 
     lua_registerclass(luaVM, "Player", "Ped");
 }
@@ -745,6 +748,23 @@ int CLuaPlayerDefs::IsPlayerNeonAuthenticated(lua_State* luaVM)
     if (!argStream.HasErrors())
     {
         lua_pushboolean(luaVM, pPlayer->IsNeonAuthenticated());
+        return 1;
+    }
+
+    m_pScriptDebugging->LogCustom(luaVM, argStream.GetFullErrorMessage());
+    lua_pushboolean(luaVM, false);
+    return 1;
+}
+
+int CLuaPlayerDefs::IsPlayerAndroid(lua_State* luaVM)
+{
+    CPlayer*         pPlayer = nullptr;
+    CScriptArgReader argStream(luaVM);
+    argStream.ReadUserData(pPlayer);
+
+    if (!argStream.HasErrors())
+    {
+        lua_pushboolean(luaVM, pPlayer->IsAndroid());
         return 1;
     }
 
@@ -1492,7 +1512,8 @@ int CLuaPlayerDefs::ResendPlayerModInfo(lua_State* luaVM)
 
     if (!argStream.HasErrors())
     {
-        g_pNetServer->ResendModPackets(pPlayer->GetSocket());
+        if (pPlayer->GetSocket().IsQuic()) { lua_pushboolean(luaVM, false); return 1; }
+        g_pNetServer->ResendModPackets(pPlayer->GetSocket().Stock());
         lua_pushboolean(luaVM, true);
         return 1;
     }
@@ -1513,7 +1534,8 @@ int CLuaPlayerDefs::ResendPlayerACInfo(lua_State* luaVM)
 
     if (!argStream.HasErrors())
     {
-        g_pNetServer->ResendACPackets(pPlayer->GetSocket());
+        if (pPlayer->GetSocket().IsQuic()) { lua_pushboolean(luaVM, false); return 1; }
+        g_pNetServer->ResendACPackets(pPlayer->GetSocket().Stock());
         lua_pushboolean(luaVM, true);
         return 1;
     }

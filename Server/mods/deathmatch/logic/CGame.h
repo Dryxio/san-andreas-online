@@ -12,6 +12,7 @@
 class CGame;
 
 #pragma once
+#include "CQuicGameplay.h"
 
 #include "CCommon.h"
 #include <net/CNetServer.h>
@@ -153,14 +154,16 @@ struct ResetWorldPropsInfo
 
 // CSendList - Can be used like a std::list of players for sending packets.
 //             Used to construct an optimized list of players for CGame::Broadcast
-class CSendList : public std::multimap<ushort, CPlayer*>
+class CSendList : public std::multimap<std::pair<ushort, bool>, CPlayer*>
 {
 public:
-    void push_back(CPlayer* pPlayer) { MapInsert(*this, pPlayer->GetBitStreamVersion(), pPlayer); }
+    void push_back(CPlayer* pPlayer) { MapInsert(*this, std::make_pair(pPlayer->GetBitStreamVersion(), pPlayer->UsesRelease189Protocol()), pPlayer); }
 };
 
 class CGame
 {
+    friend class CQuicGameplay;
+    CQuicGameplay m_quic;
 public:
     ZERO_ON_NEW  // To be sure everything is cleared
         enum {
@@ -467,7 +470,10 @@ public:
     void HandleCrashDumpEncryption();
     void EnableLatentSends(bool bEnabled, int iBandwidth = 0, CLuaMain* pLuaMain = NULL, ushort usResourceNetId = 0xFFFF);
     void SendPacketBatchBegin(unsigned char ucPacketId, NetBitStreamInterface* pBitStream);
-    bool SendPacket(unsigned char ucPacketID, const NetServerPlayerID& playerID, NetBitStreamInterface* pBitStream, bool bBroadcast,
+    bool ProcessGamePacket(unsigned char kind, const GamePeer& peer, NetBitStreamInterface* stream, SNetExtraInfo* extra);
+    bool SendDirect(unsigned char kind, const GamePeer& peer, NetBitStreamInterface* stream, bool broadcast,
+                    NetServerPacketPriority priority, NetServerPacketReliability reliability, ePacketOrdering ordering = PACKET_ORDERING_DEFAULT);
+    bool SendPacket(unsigned char ucPacketID, const GamePeer& playerID, NetBitStreamInterface* pBitStream, bool bBroadcast,
                     NetServerPacketPriority packetPriority, NetServerPacketReliability packetReliability,
                     ePacketOrdering packetOrdering = PACKET_ORDERING_DEFAULT);
     void SendPacketBatchEnd();
@@ -495,9 +501,9 @@ private:
 
     void ProcessTrafficLights(long long llCurrentTime);
 
-    void Packet_PlayerJoin(const NetServerPlayerID& Source);
+    void Packet_PlayerJoin(const GamePeer& Source);
     void Packet_PlayerJoinData(class CPlayerJoinDataPacket& Packet);
-    void RefusePendingConnection(const NetServerPlayerID& source, const char* reason);
+    void RefusePendingConnection(const GamePeer& source, const char* reason);
     void Packet_PedWasted(class CPedWastedPacket& Packet);
     void Packet_PlayerWasted(class CPlayerWastedPacket& Packet);
     void Packet_PlayerQuit(class CPlayerQuitPacket& Packet);

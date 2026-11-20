@@ -74,7 +74,7 @@ class CPlayer final : public CPed, public CClient
 
 public:
     ZERO_ON_NEW
-    CPlayer(class CPlayerManager* pPlayerManager, class CScriptDebugging* pScriptDebugging, const NetServerPlayerID& PlayerSocket);
+    CPlayer(class CPlayerManager* pPlayerManager, class CScriptDebugging* pScriptDebugging, const GamePeer& PlayerSocket);
     ~CPlayer();
 
     void DoPulse();
@@ -94,6 +94,10 @@ public:
     void               SetGameVersion(int iGameVersion) { m_iGameVersion = iGameVersion; };
     unsigned short     GetMTAVersion() { return m_usMTAVersion; };
     void               SetMTAVersion(unsigned short usMTAVersion) { m_usMTAVersion = usMTAVersion; };
+    bool UsesRelease189Protocol() const { return m_bRelease189Protocol; }
+    void SetRelease189Protocol(bool legacy) { m_bRelease189Protocol = legacy; }
+    bool IsAndroid() const noexcept { return m_bIsAndroid; }
+    void SetIsAndroid(bool bAndroid) noexcept { m_bIsAndroid = bAndroid; }
     unsigned short     GetBitStreamVersion() { return m_usBitStreamVersion; };
     void               SetBitStreamVersion(unsigned short usBitStreamVersion) { m_usBitStreamVersion = usBitStreamVersion; };
     bool               CanBitStream(eBitStreamVersion query) { return static_cast<eBitStreamVersion>(m_usBitStreamVersion) >= query; }
@@ -128,7 +132,7 @@ public:
     bool                 IsAkimboArmUp() { return m_bAkimboArmUp; };
     void                 SetAkimboArmUp(bool bUp) { m_bAkimboArmUp = bUp; };
 
-    NetServerPlayerID& GetSocket() { return m_PlayerSocket; };
+    GamePeer& GetSocket() { return m_PlayerSocket; };
     const char*        GetSourceIP();
     unsigned short     GetSourcePort() { return m_PlayerSocket.GetPort(); };
 
@@ -347,7 +351,7 @@ public:
 
     CFastHashSet<CPlayer*> m_PureSyncSimSendList;
     bool                   m_bPureSyncSimSendListDirty;
-    class CSimPlayer*      m_pSimPlayer;
+    class CSimPlayer*      m_pSimPlayer = nullptr;
     SString                m_strDetectedAC;
     uint                   m_uiD3d9Size;
     SString                m_strD3d9Md5;
@@ -368,6 +372,8 @@ private:
     bool           m_bDoNotSendEntities;
     int            m_iGameVersion;
     unsigned short m_usMTAVersion;
+    bool m_bRelease189Protocol = false;
+    bool m_bIsAndroid = false;
     unsigned short m_usBitStreamVersion;
     CMtaVersion    m_strPlayerVersion;
     bool           m_bIsMuted;
@@ -388,7 +394,7 @@ private:
 
     CElapsedTime m_ConnectedTimer;
 
-    NetServerPlayerID m_PlayerSocket;
+    GamePeer m_PlayerSocket;
     uint              m_uiPing;
 
     time_t m_tNickChange;

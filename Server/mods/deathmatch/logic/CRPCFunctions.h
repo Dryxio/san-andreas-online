@@ -40,7 +40,7 @@ public:
 
     void        AddHandlers();
     static void AddHandler(unsigned char ucID, pfnRPCHandler Callback);
-    void        ProcessPacket(const NetServerPlayerID& Socket, NetBitStreamInterface& bitStream);
+    void        ProcessPacket(const GamePeer& Socket, NetBitStreamInterface& bitStream);
 
 protected:
     DECLARE_RPC(PlayerInGameNotice);

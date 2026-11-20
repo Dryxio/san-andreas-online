@@ -46,15 +46,17 @@ public:
     virtual bool Read(NetBitStreamInterface& BitStream) { return false; };
     virtual bool Write(NetBitStreamInterface& BitStream) const { return false; };
 
+    virtual bool WriteForProtocol(NetBitStreamInterface& stream, bool /*release189*/) const { return Write(stream); }
+
     void                     SetSourceElement(CElement* pSource) { m_pSourceElement = pSource; };
     CElement*                GetSourceElement() const { return m_pSourceElement; };
     CPlayer*                 GetSourcePlayer();
-    void                     SetSourceSocket(const NetServerPlayerID& Source) { m_Source = Source; };
-    const NetServerPlayerID& GetSourceSocket() const { return m_Source; };
+    void                     SetSourceSocket(const GamePeer& Source) { m_Source = Source; };
+    const GamePeer& GetSourceSocket() const { return m_Source; };
     unsigned long            GetSourceIP() const { return m_Source.GetBinaryAddress(); };
     unsigned short           GetSourcePort() const { return m_Source.GetPort(); };
 
 protected:
     CElement*         m_pSourceElement;
-    NetServerPlayerID m_Source;
+    GamePeer m_Source;
 };

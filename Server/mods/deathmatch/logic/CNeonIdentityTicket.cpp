@@ -271,7 +271,7 @@ bool CNeonIdentityTicketVerifier::ConfigureOfficial(const std::string& audience,
     return true;
 }
 
-bool CNeonIdentityTicketVerifier::VerifyAndConsume(const std::string& ticket, SNeonIdentityClaims& claims, std::string& error)
+bool CNeonIdentityTicketVerifier::VerifyAndConsume(const std::string& ticket, SNeonIdentityClaims& claims, std::string& error, bool requireAndroidAdmission)
 {
     claims = {};
     if (m_publicKeys.empty())
@@ -360,6 +360,18 @@ bool CNeonIdentityTicketVerifier::VerifyAndConsume(const std::string& ticket, SN
         notBefore < issuedAt - CLOCK_SKEW_SECONDS || claims.expiresAt <= issuedAt || claims.expiresAt - issuedAt > MAX_TICKET_LIFETIME_SECONDS)
     {
         error = "Neon Identity ticket is outside its accepted lifetime";
+        return false;
+    }
+
+    std::string androidPolicy;
+    if (ReadStringClaim(payload.Get(), "android_admission", androidPolicy) && androidPolicy == "hardware-key-v1")
+    {
+        claims.isAndroid = true;
+    }
+
+    if (requireAndroidAdmission && !claims.isAndroid)
+    {
+        error = "This server requires a hardware-verified Android ticket";
         return false;
     }
 

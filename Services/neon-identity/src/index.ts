@@ -23,7 +23,11 @@ const ticketSigner = await TicketSigner.create(
     config.ticketKeyId,
     config.ticketTtlSeconds,
 );
+const androidTicketSigner = config.androidAdmission && config.androidTicketPrivateJwk
+    ? await TicketSigner.create(config.androidTicketPrivateJwk, config.issuer, config.androidAdmission.key_id, config.ticketTtlSeconds)
+    : undefined;
 const app = await buildApp({
+    ...(androidTicketSigner ? { androidTicketSigner } : {}),
     config,
     store,
     discord,

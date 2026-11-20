@@ -39,6 +39,7 @@ public:
     LUA_DECLARE(IsPlayerNametagShowing);
     LUA_DECLARE(GetPlayerSerial);
     LUA_DECLARE(IsPlayerNeonAuthenticated);
+    LUA_DECLARE(IsPlayerAndroid);
     LUA_DECLARE(GetPlayerNeonID);
     LUA_DECLARE(GetPlayerDiscordID);
     LUA_DECLARE(GetPlayerCommunityID);  // deprecate me

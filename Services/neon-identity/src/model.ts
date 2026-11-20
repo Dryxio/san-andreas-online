@@ -106,6 +106,8 @@ export type ServerIdentityLeaseClaimResult =
     | "endpoint_blocked";
 
 export interface IdentityStore {
+    setAndroidChallenge(binding: Buffer, challenge: string, expiresAt: Date, now: Date): Promise<void>;
+    takeAndroidChallenge(binding: Buffer, challenge: string, now: Date): Promise<boolean>;
     createFlow(flow: OAuthFlow): Promise<void>;
     beginFlow(flowId: string, browserTokenHash: Buffer, oauthStateHash: Buffer, now: Date): Promise<boolean>;
     completeFlow(flowId: string, oauthStateHash: Buffer, profile: DiscordProfile, now: Date): Promise<NeonAccount | null>;
