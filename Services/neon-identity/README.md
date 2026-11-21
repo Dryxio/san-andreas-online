@@ -395,3 +395,119 @@ platform-wide identity service and evaluate Blitz policy at Blitz ticket time.
   exact legacy allowlisted pair or an active ASE-verified signed server lease.
 - Store the signing key and Discord credentials in a secrets manager in
   production, not an environment file on disk.
+
+## Sideloaded Android ticket policy
+
+### Configure the game server
+
+**1. Allow PC and Android players without requiring extra Android proof (default).** Use a launcher that supports the server’s current game protocol. Leave the following setting in `mods/deathmatch/mtaserver.conf` and restart after editing it.
+
+```xml
+<neon_auth>disabled</neon_auth>
+```
+
+Leave `<disableac></disableac>` empty to keep stock anticheat on. Make the game port (UDP 22003 by default) and the HTTP resource port (TCP 22005 by default) reachable by your players. In a compatible Android launcher, add the game host and port to Favorites, then tap Play. A classic join requires no Google project, issuer setup or per-phone approval. Default servers use the stock game transport and its anticheat. That module can reject an Android connection with AC #4 before the game sees a join. Server passwords, bans and version requirements also apply.
+
+**2. Require Google Play device integrity on QUIC connections.** Leave `mobile_integrity` blank by default. A QUIC listener configured with `<mobile_integrity>yes</mobile_integrity>` requires a trusted install certificate carrying the device-integrity verdict. Neon Identity signs that claim when Google recognizes both the app and device. Rooted devices and devices running uncertified custom ROMs may be unable to connect. A player can still change to another qualifying device. [QUIC listener configuration](../../Shared/transport/README.md#mobile-integrity-on-the-quic-listener) · [Google Play verdicts](https://developer.android.com/google/play/integrity/verdicts#device-integrity-field)
+
+**Classic port limitation.** Existing PC clients use the classic game port with stock anticheat. Compatible Android clients can also use that port, where the server cannot authenticate the client platform or require a Play verdict. To apply the mobile setting, publish the separate QUIC endpoint for Android players. [Configure the endpoint and connect from a phone](../../Shared/transport/README.md#enable-android-gameplay-on-a-second-udp-port) [Server network interface](../../Server/sdk/net/CNetServer.h)
+
+**3. Allow only hardware-verified Android players.** Desktop clients cannot join in `android-required` mode. Every join requires an issuer-signed ticket with the Android hardware-attestation claim. To configure this policy:
+
+1. Use a Neon server build that includes `android-required`. Obtain a dedicated server ID, HTTPS issuer URL, Android ticket key ID and public key from the issuer operator. The issuer must authorize that server ID and its actual game endpoint (`IPv4:port`).
+2. Edit the existing settings in `mods/deathmatch/mtaserver.conf`. Replace the example server ID, URL and key details with the issuer’s values.
+
+   ```xml
+   <neon_auth>android-required</neon_auth>
+   <neon_auth_server_id>neon-mobile</neon_auth_server_id>
+   <neon_auth_issuer>https://identity.example.com</neon_auth_issuer>
+   <neon_auth_key_id>android-v1</neon_auth_key_id>
+   <neon_auth_public_key>REPLACE_WITH_ANDROID_PUBLIC_JWK_X</neon_auth_public_key>
+   ```
+
+3. Restart the game server. Players sign in through a launcher configured for the same issuer. Every join on this server requires a hardware-verified Android ticket. The normal anti-cheat checks also apply.
+
+**Choosing the settings**
+
+- **Empty, omitted or `disabled` `neon_auth`** turns off Neon Identity tickets. Android clients can still join if they match the game protocol and pass the server’s usual checks.
+- **`optional` or `required`** uses standard Neon account tickets. In optional mode players can join without a ticket. Required mode needs a valid ticket for every join.
+- **`android-required`** requires a trusted Android ticket for every player. Use the updated Android launcher with the server’s current game protocol (`0x41E7`). If upgrading from the release 189 test configuration, remove `neon_game_protocol` and update the launcher before connecting.
+
+### Configure the issuer
+
+One HTTPS issuer can serve multiple game servers. Keep the private signing keys and Discord credentials on the issuer. Give game server owners the base64url `x` coordinate of the Android public JWK.
+
+1. Run the service migrations, including `006_android_challenges.sql`.
+2. With Gradle 8.14 and JDK 21, run `gradle -p android-verifier installDist` from this service. Install the entire generated `build/install/neon-android-verifier` directory on the issuer host. The service account needs a JDK/JRE 21+, permission to run the installed script and outbound HTTPS access to Google's attestation revocation service.
+3. Set the service environment to a JSON object such as the following. Replace the example package name with the approved APK’s actual application ID and the illustrative digest with the SHA-256 of its **signing certificate**, obtained with `apksigner verify --print-certs`. Choose the oldest version code the operator supports. Use separate signers and issuer configuration for development and public deployments.
+
+```json
+{"key_id":"android-v1","server_ids":["neon-mobile"],"package_name":"org.example.mtamobile","signer_sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","minimum_version":1,"verifier":"/opt/neon-android-verifier/bin/neon-android-verifier"}
+```
+
+Set this object as `NEON_ANDROID_ADMISSION`. Generate a separate Ed25519 key pair for Android tickets with the existing key generator. Store its private JWK in `NEON_ANDROID_TICKET_PRIVATE_JWK` in the issuer's secret store. Keep the ordinary ticket key in `NEON_TICKET_PRIVATE_JWK`. Configure only the dedicated public key on the mobile game server and restart the issuer and that server.
+
+Integrate the [launcher ticket client](../../Client/android/identity/README.md) in a build pointed at this issuer. The existing session and endpoint authorization checks run before the issuer creates a challenge. Each challenge expires in 60 seconds. A new request replaces the previous challenge for the same login session, server ID and endpoint. Submitting a matching proof consumes the challenge atomically, including when verification fails. Obtain a fresh challenge to retry. Verifier failure prevents ticket issuance.
+
+The verifier uses Google's Android Key Attestation library 0.4. It checks the chain, revocation, expected package, signer, minimum version, locked verified boot, hardware security level, nonce and possession of the signing key. The same Neon ticket format and game-server checks apply after verification. The proof covers an issuer ticket request. The game transport must independently establish a connection before the server can consume the ticket. [Android hardware key attestation](https://developer.android.com/privacy-and-security/security-key-attestation)
+
+## Android install credentials for QUIC
+
+**When does Play Integrity run?** The companion launcher's main activity checks for an install credential at startup, before a player selects a game server. It reuses a valid cached certificate. When it needs a new one, it asks its Neon Identity issuer for a challenge. A configured issuer returns its public Cloud project number, and the launcher then requests a Play Integrity verdict. An unavailable enrollment service leaves classic gameplay available. [Launcher implementation](https://github.com/samuk190/mta-sa-neon-android/blob/02518806c9fd7aed46b151c83d0e8f3274505fc2/app/src/main/java/com/saonline/neonlauncher/network/AndroidInstallCredential.kt)
+
+| Setting | Where it applies | What it controls |
+| --- | --- | --- |
+| `neon_auth` disabled, optional or required | Game server | Neon account tickets for classic joins. Each of these modes works independently of Play Integrity. |
+| `neon_auth` set to `android-required` | Game server | Every player needs a hardware-backed Android admission ticket. This uses the separate Android Key Attestation verifier described above. |
+| `NEON_ANDROID_INSTALL_ENROLLMENT` | Identity service | Enables Play-verified issuance of one-hour QUIC client certificates. The issuer checks app recognition and key possession. It requires neither a hardware verdict nor a player account. |
+
+The following setup is for the **launcher publisher and issuer operator**. One publisher project serves all installations of its release across game servers. The game server verifies the install certificate on its separate QUIC gameplay port. [Transport implementation and diagnostic](../../Shared/transport/README.md)
+
+### Register the launcher release with Google Play
+
+1. In Play Console, select the app with the launcher's application ID. The SA Online launcher uses `com.saonline.neonlauncher`. For an independently published fork, use the package you control. Distribute a signed build through a Play track, such as internal testing, so Google can recognize the package, certificate and version. Record the **app signing key certificate** SHA-256 fingerprint from Play Console and the lowest Android `versionCode` you will accept. The upload key and local debug key can have different fingerprints.
+2. Select a Google Cloud project owned by the publisher. If creating one, run `gcloud auth login`, choose a globally unique project ID and use `gcloud projects create "$PROJECT_ID"`. With the chosen `PROJECT_ID` set in your shell, run the following commands. Create the service account once, or use an existing dedicated account from that project.
+
+   ```sh
+   gcloud services enable playintegrity.googleapis.com iam.googleapis.com --project="$PROJECT_ID"
+   gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)'
+   gcloud iam service-accounts create neon-integrity-issuer --project="$PROJECT_ID"
+   ```
+
+3. In the app's Play Console, open **Protected with Play → Play Integrity API → Link Cloud project** and select that project. Record the numeric project number for the issuer. Its challenge response supplies the number to the launcher. [Google Play Integrity setup](https://developer.android.com/google/play/integrity/setup)
+
+### Deploy enrollment on Neon Identity
+
+1. Set up the HTTPS identity service and database and run `npm run migrate` with its deployment environment, including migration `006_android_challenges.sql`. For a fresh installation, start with the [identity service setup](#local-setup).
+2. Configure **Application Default Credentials** for the running issuer process. On Google Cloud, attach the project's decoder service account to the workload. On an external host, configure Workload Identity Federation to impersonate that account and set `GOOGLE_APPLICATION_CREDENTIALS` in the service environment to the readable external-account configuration file. The service requests the `playintegrity` OAuth scope and calls Google's `decodeIntegrityToken` endpoint for the configured package. Keep Google credentials and the install CA private key on the backend. [Google server-side verification](https://developer.android.com/google/play/integrity/standard#decrypt-verify) · [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials)
+3. For the SA Online package on a configured systemd host, install this branch's `deploy/neon-identity.service`. From `Services/neon-identity`, set the variables below to your project number, app signing fingerprint and minimum version. The helper reads the fingerprint as 64 hex digits, creates a dedicated P-256 CA on first use and preserves it on later runs.
+
+   ```sh
+   sudo bash deploy/configure-android-installs.sh "$PROJECT_NUMBER" "$(printf '%s' "$PLAY_SIGNER_SHA256" | tr -d ':')" "$MINIMUM_VERSION_CODE"
+   sudo systemctl daemon-reload
+   sudo systemctl restart neon-identity
+   ```
+
+   **Custom package or deployment.** The helper sets the SA Online package name. For another package, set `NEON_ANDROID_INSTALL_ENROLLMENT` directly in the issuer environment to a JSON object like the following, replacing the example values. The service user needs read access to the matching P-256 CA key and certificate with certificate-signing usage. For a fork, point the launcher's `NeonIdentityApi.BASE` at your HTTPS issuer and configure the QUIC listener to trust your issuer's public client CA. The stock launcher's base URL and transport's default CA URL point to the official issuer.
+
+   ```json
+   {
+     "package_name": "com.example.launcher",
+     "signer_sha256": "<64 lowercase hex digits>",
+     "minimum_version": 1,
+     "play_project_number": "<numeric project number>",
+     "ca_cert_file": "/etc/neon-identity/android-install-ca/cert.pem",
+     "ca_key_file": "/etc/neon-identity/android-install-ca/key.pem"
+   }
+   ```
+
+### Verify enrollment
+
+Set `ISSUER` to the public HTTPS origin of your configured service. Discovery should list the challenge, enrollment and public CA URLs. The second command should print the CA subject and validity dates.
+
+```sh
+curl -fsS "$ISSUER/.well-known/neon-identity" | jq -e '.android_install_challenge_endpoint and .android_install_enrollment_endpoint and .android_install_ca_uri'
+curl -fsS "$ISSUER/.well-known/neon-android-install-ca.pem" | openssl x509 -noout -subject -dates
+```
+
+Install the Play-track build on a tester's phone and open the launcher. Use `adb logcat -s NeonIdentity` to look for `Android install credential ready.` On first enrollment the challenge returns HTTP 200 and enrollment returns HTTP 201. A cached credential also produces the ready message. A missing discovery entry or HTTP 404 on the challenge points to the issuer deployment or enrollment configuration. For HTTP 403 with `install_not_verified`, check the Play-recognized release, package, signing fingerprint and minimum version. For HTTP 503 with `install_enrollment_unavailable`, check the issuer's Google service identity, API access and CA validity. These checks verify credential issuance. Gameplay over QUIC still requires a host certificate and the gameplay adapter.

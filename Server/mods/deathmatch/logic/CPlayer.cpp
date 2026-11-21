@@ -32,7 +32,7 @@
 
 extern CGame* g_pGame;
 
-CPlayer::CPlayer(CPlayerManager* pPlayerManager, class CScriptDebugging* pScriptDebugging, const NetServerPlayerID& PlayerSocket) : CPed(nullptr, nullptr, 0)
+CPlayer::CPlayer(CPlayerManager* pPlayerManager, class CScriptDebugging* pScriptDebugging, const GamePeer& PlayerSocket) : CPed(nullptr, nullptr, 0)
 {
     CElementRefManager::AddElementRefs(ELEMENT_REF_DEBUG(this, "CPlayer"), &m_pTeam, NULL);
     CElementRefManager::AddElementListRef(ELEMENT_REF_DEBUG(this, "CPlayer m_lstBroadcastList"), &m_lstBroadcastList);
@@ -50,6 +50,8 @@ CPlayer::CPlayer(CPlayerManager* pPlayerManager, class CScriptDebugging* pScript
     m_iGameVersion = 0;
     m_usMTAVersion = 0;
     m_usBitStreamVersion = 0;
+    m_bRelease189Protocol = false;
+    m_bIsAndroid = false;
     m_bIsMuted = false;
     m_bIsJoined = false;
     m_lMoney = 0;
@@ -112,7 +114,7 @@ CPlayer::CPlayer(CPlayerManager* pPlayerManager, class CScriptDebugging* pScript
     // THIS IS USED BY LIGHT SYNC AND SHOULD NOT BE CHANGED>>> EVER.
     m_llLastPositionHasChanged = 0;
 
-    CSimControl::AddSimPlayer(this);
+    if (!m_PlayerSocket.IsQuic()) CSimControl::AddSimPlayer(this);
 
     m_pPlayerStatsPacket = new CPlayerStatsPacket();
 
@@ -157,7 +159,7 @@ CPlayer::~CPlayer()
 
     delete m_pKeyBinds;
 
-    CSimControl::RemoveSimPlayer(this);
+    if (!m_PlayerSocket.IsQuic()) CSimControl::RemoveSimPlayer(this);
 
     // Unparent us (CElement's unparenting will crash because of the incomplete vtable at that point)
     m_bDoNotSendEntities = true;
@@ -259,7 +261,13 @@ const char* CPlayer::GetSourceIP()
     {
         char           szIP[22];
         unsigned short usPort;
-        g_pNetServer->GetPlayerIP(m_PlayerSocket, szIP, &usPort);
+        if (m_PlayerSocket.IsQuic())
+        {
+            const uint32_t address = m_PlayerSocket.GetBinaryAddress();
+            const auto* octets = reinterpret_cast<const unsigned char*>(&address);
+            snprintf(szIP, sizeof(szIP), "%u.%u.%u.%u", octets[0], octets[1], octets[2], octets[3]);
+        }
+        else g_pNetServer->GetPlayerIP(m_PlayerSocket.Stock(), szIP, &usPort);
         m_strIP = szIP;
     }
     return m_strIP;
@@ -314,7 +322,7 @@ uint CPlayer::Send(const CPacket& Packet)
     if (pBitStream)
     {
         // Write the content to it and send it
-        if (Packet.Write(*pBitStream))
+        if (Packet.WriteForProtocol(*pBitStream, UsesRelease189Protocol()))
         {
             uiBitsSent = pBitStream->GetNumberOfBitsUsed();
             g_pGame->SendPacket(Packet.GetPacketID(), m_PlayerSocket, pBitStream, false, packetPriority, Reliability, Packet.GetPacketOrdering());

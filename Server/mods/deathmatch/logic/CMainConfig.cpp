@@ -381,6 +381,16 @@ bool CMainConfig::Load()
         m_EnableDiagnosticMap = std::set<SString>(tagList.begin(), tagList.end());
     }
 
+    GetString(m_pRootNode, "mobile_quic_address", m_quicAddress);
+    GetString(m_pRootNode, "mobile_quic_client_ca", m_quicClientCA);
+    SString mobileIntegrity;
+    GetString(m_pRootNode, "mobile_integrity", mobileIntegrity);
+    if (mobileIntegrity == "yes" && m_quicAddress.empty())
+    {
+        CLogger::ErrorPrintf("mobile_integrity requires a configured mobile_quic_address.\n");
+        return false;
+    }
+
     // Grab the server password
     iResult = GetString(m_pRootNode, "password", m_strPassword, 1, 32);
 
@@ -390,15 +400,16 @@ bool CMainConfig::Load()
     // a security control into a silent allow-all.
     std::string neonAuthMode;
     GetString(m_pRootNode, "neon_auth", neonAuthMode);
+    m_requireAndroidAdmission = neonAuthMode == "android-required";
     if (neonAuthMode.empty() || neonAuthMode == "disabled")
         m_neonAuthMode = ENeonAuthMode::Disabled;
     else if (neonAuthMode == "optional")
         m_neonAuthMode = ENeonAuthMode::Optional;
-    else if (neonAuthMode == "required")
+    else if (neonAuthMode == "required" || m_requireAndroidAdmission)
         m_neonAuthMode = ENeonAuthMode::Required;
     else
     {
-        CLogger::ErrorPrintf("Invalid neon_auth value '%s'; expected disabled, optional, or required\n", neonAuthMode.c_str());
+        CLogger::ErrorPrintf("Invalid neon_auth value '%s'; expected disabled, optional, required, or android-required\n", neonAuthMode.c_str());
         return false;
     }
 
@@ -406,6 +417,12 @@ bool CMainConfig::Load()
     GetString(m_pRootNode, "neon_auth_issuer", m_neonAuthIssuer);
     GetString(m_pRootNode, "neon_auth_key_id", m_neonAuthKeyId);
     GetString(m_pRootNode, "neon_auth_public_key", m_neonAuthPublicKey);
+    if (m_requireAndroidAdmission && (m_neonAuthServerId.empty() || m_neonAuthKeyId.empty() || m_neonAuthPublicKey.empty() ||
+                                      m_neonAuthIssuer.compare(0, 8, "https://") != 0 || m_neonAuthIssuer.size() <= 8))
+    {
+        CLogger::ErrorPrintf("neon_auth android-required needs an explicit HTTPS issuer, server ID, Android ticket key ID and public key\n");
+        return false;
+    }
     if (m_neonAuthIssuer.empty())
         m_neonAuthIssuer = OFFICIAL_NEON_IDENTITY_ISSUER;
 

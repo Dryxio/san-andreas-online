@@ -69,3 +69,32 @@ describe("static server registry configuration", () => {
         })).not.toThrow();
     });
 });
+
+
+it("requires a complete Android policy only when the operator enables it", () => {
+    expect(loadConfig(validEnvironment()).androidAdmission).toBeUndefined();
+    const policy = {
+        key_id: "mobile", server_ids: ["neon-staging"], package_name: "com.example.game",
+        minimum_version: 1, signer_sha256: "a".repeat(64), verifier: "/opt/verifier",
+    };
+    const config = (candidate: object) => loadConfig({
+        ...validEnvironment(), NEON_ANDROID_ADMISSION: JSON.stringify(candidate),
+        NEON_ANDROID_TICKET_PRIVATE_JWK: JSON.stringify({ kty: "OKP", crv: "Ed25519", x: "a".repeat(43), d: "b".repeat(43) }),
+    });
+    expect(config(policy).androidAdmission).toEqual(policy);
+    expect(() => config({ ...policy, key_id: "test-key-v1" })).toThrow();
+    expect(() => config({ ...policy, signer_sha256: "typo" })).toThrow();
+    expect(() => config({ ...policy, server_ids: [] })).toThrow();
+});
+
+it("configures a publisher project independently of optional hardware admission", () => {
+    const install = { package_name: "com.saonline.neonlauncher", signer_sha256: "a".repeat(64), minimum_version: 1,
+        play_project_number: "123456789", ca_cert_file: "/etc/neon/install.pem", ca_key_file: "/etc/neon/private/install.key" };
+    const environment = validEnvironment();
+    expect(loadConfig(environment).androidInstall).toBeUndefined();
+    const parse = (value: object) => loadConfig({ ...environment, NEON_ANDROID_INSTALL_ENROLLMENT: JSON.stringify(value) });
+    expect(parse(install).androidInstall).toEqual(install);
+    expect(parse(install).androidAdmission).toBeUndefined();
+    expect(() => parse({ ...install, play_project_number: "unknown" })).toThrow();
+    expect(() => parse({ ...install, ca_key_file: "" })).toThrow();
+});

@@ -67,7 +67,7 @@ void CRPCFunctions::AddHandler(unsigned char ucID, pfnRPCHandler Callback)
     g_pRPCFunctions->m_RPCHandlers.push_back(pHandler);
 }
 
-void CRPCFunctions::ProcessPacket(const NetServerPlayerID& Socket, NetBitStreamInterface& bitStream)
+void CRPCFunctions::ProcessPacket(const GamePeer& Socket, NetBitStreamInterface& bitStream)
 {
     m_pSourcePlayer = m_pPlayerManager->Get(Socket);
     if (m_pSourcePlayer && !m_pSourcePlayer->IsBeingDeleted())

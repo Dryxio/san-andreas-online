@@ -33,6 +33,20 @@ namespace WaterFlags
         return bShallow ? 0 : Default;
     }
 
+    template <typename TBitStream>
+    void WriteEntityFlags(TBitStream& stream, unsigned char flags, bool release189)
+    {
+        const bool visible = (flags & Visible) != 0;
+        if (release189)
+        {
+            // Release 189 interpreted the single legacy "shallow" bit as invisible.
+            stream.WriteBit(!visible);
+            return;
+        }
+        stream.WriteBit((flags & Shallow) != 0);
+        stream.WriteBit(visible);
+    }
+
     constexpr bool IsValid(int iFlags)
     {
         return iFlags >= 0 && iFlags <= All;

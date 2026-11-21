@@ -49,6 +49,8 @@ struct SIntSetting
 class CMainConfig : public CXMLConfig
 {
 public:
+    SString m_quicAddress;
+    SString m_quicClientCA;
     ZERO_ON_NEW
     CMainConfig(CConsole* pConsole);
 
@@ -142,6 +144,7 @@ public:
     const std::string&                GetNeonAuthIssuer() const noexcept { return m_neonAuthIssuer; }
     const std::string&                GetNeonAuthKeyId() const noexcept { return m_neonAuthKeyId; }
     const std::string&                GetNeonAuthPublicKey() const noexcept { return m_neonAuthPublicKey; }
+    bool                              RequiresAndroidAdmission() const noexcept { return m_requireAndroidAdmission; }
     bool                              GetNeonAuthAutomatic() const noexcept { return m_neonAuthAutomatic; }
     void                              SetAutomaticNeonAuthServerId(std::string serverId) { m_neonAuthServerId = std::move(serverId); }
     bool                              GetNeonRegistryEnabled() const noexcept { return m_neonRegistryEnabled; }
@@ -270,6 +273,7 @@ private:
     std::string                m_neonAuthKeyId;
     std::string                m_neonAuthPublicKey;
     bool                       m_neonAuthAutomatic{};
+    bool                       m_requireAndroidAdmission{};
     bool                       m_neonRegistryEnabled{true};
     std::string                m_neonRegistryPublicHost;
     std::string                m_neonRegistryUrl;

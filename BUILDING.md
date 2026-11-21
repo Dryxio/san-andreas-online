@@ -26,6 +26,10 @@ two players on one workstation. See [MULTI_CLIENT.md](./MULTI_CLIENT.md) for
 server configuration, isolated profile behavior, direct launch commands, and
 the macOS/Parallels side-by-side launcher.
 
+## Android clients
+
+See [server configuration for PC and Android play](Services/neon-identity/README.md#configure-the-game-server). The same guide covers optional verified Android-only admission. [Launcher integration](Client/android/identity/README.md) describes the Android ticket client.
+
 ## GNU/Linux
 
 The MTA:SA server can be built on GNU/Linux for x86, x86_64, armhf, and arm64. ARM configurations are experimental; x86_64 is the primary build environment and can be used to cross-compile the other architectures.

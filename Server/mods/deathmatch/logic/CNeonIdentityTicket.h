@@ -22,6 +22,7 @@ struct SNeonIdentityClaims
     std::string serverEndpoint;
     std::string ticketId;
     std::time_t expiresAt{};
+    bool        isAndroid{false};
 };
 
 class CNeonIdentityTicketVerifier
@@ -33,7 +34,7 @@ public:
     bool Configure(const std::string& issuer, const std::string& audience, const std::string& keyId, const std::string& publicKeyBase64Url, std::string& error);
     bool ConfigureOfficial(const std::string& audience, std::string& error);
     void SetExpectedEndpoint(std::string endpoint) { m_expectedEndpoint = std::move(endpoint); }
-    bool VerifyAndConsume(const std::string& ticket, SNeonIdentityClaims& claims, std::string& error);
+    bool VerifyAndConsume(const std::string& ticket, SNeonIdentityClaims& claims, std::string& error, bool requireAndroidAdmission = false);
 
 private:
     void PruneReplayCache(std::time_t now);

@@ -1,6 +1,8 @@
 import { exportJWK, generateKeyPair, importJWK, jwtVerify, type JWK } from "jose";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { hashToken } from "../src/crypto.js";
+import type { verifyAndroidProof } from "../src/android-admission.js";
 import { buildApp } from "../src/app.js";
 import type { ServiceConfig } from "../src/config.js";
 import type { DiscordClient, DiscordGuildMember } from "../src/discord.js";
@@ -86,6 +88,8 @@ describe("Neon Identity HTTP contract", () => {
     let discord: FakeDiscordClient;
     let signer: TicketSigner;
     let publicKey: CryptoKey;
+    let config: ServiceConfig;
+    const androidVerifier = vi.fn<typeof verifyAndroidProof>();
     const resolveHost = vi.fn<(host: string) => Promise<string[]>>();
     const probe = vi.fn<(address: string, port: number, version: string, id?: string) => Promise<boolean>>();
 
@@ -141,7 +145,8 @@ describe("Neon Identity HTTP contract", () => {
         const keys = await generateKeyPair("EdDSA", { crv: "Ed25519", extractable: true });
         const privateJwk = await exportJWK(keys.privateKey);
         publicKey = await importJWK((await exportJWK(keys.publicKey)) as JWK, "EdDSA") as CryptoKey;
-        const config = testConfig(privateJwk);
+        config = testConfig(privateJwk);
+        androidVerifier.mockReset();
         signer = await TicketSigner.create(privateJwk, config.issuer, config.ticketKeyId, config.ticketTtlSeconds);
         store = new MemoryIdentityStore();
         discord = new FakeDiscordClient();
@@ -150,6 +155,7 @@ describe("Neon Identity HTTP contract", () => {
             address === "203.0.113.10" && (port === 22003 || port === 22004) && version === "1.7.0-9.99999");
         app = await buildApp({
             config,
+            androidVerifier,
             store,
             discord,
             policy: new AllowAllDiscordPolicy(),
@@ -501,6 +507,70 @@ describe("Neon Identity HTTP contract", () => {
             payload: { flow_id: started.flow_id, poll_token: started.poll_token },
         });
         expect(poll.json()).toEqual({ status: "pending" });
+    });
+
+    it("binds the Android proof to one authenticated request and consumes it across parallel retries", async () => {
+        await app.close();
+        const pair = await generateKeyPair("EdDSA", { crv: "Ed25519", extractable: true });
+        const mobileSigner = await TicketSigner.create(await exportJWK(pair.privateKey), config.issuer, "mobile-v1", config.ticketTtlSeconds);
+        config.androidAdmission = {
+            key_id: "mobile-v1", server_ids: ["neon-test-server"], package_name: "com.example.game",
+            signer_sha256: "a".repeat(64), minimum_version: 1, verifier: "/test/verifier",
+        };
+        app = await buildApp({ config, store, discord, policy: new AllowAllDiscordPolicy(), ticketSigner: signer,
+            androidTicketSigner: mobileSigner, androidVerifier, now: () => new Date("2026-08-03T12:00:00Z") });
+        const session = "a".repeat(48);
+        const secondSession = "b".repeat(48);
+        const now = new Date("2026-08-03T12:00:00Z");
+        const account = { id: "test", discordId: "123", discordUsername: "test", discordDisplayName: null,
+            discordAvatarHash: null, createdAt: now, updatedAt: now };
+        store.accounts.set(account.id, account);
+        for (const token of [session, secondSession]) {
+            store.sessions.push({ accountId: account.id, tokenHash: hashToken(token), expiresAt: new Date(+now + 3600_000) });
+        }
+        const send = (proof?: object, token = session, endpoint = "127.0.0.1:22003") => app.inject({
+            method: "POST", url: "/v1/tickets", headers: { authorization: `Bearer ${token}` },
+            payload: { server_id: "neon-test-server", server_endpoint: endpoint, android_proof: proof },
+        });
+        async function challenge() {
+            const reply = await send();
+            expect(reply.statusCode).toBe(428);
+            return { challenge: reply.json().challenge as string, chain: ["YQ==", "Yg=="], signature: "YWFhYWFh" };
+        }
+        const desktop = await app.inject({
+            method: "POST", url: "/v1/tickets", headers: { authorization: `Bearer ${session}` },
+            payload: { server_id: "blitz-production", server_endpoint: "203.0.113.10:22003" },
+        });
+        expect(desktop.statusCode).toBe(200);
+        const initial = await challenge();
+        const fresh = await challenge();
+        expect((await send(initial)).statusCode).toBe(403);
+        expect((await send(fresh, secondSession)).statusCode).toBe(403);
+        expect((await send(fresh, session, "127.0.0.1:22004")).statusCode).toBe(403);
+        expect(androidVerifier).not.toHaveBeenCalled();
+        androidVerifier.mockResolvedValue(true);
+        const replies = await Promise.all([send(fresh), send(fresh)]);
+        expect(replies.map(reply => reply.statusCode).sort()).toEqual([200, 403]);
+        expect(androidVerifier).toHaveBeenCalledTimes(1);
+        const ticket = replies.find(reply => reply.statusCode === 200)!.json().ticket;
+        const mobile = await jwtVerify(ticket, pair.publicKey, { currentDate: now });
+        expect(mobile.protectedHeader.kid).toBe("mobile-v1");
+        expect(mobile.payload.android_admission).toBe("hardware-key-v1");
+        const ordinary = await jwtVerify(desktop.json().ticket, publicKey, { currentDate: now });
+        expect(ordinary.payload).not.toHaveProperty("android_admission");
+        await expect(jwtVerify(ticket, publicKey, { currentDate: now })).rejects.toThrow();
+        await expect(jwtVerify(desktop.json().ticket, pair.publicKey, { currentDate: now })).rejects.toThrow();
+        androidVerifier.mockResolvedValue(false);
+        expect((await send(await challenge())).statusCode).toBe(403);
+        androidVerifier.mockRejectedValue(new Error("offline"));
+        expect((await send(await challenge())).statusCode).toBe(503);
+    });
+
+    it("expires Android challenges at the deadline", async () => {
+        const now = new Date();
+        const binding = hashToken("session");
+        await store.setAndroidChallenge(binding, "challenge", now, new Date(+now - 60000));
+        expect(await store.takeAndroidChallenge(binding, "challenge", now)).toBe(false);
     });
 
     it("does not issue tickets for missing or invalid sessions", async () => {

@@ -31,14 +31,14 @@ public:
 
     void SetScriptDebugging(class CScriptDebugging* pScriptDebugging) { m_pScriptDebugging = pScriptDebugging; };
 
-    CPlayer* Create(const NetServerPlayerID& PlayerSocket);
+    CPlayer* Create(const GamePeer& PlayerSocket);
     void     DeleteAll();
 
     unsigned int Count() { return static_cast<unsigned int>(m_Players.size()); }
     unsigned int CountJoined();
     bool         Exists(CPlayer* pPlayer);
 
-    CPlayer* Get(const NetServerPlayerID& PlayerSocket);
+    CPlayer* Get(const GamePeer& PlayerSocket);
     CPlayer* Get(const char* szNick, bool bCaseSensitive = false);
     CPlayer* GetBySerial(const std::string_view serial) const noexcept;
 
@@ -52,7 +52,7 @@ public:
     static void Broadcast(const CPacket& Packet, const std::set<CPlayer*>& sendList);
     static void Broadcast(const CPacket& Packet, const std::list<CPlayer*>& sendList);
     static void Broadcast(const CPacket& Packet, const std::vector<CPlayer*>& sendList);
-    static void Broadcast(const CPacket& Packet, const std::multimap<ushort, CPlayer*>& groupMap);
+    static void Broadcast(const CPacket& Packet, const std::multimap<std::pair<ushort, bool>, CPlayer*>& groupMap);
 
     static bool IsValidPlayerModel(unsigned short model);
 
@@ -70,7 +70,7 @@ private:
     class CScriptDebugging* m_pScriptDebugging;
 
     CMappedList<CPlayer*>                 m_Players;
-    std::map<NetServerPlayerID, CPlayer*> m_SocketPlayerMap;
+    std::map<GamePeer, CPlayer*> m_SocketPlayerMap;
     CMtaVersion                           m_strLowestConnectedPlayerVersion;
     CElapsedTime                          m_ZombieCheckTimer;
 };

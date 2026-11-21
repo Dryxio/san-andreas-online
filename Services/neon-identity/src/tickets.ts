@@ -31,10 +31,15 @@ export class TicketSigner {
         serverId: string,
         serverEndpoint: string,
         now: Date,
+        androidAdmission?: "hardware-key-v1",
     ): Promise<{ ticket: string; expiresAt: Date }> {
         const issuedAt = Math.floor(now.getTime() / 1000);
         const expiresAt = new Date((issuedAt + this.ttlSeconds) * 1000);
-        const ticket = await new SignJWT({ discord_id: account.discordId, server_endpoint: serverEndpoint })
+        const ticket = await new SignJWT({
+            discord_id: account.discordId,
+            server_endpoint: serverEndpoint,
+            ...(androidAdmission ? { android_admission: androidAdmission } : {}),
+        })
             .setProtectedHeader({ alg: "EdDSA", typ: "JWT", kid: this.keyId })
             .setIssuer(this.issuer)
             .setAudience(serverId)
