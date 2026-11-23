@@ -134,7 +134,9 @@ is a crime), `copLostDistance` (220 m), `ownerRange` (90 m),
 `overheadStars` (true), `bustedText` (true), `streetCops` (true: street cops
 from `native-ped-traffic` join the chase), `policeCars` (true: cars from 2
 stars; false: version 1's foot cops at every level), `maxCars` (12),
-`maxCarsPerSuspect` (3). Settings changes apply without a restart.
+`maxCarsPerSuspect` (3). Enable `lockPoliceCars` to reserve newly dispatched
+cruisers for police. By default players can take them over. Settings changes
+apply without a restart.
 
 ## How it works
 

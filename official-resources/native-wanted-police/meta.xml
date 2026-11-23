@@ -25,6 +25,7 @@
         <!-- Police cars from 2 stars, as in solo (version 2). Off: version 1's
              foot cops at every level. -->
         <setting name="*policeCars" value="true" />
+        <setting name="*lockPoliceCars" value="false" />
         <!-- Police cars at once on the whole server, and per wanted player
              (solo's own cap per level, 1-3, applies under this). -->
         <setting name="*maxCars" value="12" />
@@ -40,4 +41,5 @@
     <export function="getNativePoliceUnits" type="server" />
     <export function="getNativePoliceCars" type="server" />
     <export function="requestNativePoliceBackoff" type="server" />
+    <export function="handlesTrafficBulletDamage" type="server" />
 </meta>

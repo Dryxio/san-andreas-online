@@ -1022,7 +1022,12 @@ end
 addEventHandler("onClientResourceStart", resourceRoot, function()
     -- Admit this player only after the complete client script, including every
     -- remotely triggered event handler above, has finished loading.
-    triggerServerEvent("carTraffic:clientReady", resourceRoot)
+    local driveReady = type(setPedDriveWander) == "function" and type(acquireElementStreamingLease) == "function" and
+        type(getAmbientVehicleSpawnCandidate) == "function" and type(setVehicleLoadCollisionFlag) == "function"
+    if type(getNeonTrafficCapability) == "function" then
+        driveReady = driveReady and getNeonTrafficCapability("drive-wander") == true
+    end
+    triggerServerEvent("carTraffic:clientReady", resourceRoot, driveReady)
     publishPopulationProfile()
 end)
 

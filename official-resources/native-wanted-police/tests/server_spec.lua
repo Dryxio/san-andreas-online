@@ -58,7 +58,9 @@ function setElementData(e, key, value, sync, trust)
 end
 function removeElementData(e, key) e.data[key] = nil end
 function getElementModel(e) return e.model or 0 end
-function getElementsWithinRange(x, y, z, range, kind)
+function Vector3(x, y, z) return {x=x, y=y, z=z} end
+function getElementsWithinRange(position, range, kind)
+    local x, y, z = position.x, position.y, position.z
     -- MTA refuses a position that is not three numbers.
     if type(x) ~= 'number' or type(y) ~= 'number' or type(z) ~= 'number' then error('getElementsWithinRange: bad position') end
     local list = {}
@@ -289,6 +291,29 @@ check('cop is marked', cop.data['neon:police'] == true and cop.data['neon:police
 check('regional LS model', cop.model == 280)
 check('Bob, not the suspect, runs the cop', cop.syncer == bob)
 check('2 stars: pistol in hand', cop.weapon == 22)
+do
+    local epoch = cop.data['neon:policeEpoch']
+    local first = #clientEvents
+    fire('neonPolice:ready', resourceRoot, alice, true)
+    carol.dimension = 7
+    fire('neonPolice:ready', resourceRoot, carol, true)
+    local function cue(from, generation, weapon)
+        fire('neonPolice:ownerShot', resourceRoot, from, cop, generation, weapon, alice.x, alice.y, alice.z)
+    end
+    cue(alice, epoch, 22)
+    cue(bob, epoch + 1, 22)
+    cue(bob, epoch, 31)
+    check('shot reports require the live owner, epoch and equipped weapon', #clientEvents == first)
+    cue(bob, epoch, 22)
+    local e = clientEvents[#clientEvents]
+    check('one nearby Android observer gets the real police shot', #clientEvents == first + 1 and
+        e.name == 'neonPolice:showShot' and #e.target == 1 and e.target[1] == alice and e.args[1] == cop)
+    cue(bob, epoch, 22)
+    check('duplicate visual reports within the same tick are dropped', #clientEvents == first + 1)
+    carol.dimension = 0
+    fire('neonPolice:ready', resourceRoot, alice, false)
+    fire('neonPolice:ready', resourceRoot, carol, false)
+end
 check('every published value denies client changes', untrustedWrites == 0)
 
 -- 3. Damage evidence: only the victim's syncer or the attacker may report,
@@ -748,6 +773,15 @@ step(2250)
 check('a bystander syncer is not believed for gunfire', getNativeWantedState(gina).chaos == hankChaos)
 gina.x = 2600
 -- A player jacks the moving police car with the passenger still inside.
+-- An explosion cleanup queued before a takeover must not destroy a player vehicle.
+carG.blown = true
+function isVehicleBlown(vehicle) return vehicle.blown == true end
+fire('onVehicleExplode',carG)
+local wreckCleanup = timers[#timers]
+check('a managed wreck schedules five-second cleanup', wreckCleanup.interval == 5000)
+carG.blown = false
+wreckCleanup.fn()
+check('a repaired cruiser survives its stale cleanup', isElement(carG))
 local passengerG = getVehicleOccupant(carG, 1)
 removePedFromVehicle(getVehicleOccupant(carG, 0))
 removePedFromVehicle(gina)
@@ -755,6 +789,8 @@ warpPedIntoVehicle(gina, carG, 0)
 step(250)
 check('jacked: the seated cop is told to get out', passengerG.data['neon:policeOrder'] == 'exit')
 check('and is no police car any more', getNativePoliceCars(gina)[1] == nil)
+carG.blown=true; wreckCleanup.fn(); carG.blown=false
+check('a released cruiser survives the pending police cleanup', isElement(carG))
 gina.vx = 0
 carG.vx = 0
 step(3000)
@@ -842,4 +878,83 @@ step(1000)
 check('and the next car waits', #probesTo(ivan, 'neonPolice:carProbe', mark) == soon)
 setNativeWantedLevel(ivan, 0)
 
+-- A stock desktop sends a nil damage ID for NPCs. Test both network orders,
+-- multiple shots in one frame, misses, duplicate hints and health authority.
+function getWeaponProperty(weapon, skill, property) return property == 'damage' and 25 or false end
+function setElementHealth(ped, health) ped.health = health end
+function killPed(ped, attacker, weapon) ped.health, ped.dead, ped.killer = 0, true, attacker end
+local shooter = element('player', {name='desktop', weapon=22, x=0, y=0, z=0})
+local phone = element('player', {name='phone', x=1})
+local patrol = element('ped', {model=280, x=10, health=100, syncer=phone})
+patrol.data['neon:ambientPedTraffic'] = true
+fire('onElementDataChange', patrol, nil, 'neon:ambientPedTraffic')
+check('the replicated bullet cannot damage a hosted patrol a second time', patrol.data['neon:serverBulletDamage'] == true)
+patrol.model = 7
+fire('onElementModelChange', patrol)
+check('ordinary civilians retain native bullet impacts', not patrol.data['neon:serverBulletDamage'])
+patrol.model = 280
+fire('onElementModelChange', patrol)
+fire('neonPolice:ready', resourceRoot, phone, true)
+-- A syncer in a wasted packet is not in itself evidence of an attack.
+local peaceful = element('player', {weapon=22, x=9})
+fire('neonPolice:ready',resourceRoot,peaceful)
+local bystanderVictim = element('ped',{model=280,x=10,syncer=peaceful})
+local previousChaos = getNativeWantedState(peaceful).chaos
+fire('onPedWasted',bystanderVictim,nil,0,peaceful,22)
+check('a reported killer who only synced the victim receives no stars', getNativeWantedState(peaceful).chaos == previousChaos)
+fire('onPlayerWeaponFire',shooter,nil,22,10,0,0.6,bystanderVictim,0,0,0.6)
+T=T+2100
+fire('onPedWasted',bystanderVictim,nil,0,peaceful,22)
+check('recorded hits keep death attribution off the innocent syncer', getNativeWantedState(peaceful).chaos == previousChaos)
+local function hit() fire('neonPolice:copHit', resourceRoot, shooter, patrol, 22) end
+local function shot(y) fire('onPlayerWeaponFire', shooter, nil, 22, 30, y or 0, 0.6, nil, 0, 0, 0.6) end
+hit()
+check('client hint alone cannot debit health', patrol.health == 100)
+shot()
+check('desktop collision matches mobile-owned patrol', patrol.health == 75)
+shot(); hit()
+check('packet before Lua hint also counts once', patrol.health == 50)
+hit(); shot(30)
+check('off-ray hit is ignored', patrol.health == 50)
+T = T + 800
+fire('onPlayerWeaponFire', shooter, nil, 22, 30, 0, 0.6, patrol, 0, 0, 0.6)
+hit()
+check('a packet with an explicit ped ID and a collision hint is applied only once', patrol.health == 25)
+patrol.health = 50
+shot(); shot(); hit(); hit()
+check('two real shots can kill and attribute the kill to the shooter', patrol.dead and patrol.killer == shooter)
+-- A separate deployment exercises the opt-in fleet policy without changing
+-- the stock 2.1 takeover scenario above.
+do
+    local stoppedEntry = false
+    function cancelEvent() stoppedEntry = true end
+    function setVehicleLocked(v, locked) v.locked = locked end
+    settings.policeCars, settings.lockPoliceCars = 'true', 'true'
+    fire('onSettingChange', root, nil, '*native-wanted-police.lockPoliceCars')
+    math.random = function(a,b) if not a then return 0.9 end return b or a end
+    local suspect = element('player', {x=2400,y=2400,z=10})
+    fire('neonPolice:ready', resourceRoot, suspect)
+    setNativeWantedLevel(suspect,2)
+    local mark = #clientEvents
+    step(250)
+    local probe = probesTo(suspect,'neonPolice:carProbe',mark)[1]
+    assert(probe)
+    fire('neonPolice:carCandidate',resourceRoot,suspect,probe.args[1],2400,2480,10,0)
+    local car = getNativePoliceCars(suspect)[1]
+    check('fleet policy locks this cruiser on dispatch', car and car.locked)
+    fire('onVehicleStartEnter',car,nil,suspect,0)
+    check('fleet policy refuses player entry', stoppedEntry)
+    local passenger, driver = getVehicleOccupant(car,1), getVehicleOccupant(car,0)
+    assert(passenger and driver)
+    passenger.dead=true
+    fire('onPedWasted',passenger,nil,0,nil,0)
+    local cleanup = timers[#timers]
+    check('dead officer gets a 12-second cleanup timer', cleanup.interval == 12000)
+    cleanup.fn()
+    check('only the dead passenger is removed', not isElement(passenger) and isElement(driver) and isElement(car))
+    car.blown=true
+    fire('onVehicleExplode',car)
+    timers[#timers].fn()
+    check('a still-managed wreck and its seated crew are removed', not isElement(car) and not isElement(driver))
+end
 print(('server_spec: %d checks passed'):format(passed))

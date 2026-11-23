@@ -21,6 +21,9 @@ function addEventHandler(name, _, fn) handlers[name] = fn end
 function isElement(x) return type(x) == 'table' and x.kind ~= nil end
 function getElementType(x) return x.kind end
 function getElementHealth(x) return x.health or 100 end
+function setElementHealth(x, health) x.health = health; return true end
+function killPed(x) x.health = 0; return true end
+function isPedDead(x) return getElementHealth(x) <= 0 end
 function getElementDimension(x) return x.dimension or 0 end
 function getElementInterior(x) return x.interior or 0 end
 function getElementPosition(x) return x.x or 0, 0, 0 end
@@ -104,7 +107,9 @@ function consumeNativeDamage() return false end
 function addPedNativeDamageResponseEvent() hits[#hits+1]='response'; return true end
 evaluate(section(clientCode,'addEvent("pedTraffic:damageResponse"','addEvent("pedTraffic:nativePlayerDamage"'))
 timers={}; local before=#hits
+local hpBeforeReplay=getElementHealth(victim)
 handlers['pedTraffic:damageResponse'](victim,attacker,0,3,false,7)
+assert(getElementHealth(victim)==hpBeforeReplay,'a response must never apply a second health debit')
 assert(#timers==1,'response delayed')
 victim.data['neon:ambientPedTrafficEpoch']=9; timers[1]()
 assert(#hits==before,'old response discarded after handoff')

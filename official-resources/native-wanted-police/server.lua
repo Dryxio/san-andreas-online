@@ -44,6 +44,7 @@ local function loadSettings()
     cfg.bustedText = setting('bustedText', true)
     cfg.streetCops = setting('streetCops', true)
     cfg.policeCars = setting('policeCars', true)
+    cfg.lockPoliceCars = setting('lockPoliceCars', false)
     cfg.maxCars = setting('maxCars', 12)
     cfg.maxCarsPerSuspect = setting('maxCarsPerSuspect', 3)
     -- Cops on foot created out of view. Solo has no such spawner during a
@@ -62,11 +63,13 @@ end)
 local suspects = {}   -- player -> suspect state
 local units = {}      -- ped -> unit
 local cars = {}       -- vehicle -> police car (version 2)
+local legacyViewers = {} -- peers using spatial-only ped sync
 local ready = {}      -- player -> true once client.lua is running
 local pendingSpawns = {}
 local nextRequestId, nextUnitId = 0, 0
 local lastVehicleAttacker = {}
 local reportBudget = {}
+local lastPedAttacker = {} -- last validated attacker of a ped
 local lastFireAt = {}   -- player -> when the server last saw him fire (bullet sync)
 local vetoLedger = {}   -- player -> {count, since}: "visible" answers, bounded
 
@@ -117,7 +120,7 @@ end
 -- WorkOutPolicePresence: living cops and law vehicles in a 3D radius, no line
 -- of sight. The offender's own vehicle does not count.
 local function policeNear(x, y, z, radius, offender)
-    for _, ped in ipairs(getElementsWithinRange(x, y, z, radius, 'ped', 0, 0)) do
+    for _, ped in ipairs(getElementsWithinRange(Vector3(x, y, z), radius, 'ped', 0, 0)) do
         if isCopPed(ped) then return true end
     end
     -- Vehicles count while in service: GTA's bIsLawEnforcer flag is set on
@@ -125,7 +128,7 @@ local function policeNear(x, y, z, radius, offender)
     -- abandoned or wrecked vehicle never counts. Neon approximates "in
     -- service" as a law model driven by a cop (the Maverick: any driver).
     local own = offender and getPedOccupiedVehicle(offender)
-    for _, vehicle in ipairs(getElementsWithinRange(x, y, z, radius, 'vehicle', 0, 0)) do
+    for _, vehicle in ipairs(getElementsWithinRange(Vector3(x, y, z), radius, 'vehicle', 0, 0)) do
         local model = getElementModel(vehicle)
         local driver = getVehicleController(vehicle)
         if vehicle ~= own and R.lawVehicles[model] and not isVehicleBlown(vehicle) and isElement(driver) and
@@ -319,6 +322,9 @@ local function reportDamage(attacker, victim, weapon, origin, stealth)
         class = 'civilian'
     end
     if origin ~= 'weapon-fire' and not plausibleHit(offender, victim, weapon) then return end
+    if isPed(victim) and origin ~= 'ped-wasted' then
+        lastPedAttacker[victim] = {player = offender, weapon = weapon, at = now()}
+    end
     local cop = class == 'cop'
     reportCrime(offender, R.crime.DAMAGE_PED, victim, origin)
     if weapon == 49 or weapon == 50 then
@@ -337,13 +343,109 @@ end
 
 -- CWeapon::DoBulletImpact (0x73B550): firing reports crime 1 against what was
 -- hit, and a hit ped (cop or not) also reports crime 4.
-addEventHandler('onPlayerWeaponFire', root, function(weapon, _, _, _, hitElement)
+-- The shooter cannot change an observed ped's GTA health. Use the validated
+-- bullet packet once for police whose owner runs the legacy mobile engine.
+local function policeBulletTarget(ped)
+    return getElementData(ped, 'neon:police') == true or (getElementData(ped, 'neon:ambientPedTraffic') == true and
+        R.pedClassForModel(getElementModel(ped)) == 'cop')
+end
+
+local function updateBulletAuthority(ped)
+    if not isPed(ped) then return end
+    if getElementData(ped, 'neon:ambientDamageAuthority') == true then return end
+    if policeBulletTarget(ped) then
+        if getElementData(ped, 'neon:serverBulletDamage') ~= true then setData(ped, 'neon:serverBulletDamage', true) end
+    elseif getElementData(ped, 'neon:serverBulletDamage') == true then
+        removeElementData(ped, 'neon:serverBulletDamage')
+    end
+end
+
+addEventHandler('onElementDataChange', root, function(key)
+    if key == 'neon:police' or key == 'neon:ambientPedTraffic' then updateBulletAuthority(source) end
+end)
+addEventHandler('onElementModelChange', root, function() updateBulletAuthority(source) end)
+
+function handlesTrafficBulletDamage(ped, weapon)
+    if type(weapon) ~= 'number' or weapon < 22 or weapon > 34 or not isPed(ped) then return false end
+    local owner = getElementSyncer(ped)
+    if not owner or not legacyViewers[owner] then return false end
+    return policeBulletTarget(ped)
+end
+
+-- Stock desktop bullet sync carries a CClientPlayer damage ID. The Lua shot
+-- event also supplies the collision ped. Pair that hint with one server-seen
+-- shot, irrespective of which channel arrives first.
+local pendingCopShots = {}
+local function canHitCop(shooter, ped, weapon)
+    return handlesTrafficBulletDamage(ped, weapon) and getElementSyncer(ped) ~= shooter and not isPedDead(ped) and
+        getElementDimension(shooter) == getElementDimension(ped) and getElementInterior(shooter) == getElementInterior(ped) and
+        plausibleHit(shooter, ped, weapon)
+end
+
+local function copOnShotSegment(ped, shot)
+    local x, y, z = getElementPosition(ped)
+    local dx, dy, dz = shot.x - shot.sx, shot.y - shot.sy, shot.z - shot.sz
+    local length2 = dx*dx + dy*dy + dz*dz
+    if not (length2 > 0 and length2 <= 500*500) then return false end
+    local t = math.max(0, math.min(1, ((x-shot.sx)*dx + (y-shot.sy)*dy + (z+0.6-shot.sz)*dz) / length2))
+    return getDistanceBetweenPoints3D(x, y, z+0.6, shot.sx+t*dx, shot.sy+t*dy, shot.sz+t*dz) <= 2.5
+end
+
+local function applyLegacyCopHit(shooter, ped, weapon)
+    local damage = getWeaponProperty(weapon, 'std', 'damage')
+    if type(damage) ~= 'number' or damage <= 0 then return end
+    reportCrime(shooter, R.crime.SHOOT_PED, ped, 'weapon-fire')
+    reportDamage(shooter, ped, weapon, 'weapon-fire')
+    local health = getElementHealth(ped) - damage
+    if health <= 0 then killPed(ped, shooter, weapon, 3) else setElementHealth(ped, health) end
+end
+
+local function pairCopShot(shooter, weapon, shot, ped)
+    local t = now()
+    local queue = pendingCopShots[shooter] or {}
+    pendingCopShots[shooter] = queue
+    local i = 1
+    while i <= #queue do
+        local other = queue[i]
+        if t - other.at > 700 then
+            table.remove(queue, i)
+        else
+            if other.weapon == weapon and (other.shot ~= nil) ~= (shot ~= nil) then
+                local victim, ray = ped or other.ped, shot or other.shot
+                if (not ray.target or ray.target == victim) and canHitCop(shooter, victim, weapon) and copOnShotSegment(victim, ray) then
+                    table.remove(queue, i)
+                    applyLegacyCopHit(shooter, victim, weapon)
+                    return
+                end
+            end
+            i = i + 1
+        end
+    end
+    if #queue >= 16 then table.remove(queue, 1) end
+    queue[#queue + 1] = {at = t, weapon = weapon, shot = shot, ped = ped}
+end
+
+addEvent('neonPolice:copHit', true)
+addEventHandler('neonPolice:copHit', resourceRoot, function(ped, weapon)
+    if source == resourceRoot and isPlayer(client) and canHitCop(client, ped, weapon) then
+        pairCopShot(client, weapon, nil, ped)
+    end
+end)
+
+addEventHandler('onPlayerWeaponFire', root, function(weapon, x, y, z, hitElement, sx, sy, sz)
     lastFireAt[source] = now()
+    if next(legacyViewers) and (not hitElement or isPed(hitElement)) and weapon >= 22 and weapon <= 34 and type(sx) == 'number' and
+        type(sy) == 'number' and type(sz) == 'number' and type(x) == 'number' and type(y) == 'number' and type(z) == 'number' then
+        pairCopShot(source, weapon, {x=x, y=y, z=z, sx=sx, sy=sy, sz=sz, target=hitElement}, nil)
+    end
     reportCrime(source, R.crime.FIRE_WEAPON, isElement(hitElement) and hitElement or nil, 'weapon-fire')
     if isElement(hitElement) then
         local kind = getElementType(hitElement)
         if kind == 'ped' or kind == 'player' then
             if kind == 'player' and not cfg.pvpCrimes then return end
+            if kind == 'ped' and plausibleHit(source, hitElement, weapon) then
+                lastPedAttacker[hitElement] = {player = source, weapon = weapon, at = now()}
+            end
             reportCrime(source, R.crime.SHOOT_PED, hitElement, 'weapon-fire')
         elseif kind == 'vehicle' then
             lastVehicleAttacker[hitElement] = {player = source, at = now()}
@@ -360,6 +462,15 @@ addEventHandler('onPlayerDamage', root, function(attacker, weapon)
 end)
 
 addEventHandler('onPedWasted', root, function(_, killer, weapon, _, stealth)
+    local syncer, last = getElementSyncer(source), lastPedAttacker[source]
+    lastPedAttacker[source] = nil
+    if not killer or killer == syncer then
+        if last and now() - last.at <= 15000 and isPlayer(last.player) then
+            killer, weapon = last.player, last.weapon
+        elseif killer == syncer then
+            return
+        end
+    end
     if killer then reportDamage(killer, source, weapon, 'ped-wasted', stealth == true) end
 end)
 
@@ -401,6 +512,7 @@ addEventHandler('onVehicleExplode', root, function()
 end)
 
 addEventHandler('onElementDestroy', root, function()
+    lastPedAttacker[source] = nil
     lastVehicleAttacker[source] = nil
     enteredVehicles[source] = nil
 end)
@@ -498,15 +610,25 @@ local function chooseOwner(unit)
     local t = now()
     unit.avoid = unit.avoid or {}
     local function allowed(player) return ready[player] and (unit.avoid[player] or 0) <= t end
-    local best, bestDistance
+    local best, bestDistance, legacy, legacyDistance
     for _, player in ipairs(getElementsByType('player')) do
         if player ~= unit.suspect and allowed(player) and not isPedDead(player) and inMainWorld(player) then
             local d = distance3(player, unit.ped)
-            if d <= cfg.ownerRange and (not bestDistance or d < bestDistance) then best, bestDistance = player, d end
+            if d <= cfg.ownerRange then
+                if legacyViewers[player] then
+                    if not legacyDistance or d < legacyDistance then legacy, legacyDistance = player, d end
+                elseif not bestDistance or d < bestDistance then
+                    best, bestDistance = player, d
+                end
+            end
         end
     end
     if best then return best end
-    if isPlayer(unit.suspect) and allowed(unit.suspect) then return unit.suspect end
+    local suspect = unit.suspect
+    if isPlayer(suspect) and allowed(suspect) and not legacyViewers[suspect] and
+        distance3(suspect, unit.ped) <= cfg.ownerRange then return suspect end
+    if legacy then return legacy end
+    if isPlayer(suspect) and allowed(suspect) then return suspect end
     return unit.owner
 end
 
@@ -700,7 +822,7 @@ local function recruitStreetCops()
     local seen, candidates = {}, {}
     for _, s in ipairs(wanted) do
         local x, y, z = getElementPosition(s.player)
-        for _, ped in ipairs(getElementsWithinRange(x, y, z, cfg.copLostDistance, 'ped', 0, 0)) do
+        for _, ped in ipairs(getElementsWithinRange(Vector3(x, y, z), cfg.copLostDistance, 'ped', 0, 0)) do
             if not seen[ped] and isStreetCop(ped) then
                 seen[ped] = true
                 local best, bestDistance
@@ -856,7 +978,26 @@ local function destroyUnit(ped)
         -- A crew member removed in his seat takes the car with him: both are
         -- out of everyone's view, and an empty police car must not be left
         -- on the road.
-        if unit.car and isElement(ped) and getPedOccupiedVehicle(ped) == unit.car.vehicle then destroyCar(unit.car) end
+        local car = unit.car
+        if car and isElement(ped) and getPedOccupiedVehicle(ped) == car.vehicle then
+            local occupied = isPlayer(getVehicleController(car.vehicle))
+            if isPedDead(ped) then
+                for _, other in ipairs(car.crew) do
+                    if other ~= ped and isElement(other) and not isPedDead(other) and getPedOccupiedVehicle(other) == car.vehicle then
+                        occupied = true
+                        break
+                    end
+                end
+            end
+            if occupied then
+                for i, other in ipairs(car.crew) do
+                    if other == ped then table.remove(car.crew, i); break end
+                end
+                if car.driver == ped then car.driver = nil end
+            else
+                destroyCar(car)
+            end
+        end
     end
     if isElement(ped) then destroyElement(ped) end
 end
@@ -961,6 +1102,7 @@ local function releaseCar(car)
         end
     end
     if isElement(car.vehicle) then
+        if car.lockedByPolice then setVehicleLocked(car.vehicle, false) end
         removeElementData(car.vehicle, 'neon:policeCar')
         removeElementData(car.vehicle, 'neon:policeCarPhase')
         setElementSyncer(car.vehicle, true)
@@ -979,6 +1121,29 @@ destroyCar = function(car)
     end
     if isElement(vehicle) then destroyElement(vehicle) end
 end
+
+-- Keep cleanup tied to the original unit. A recycled entity or a cruiser
+-- already released to a player does not belong to this pending timer.
+addEventHandler('onPedWasted', root, function()
+    local ped, unit = source, units[source]
+    if not unit then return end
+    retireUnit(unit, 'dead')
+    setTimer(function()
+        if units[ped] == unit and isElement(ped) and isPedDead(ped) then destroyUnit(ped) end
+    end, 12000, 1)
+end)
+
+addEventHandler('onVehicleExplode', root, function()
+    local vehicle, car = source, cars[source]
+    if not car then return end
+    setTimer(function()
+        if cars[vehicle] == car and isElement(vehicle) and isVehicleBlown(vehicle) then destroyCar(car) end
+    end, 5000, 1)
+end)
+
+addEventHandler('onVehicleStartEnter', root, function(player)
+    if cars[source] and cars[source].lockedByPolice and isPlayer(player) then cancelEvent() end
+end)
 
 local function wantCar(s, t)
     if not cfg.policeCars or countCars() >= cfg.maxCars then return false end
@@ -1116,7 +1281,7 @@ createPoliceCar = function(s, x, y, z, spec)
     local car = {
         vehicle = vehicle, ped = vehicle, model = spec.model, suspect = s.player, crew = {}, phase = 'staging',
         createdAt = t, progressAt = t, bestDistance = math.huge, stalls = 0, avoid = {}, reentered = false,
-        hidden = true,
+        hidden = true, lockedByPolice = cfg.lockPoliceCars,
         -- handling+0x88, the speed 0x41CAA0 multiplies (rules.lua).
         topSpeed = R.handlingTopSpeed(tonumber(handling.maxVelocity), tonumber(handling.engineAcceleration),
                                       tonumber(handling.dragCoeff), tonumber(handling.handlingFlags)),
@@ -1131,6 +1296,7 @@ createPoliceCar = function(s, x, y, z, spec)
     s.lastCarAt = t
     s.carFailures = 0
     setVehicleEngineState(vehicle, true)
+    if cfg.lockPoliceCars then setVehicleLocked(vehicle, true) end
     setData(vehicle, 'neon:policeCar', true)
     setData(vehicle, 'neon:policeSuspect', s.player)
     setData(vehicle, 'neon:policeCarPhase', 'staging')
@@ -1185,7 +1351,7 @@ local function stageCar(s, car, t)
     if car.reveal then reveals[car.reveal.id] = nil end
     local x, y, z = getElementPosition(car.vehicle)
     local watchers, set = {}, {}
-    for _, player in ipairs(getElementsWithinRange(x, y, z, REVEAL_RANGE, 'player')) do
+    for _, player in ipairs(getElementsWithinRange(Vector3(x, y, z), REVEAL_RANGE, 'player')) do
         if ready[player] and inMainWorld(player) then
             watchers[#watchers + 1] = player
             set[player] = true
@@ -1426,7 +1592,7 @@ local function probeRetired()
             if x then
                 -- A car is seen from farther than a cop: 220 m, the distance
                 -- native-vehicle-traffic keeps its cars around players.
-                for _, player in ipairs(getElementsWithinRange(x, y, z, 220, 'player')) do
+                for _, player in ipairs(getElementsWithinRange(Vector3(x, y, z), 220, 'player')) do
                     if ready[player] then watchers[#watchers + 1] = player end
                 end
             end
@@ -1446,13 +1612,15 @@ local function probeRetired()
         local unit = units[ped]
         if not isElement(ped) then
             destroyUnit(ped)
+        elseif isPedDead(ped) and t - (unit.retiredAt or t) >= 12000 then
+            destroyUnit(ped)
         elseif t - (unit.retiredAt or t) > 90000 then
             destroyUnit(ped) -- hard limit so a stuck probe can never leak peds
         else
             unit.retiredAt = unit.retiredAt or t
             local x, y, z = getElementPosition(ped)
             local watchers = {}
-            for _, player in ipairs(getElementsWithinRange(x, y, z, 150, 'player')) do
+            for _, player in ipairs(getElementsWithinRange(Vector3(x, y, z), 150, 'player')) do
                 if ready[player] then watchers[#watchers + 1] = player end
             end
             if #watchers == 0 then
@@ -1798,6 +1966,8 @@ local function forgetPlayer(player)
         end
     end
     suspects[player] = nil
+    pendingCopShots[player] = nil
+    legacyViewers[player] = nil
     ready[player] = nil
     reportBudget[player] = nil
     lastFireAt[player] = nil
@@ -1807,8 +1977,34 @@ local function forgetPlayer(player)
     end
 end
 
+-- Only an actual owner shot can produce a visual cue. This event never
+-- credits a hit or changes health, ammunition, crime or wanted level.
+addEvent('neonPolice:ownerShot', true)
+addEventHandler('neonPolice:ownerShot', resourceRoot, function(ped, epoch, weapon, x, y, z)
+    if source ~= resourceRoot or not isPlayer(client) then return end
+    local unit = units[ped]
+    if not unit or unit.owner ~= client or unit.epoch ~= epoch or getElementSyncer(ped) ~= client or
+        isPedDead(ped) or type(weapon) ~= 'number' or weapon < 22 or weapon > 34 or getPedWeapon(ped) ~= weapon or
+        type(x) ~= 'number' or type(y) ~= 'number' or type(z) ~= 'number' then return end
+    local px, py, pz = getElementPosition(ped)
+    if not (getDistanceBetweenPoints3D(px, py, pz, x, y, z) <= 500) then return end
+    local t = now()
+    if unit.lastVisualShot and t - unit.lastVisualShot < 40 then return end
+    unit.lastVisualShot = t
+    local viewers = {}
+    for viewer in pairs(legacyViewers) do
+        if viewer ~= client and isPlayer(viewer) and getElementDimension(viewer) == getElementDimension(ped) and
+            getElementInterior(viewer) == getElementInterior(ped) and distance3(viewer, ped) <= 180 then
+            viewers[#viewers + 1] = viewer
+        end
+    end
+    if #viewers > 0 then triggerClientEvent(viewers, 'neonPolice:showShot', resourceRoot, ped, epoch, weapon, x, y, z) end
+end)
+
 addEvent('neonPolice:ready', true)
-addEventHandler('neonPolice:ready', resourceRoot, function()
+addEventHandler('neonPolice:ready', resourceRoot, function(legacy)
+    if source ~= resourceRoot or not isPlayer(client) then return end
+    legacyViewers[client] = legacy == true or nil
     ready[client] = true
     suspectOf(client)
 end)
@@ -1828,6 +2024,7 @@ addEventHandler('onPlayerWasted', root, function(_, killer, weapon)
 end)
 
 addEventHandler('onResourceStart', resourceRoot, function()
+    for _, ped in ipairs(getElementsByType('ped')) do updateBulletAuthority(ped) end
     setData(resourceRoot, 'neon:policeConfig', {overheadStars = cfg.overheadStars, bustedText = cfg.bustedText})
     for _, player in ipairs(getElementsByType('player')) do suspectOf(player) end
     setTimer(function()
@@ -1847,6 +2044,11 @@ addEventHandler('onResourceStart', resourceRoot, function()
 end)
 
 addEventHandler('onResourceStop', resourceRoot, function()
+    for _, ped in ipairs(getElementsByType('ped')) do
+        if getElementData(ped, 'neon:ambientDamageAuthority') ~= true and getElementData(ped, 'neon:serverBulletDamage') == true then
+            removeElementData(ped, 'neon:serverBulletDamage')
+        end
+    end
     for player in pairs(busting) do
         if isElement(player) then fadeCamera(player, true, 0.5) end
     end

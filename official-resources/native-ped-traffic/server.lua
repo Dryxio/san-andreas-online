@@ -24,7 +24,7 @@ local config = {
     visibilityTimeout = 1000,
     handoffHold = 3000,
     handoffTimeout = 2000,
-    corpseLifetime = 30000,
+    corpseLifetime = 12000,
     nativeMeleeDamageRadius = 5,
     nativeMeleeDamageInterval = 250,
     nativeFirearmDamageInterval = 40,
@@ -699,6 +699,12 @@ local function isEligiblePlayer(player)
         getElementDimension(player) == 0 and getElementInterior(player) == 0
 end
 
+-- Verifica se o jogador pode ser owner/syncer de NPC.
+-- Clientes Desktop e Mobile com suporte a Syncer tem neon:pedOwnerEligible = true.
+local function isPedOwnerEligible(player)
+    return isEligiblePlayer(player) and getElementData(player, "neon:pedOwnerEligible") ~= false
+end
+
 local function isPopulationWorldReady(player)
     return populationWorldRevisions[player] == populationWorld.revision
 end
@@ -713,10 +719,10 @@ local function squaredDistance2D(x1, y1, x2, y2)
     return dx * dx + dy * dy
 end
 
-local function getEligiblePlayers()
+local function getPopulationPlayers(eligible)
     local players = {}
     for _, player in ipairs(getElementsByType("player")) do
-        if isEligiblePlayer(player) and isPopulationWorldReady(player) then
+        if eligible(player) and isPopulationWorldReady(player) then
             players[#players + 1] = player
         end
     end
@@ -740,7 +746,7 @@ end
 
 local function findClosestPopulationResident(x, y, z, populationClass, excludedPlayer, resume, admissionExtraRadius)
     local closest, closestDistanceSquared
-    for _, player in ipairs(getEligiblePlayers()) do
+    for _, player in ipairs(getPopulationPlayers(isPedOwnerEligible)) do
         if player ~= excludedPlayer then
             local profile = populationProfiles[player]
             local profileContinuous = profile and
@@ -1037,7 +1043,7 @@ local function isPopulationPedSurplusForAllResidents(record)
 
     local pedX, pedY, pedZ = getElementPosition(record.ped)
     local residentCount = 0
-    for _, player in ipairs(getEligiblePlayers()) do
+    for _, player in ipairs(getPopulationPlayers(isEligiblePlayer)) do
         local playerX, playerY, playerZ = getElementPosition(player)
         local radius = getPopulationRadiusForClass(populationProfiles[player], record.populationClass)
         if radius and squaredDistance2D(pedX, pedY, playerX, playerY) <= radius * radius then
@@ -1143,7 +1149,7 @@ local function findFurthestSurplusPopulationGroup(x, y, z, radius, gang, require
                 local distanceSquared = squaredDistance2D(x, y, centreX, centreY)
                 local surplusForEveryResident = true
                 local residentCount = 0
-                for _, player in ipairs(getEligiblePlayers()) do
+                for _, player in ipairs(getPopulationPlayers(isEligiblePlayer)) do
                     local residentDistanceSquared = getGroupDistanceSquaredToPlayer(group, player)
                     local radii = getPopulationRadii(populationProfiles[player])
                     if radii and residentDistanceSquared and residentDistanceSquared <= radii.gang * radii.gang then
@@ -1324,7 +1330,7 @@ function releaseTrafficCop(ped)
     if isElement(record.owner) then
         triggerClientEvent(record.owner, "pedTraffic:stop", resourceRoot, ped, record.epoch, "released")
     end
-    setElementData(ped, "neon:ambientPedTraffic", false)
+    TrafficObserverDamage.release(ped)
     setElementData(ped, "neon:ambientPedCopSafe", false)
     removeElementData(ped, "neon:ambientPedTrafficEpoch")
     setElementFrozen(ped, false)
@@ -1516,7 +1522,7 @@ local function restoreTrafficCombatContext(record)
 end
 
 assignOwner = function(record, owner, reason)
-    if not record or record.removing or not isElement(record.ped) or not isEligiblePlayer(owner) then
+    if not record or record.removing or not isElement(record.ped) or not isPedOwnerEligible(owner) then
         return false
     end
 
@@ -1612,7 +1618,7 @@ local function startAirTest(player, forceHandoff)
         outputChatBox("That traffic ped already has a climb test in progress", player, 255, 160, 80)
         return false
     end
-    if forceHandoff and #getEligiblePlayers() < 2 then
+    if forceHandoff and #getPopulationPlayers(isPedOwnerEligible) < 2 then
         outputChatBox("The airborne handoff test requires two connected players", player, 255, 160, 80)
         return false
     end
@@ -1650,7 +1656,7 @@ local function startClimbTest(player, forceHandoff)
         outputChatBox("That traffic ped already has a physical test in progress", player, 255, 160, 80)
         return false
     end
-    if forceHandoff and #getEligiblePlayers() < 2 then
+    if forceHandoff and #getPopulationPlayers(isPedOwnerEligible) < 2 then
         outputChatBox("The climb handoff test requires two connected players", player, 255, 160, 80)
         return false
     end
@@ -1830,7 +1836,7 @@ end
 
 local function findClosestGroupResident(group, excludedPlayer, requireCapacity, resume, admissionExtraRadius)
     local closest, closestDistanceSquared
-    for _, player in ipairs(getEligiblePlayers()) do
+    for _, player in ipairs(getPopulationPlayers(isPedOwnerEligible)) do
         if player ~= excludedPlayer and
             (not requireCapacity or countNativeGroupsForOwner(player, group) < config.maximumNativeGangGroups) then
             local profile = populationProfiles[player]
@@ -2421,7 +2427,7 @@ function coupleRuntime.sendPresentations(couple, reason)
     local pedA, pedB = couple.members[1].ped, couple.members[2].ped
     local sideA = couple.armSides and couple.armSides[1] or false
     local sideB = couple.armSides and couple.armSides[2] or false
-    for _, observer in ipairs(getEligiblePlayers()) do
+    for _, observer in ipairs(getPopulationPlayers(isEligiblePlayer)) do
         if observer ~= couple.owner then
             triggerClientEvent(observer, "pedTraffic:assignCouplePresentation", resourceRoot, couple.id, couple.epoch,
                                pedA, pedB, reason, sideA, sideB)
@@ -2594,7 +2600,7 @@ function coupleRuntime.spawn(player, candidate, selection)
         trafficPeds[ped] = record
         setElementDimension(ped, 0)
         setElementInterior(ped, 0)
-        setElementData(ped, "neon:ambientPedTraffic", true)
+        TrafficObserverDamage.mark(ped)
         setElementData(ped, "neon:ambientPedTrafficId", record.id)
         setElementData(ped, "neon:ambientPedPopulationClass", "civilian")
         setElementData(ped, "neon:ambientPedLogicalType", record.logicalPedType)
@@ -2705,7 +2711,7 @@ local function spawnGangGroup(player, candidate, selection)
         trafficPeds[ped] = record
         setElementDimension(ped, 0)
         setElementInterior(ped, 0)
-        setElementData(ped, "neon:ambientPedTraffic", true)
+        TrafficObserverDamage.mark(ped)
         setElementData(ped, "neon:ambientPedTrafficId", record.id)
         setElementData(ped, "neon:ambientPedPopulationClass", "gang")
         setElementData(ped, "neon:ambientPedGang", selection.gang)
@@ -2860,7 +2866,7 @@ local function spawnCandidate(player, candidate, selection)
     setElementInterior(ped, 0)
     -- These two small immutable values let every observer correlate bounded
     -- telemetry for the same network ped without synchronizing AI state.
-    setElementData(ped, "neon:ambientPedTraffic", true)
+    TrafficObserverDamage.mark(ped)
     setElementData(ped, "neon:ambientPedTrafficId", record.id)
     setElementData(ped, "neon:ambientPedPopulationClass", populationClass)
     setElementData(ped, "neon:ambientPedLogicalType", record.logicalPedType)
@@ -3028,7 +3034,7 @@ local function beginCandidateVisibilityCheck(player, candidate, request)
         return false, "visibility-no-probes"
     end
     local voters = {}
-    for _, voter in ipairs(getEligiblePlayers()) do
+    for _, voter in ipairs(getElementsByType("player")) do
         -- PedCreationDistMultiplier is stock-clamped to 1.0..1.5. Use the
         -- maximum only to bound network voters; each client applies its exact
         -- current multiplier before querying GTA's camera.
@@ -3036,7 +3042,8 @@ local function beginCandidateVisibilityCheck(player, candidate, request)
             math.max(0, math.min(PED_PRODUCTION_PREDICTION_MAX_LEAD, tonumber(request.selection.predictionLead) or 0))
         local playerX, playerY = getElementPosition(voter)
         for _, probe in ipairs(probes) do
-            if squaredDistance2D(playerX, playerY, probe.x, probe.y) < threshold * threshold then
+            if isEligiblePlayer(voter) and isPopulationWorldReady(voter) and
+                squaredDistance2D(playerX, playerY, probe.x, probe.y) < threshold * threshold then
                 voters[#voters + 1] = voter
                 break
             end
@@ -3159,7 +3166,7 @@ local function beginRemovalVisibilityCheck(target, reason)
         return false
     end
 
-    local voters = getEligiblePlayers()
+    local voters = getPopulationPlayers(isEligiblePlayer)
     if #voters == 0 then
         if kind == "group-removal" then
             removeGroup(target, reason)
@@ -3460,7 +3467,7 @@ local function createBikeJackTestGroup(owner, vehicle, scenarioId)
         trafficPeds[ped] = record
         setElementDimension(ped, getElementDimension(vehicle))
         setElementInterior(ped, getElementInterior(vehicle))
-        setElementData(ped, "neon:ambientPedTraffic", true)
+        TrafficObserverDamage.mark(ped)
         setElementData(ped, "neon:ambientPedTrafficId", record.id)
         setElementData(ped, "neon:ambientPedPopulationClass", "gang")
         setElementData(ped, "neon:ambientPedGang", 0)
@@ -3999,7 +4006,7 @@ local function startResidencyTest(player)
         outputChatBox("Run /pedtraffic on and wait for an active grounded group first", player, 255, 160, 80)
         return false
     end
-    local players = getEligiblePlayers()
+    local players = getPopulationPlayers(isPedOwnerEligible)
     if #players ~= 2 then
         outputChatBox("The residency test requires exactly two ready clients in dimension/interior 0", player, 255, 160, 80)
         return false
@@ -4357,12 +4364,31 @@ end)
 
 addEvent("pedTraffic:populationWorldApplied", true)
 addEventHandler("pedTraffic:populationWorldApplied", resourceRoot, function(revision, capabilities, success, reason)
-    if not enabled or not isEligiblePlayer(client) or revision ~= populationWorld.revision then
+    -- The resource loads in the login dimension before the player spawns.
+    -- Only population simulation needs a living player in the public world.
+    if not enabled or source ~= resourceRoot or not isElement(client) or
+        getElementType(client) ~= "player" or revision ~= populationWorld.revision then
+        return
+    end
+
+    -- Population fallback and the ability to run an authoritative task are
+    -- independent. A client that can only observe still receives the actors.
+    local isMobile = type(capabilities) == "table" and capabilities.mobilePolyfill == true
+    if type(capabilities) == "table" and (isMobile or capabilities.populationFallback == true) and
+        success == true and capabilities.catalogRevision == populationCatalog.revision then
+        local canOwn = isMobile and capabilities.pedWander == true
+        setElementData(client, "neon:pedOwnerEligible", canOwn, "broadcast", "deny")
+        setElementData(client, "neon:isMobileClient", isMobile, "broadcast", "deny")
+        populationWorldRevisions[client] = revision
+        log(("population-world-fallback-ready player=%s revision=%d mobile=%s pedWander=%s"):format(
+            getPlayerName(client), revision, tostring(isMobile), tostring(canOwn)), true)
         return
     end
 
     if success == true and type(capabilities) == "table" and capabilities.zones == true and
         capabilities.catalogRevision == populationCatalog.revision then
+        setElementData(client, "neon:pedOwnerEligible", true, "broadcast", "deny")
+        setElementData(client, "neon:isMobileClient", false, "broadcast", "deny")
         populationWorldRevisions[client] = revision
         log(("population-world-ready player=%s revision=%d preset=%s"):format(getPlayerName(client), revision, populationWorld.preset), true)
     else
@@ -4371,14 +4397,30 @@ addEventHandler("pedTraffic:populationWorldApplied", resourceRoot, function(revi
     end
 end)
 
-addEvent("pedTraffic:ready", true)
-addEventHandler("pedTraffic:ready", resourceRoot, function()
-    populationWorldRevisions[client] = nil
-    if enabled then
-        sendPopulationWorldState(client)
-    end
-    triggerClientEvent(client, "pedTraffic:setEnabled", resourceRoot, enabled, debugEnabled)
-end)
+do
+    local lastSent = {}
+    addEvent("pedTraffic:ready", true)
+    addEventHandler("pedTraffic:ready", resourceRoot, function()
+        if source ~= resourceRoot or not isElement(client) or getElementType(client) ~= "player" then return end
+        local now = getTickCount()
+        if lastSent[client] and now - lastSent[client] < 1000 then return end
+        lastSent[client] = now
+        populationWorldRevisions[client] = nil
+        triggerClientEvent(client, "pedTraffic:setEnabled", resourceRoot, enabled, debugEnabled)
+        if enabled then sendPopulationWorldState(client) end
+    end)
+    setTimer(function()
+        if not enabled then return end
+        local now = getTickCount()
+        for player, sentAt in pairs(lastSent) do
+            if isEligiblePlayer(player) and not isPopulationWorldReady(player) and now - sentAt >= 10000 then
+                lastSent[player] = now
+                sendPopulationWorldState(player)
+            end
+        end
+    end, 10000, 0)
+    addEventHandler("onPlayerQuit", root, function() lastSent[source] = nil end)
+end
 
 addEvent("pedTraffic:residencySample", true)
 addEventHandler("pedTraffic:residencySample", resourceRoot, function(id, data)
@@ -4493,7 +4535,7 @@ addEventHandler("pedTraffic:evidence", resourceRoot, function(ped, epoch, eviden
         })
         log(("accepted id=%d epoch=%d owner=%s"):format(record.id, epoch, getPlayerName(client)))
         restoreTrafficCombatContext(record)
-        for _, player in ipairs(getEligiblePlayers()) do
+        for _, player in ipairs(getPopulationPlayers(isEligiblePlayer)) do
             -- Reconstruct a still-active threat after an owner handoff, but do
             -- not confuse MTA's permanent shot raycast with actual aiming.
             if hasValidGunAimContext(player, record.ped, true) then
@@ -4771,7 +4813,7 @@ addEventHandler("pedTraffic:groupEvidence", resourceRoot, function(groupId, epoc
         log(("group-accepted group=%d epoch=%d gang=%d members=%d owner=%s"):format(
                 group.id, group.epoch, group.gang, #group.members, getPlayerName(client)), true)
         for _, record in ipairs(group.members) do
-            for _, player in ipairs(getEligiblePlayers()) do
+            for _, player in ipairs(getPopulationPlayers(isEligiblePlayer)) do
                 if hasValidGunAimContext(player, record.ped, true) then
                     bridgeGunAim(record, player)
                 end
@@ -4819,6 +4861,11 @@ addEventHandler("pedTraffic:gunAimObserved", resourceRoot, function(ped)
     bridgeGunAim(record, client)
 end)
 
+TrafficObserverDamage.install(function(ped)
+    local record = trafficPeds[ped]
+    return record and not record.removing and record.owner == getElementSyncer(ped)
+end)
+
 addEvent("pedTraffic:damageObserved", true)
 addEventHandler("pedTraffic:damageObserved", resourceRoot, function(ped, weapon, bodypart, observerNonce)
     local record = trafficPeds[ped]
@@ -4841,6 +4888,12 @@ addEventHandler("pedTraffic:damageObserved", resourceRoot, function(ped, weapon,
     record.lastInteractionAt = getTickCount()
     record.damageObserverNonces = record.damageObserverNonces or {}
     record.damageObserverNonces[client] = observerNonce
+
+    -- A remote damage animation is not evidence that a bullet hit. Health
+    -- for hitscan weapons is settled from the shooter's collision and server
+    -- shot in observer_damage.lua, or by wanted for one of its police peds.
+    TrafficObserverDamage.melee(client, ped, weapon, bodypart)
+
     local context = rememberGroupCombatContext(record, client, weapon, bodypart, "observer-bridge", observerNonce)
     rememberTrafficCombatContext(record, client, weapon, bodypart, "observer-bridge")
     local dispatched = bridgeDamageResponse(record, client, math.floor(weapon), math.floor(bodypart), false,
@@ -5315,13 +5368,26 @@ addEventHandler("onPedWasted", root, function(_, killer, weapon, bodypart)
         log(("group-death group=%d epoch=%d member=%d role=member"):format(
                 record.group.id, record.group.epoch, record.id), true)
     end
+    -- Detach wasted ped from group so corpse despawn will NOT wipe surviving gang members
+    if record.group then
+        local grp = record.group
+        for idx, member in ipairs(grp.members) do
+            if member == record then
+                table.remove(grp.members, idx)
+                break
+            end
+        end
+        record.group = nil
+    end
     local expectedPed = source
     setTimer(function()
         local current = trafficPeds[expectedPed]
         if current then
             removeRecord(current, "corpse-timeout")
+        elseif isElement(expectedPed) then
+            destroyElement(expectedPed)
         end
-    end, config.corpseLifetime, 1)
+    end, config.corpseLifetime or 12000, 1)
 end)
 
 addEventHandler("onElementDestroy", root, function()
@@ -5549,6 +5615,37 @@ function emitPedProductionTelemetry()
     }, true))
 end
 
+do
+    local lastSample = {}
+    local function validateIds(ids, limit)
+        if type(ids) ~= "table" then return false end
+        local result = {}
+        for i = 1, limit + 1 do
+            local id = ids[i]
+            if id == nil then return result end
+            if i > limit or not isIntegerInRange(id, 1, 2147483647) then return false end
+            result[i] = id
+        end
+    end
+    addEvent("pedTraffic:streamSample", true)
+    addEventHandler("pedTraffic:streamSample", resourceRoot, function(mobile, peds, vehicles, walkers, statics, routeVehicles)
+        if not enabled or not debugEnabled or source ~= resourceRoot or not isEligiblePlayer(client) then return end
+        local now = getTickCount()
+        if lastSample[client] and now - lastSample[client] < 4000 then return end
+        lastSample[client] = now
+        local pedIds, vehicleIds = validateIds(peds, 512), validateIds(vehicles, 512)
+        if not pedIds or not vehicleIds or type(mobile) ~= "boolean" then return end
+        local walkerIds, staticIds, routeIds = validateIds(walkers, 64), validateIds(statics, 64), validateIds(routeVehicles, 64)
+        if not walkerIds or not staticIds or not routeIds then return end
+        local x, y, z = getElementPosition(client)
+        outputServerLog(("[traffic-stream] player=%s platform=%s pos=%.1f,%.1f,%.1f radius=150 pedIds=[%s] vehicleIds=[%s] walkerIds=[%s] staticIds=[%s] routeVehicleIds=[%s]"):format(
+            getPlayerName(client), mobile and "mobile" or "desktop", x, y, z,
+            table.concat(pedIds, ","), table.concat(vehicleIds, ","), table.concat(walkerIds, ","),
+            table.concat(staticIds, ","), table.concat(routeIds, ",")))
+    end)
+    addEventHandler("onPlayerQuit", root, function() lastSample[source] = nil end)
+end
+
 setTimer(emitPedProductionTelemetry, stats.productionTelemetry.interval, 0)
 
 setTimer(function()
@@ -5619,14 +5716,14 @@ setTimer(function()
         return
     end
 
-    local players = getEligiblePlayers()
+    local players = getPopulationPlayers(isPedOwnerEligible)
     if #players == 0 then
         local convergingPlayers = getPopulationWorldConvergencePlayerCount()
         local convergenceAge = getTickCount() - populationWorldPublishedAt
         if convergingPlayers > 0 and convergenceAge <= config.populationWorldConvergenceGrace then
             -- A world mutation invalidates every ACK together. Existing
             -- traffic must survive that bounded convergence window; only new
-            -- admission remains fenced by getEligiblePlayers(). Clearing here
+            -- admission remains fenced by getPopulationPlayers(isPedOwnerEligible). Clearing here
             -- would bypass the camera veto and visibly pop every nearby ped.
             if populationWorldConvergenceTraceRevision ~= populationWorld.revision then
                 populationWorldConvergenceTraceRevision = populationWorld.revision
@@ -5952,7 +6049,7 @@ setTimer(function()
     for _, record in pairs(trafficPeds) do
         records[#records + 1] = record
     end
-    for _, record in ipairs(records) do
+    local function updateRecord(record)
         if not record.group and not record.couple and not record.removing and isElement(record.ped) then
             if record.state == "suspending" then
                 if now >= (record.handoffDeadline or 0) then
@@ -5997,6 +6094,27 @@ setTimer(function()
                 stopClimbTest(record, "timeout")
             elseif not isPedDead(record.ped) then
                 local x, y, z = getElementPosition(record.ped)
+
+                -- Anti-Stuck: pedestre travado contra poste/obstaculo no mapa
+                record.lastPosCheckAt = record.lastPosCheckAt or now
+                if now - record.lastPosCheckAt >= 4000 then
+                    record.lastPosCheckAt = now
+                    if record.lastCheckX and record.lastCheckY then
+                        local dMovedSq = (x - record.lastCheckX)^2 + (y - record.lastCheckY)^2
+                        if dMovedSq < 0.25 * 0.25 and not record.airTest and not record.climbTest then
+                            record.stuckTicks = (record.stuckTicks or 0) + 1
+                            if record.stuckTicks >= 3 then
+                                -- Preso por mais de 12 segundos: remover para desobstruir a calçada
+                                removeRecord(record, "ped-stuck-obstacle")
+                                return
+                            end
+                        else
+                            record.stuckTicks = 0
+                        end
+                    end
+                    record.lastCheckX, record.lastCheckY = x, y
+                end
+
                 local closest = findClosestPopulationResident(x, y, z, record.populationClass)
                 if not closest then
                     if not isEligiblePlayer(record.owner) then
@@ -6048,9 +6166,16 @@ setTimer(function()
                         record.handoffCandidateSince = nil
                     end
                 end
+            else
+                -- Ped is dead: ensure it despawns after corpseLifetime even if onPedWasted missed it
+                record.deadSince = record.deadSince or now
+                if now - record.deadSince >= (config.corpseLifetime or 12000) then
+                    removeRecord(record, "corpse-loop-timeout")
+                end
             end
         end
     end
+    for _, record in ipairs(records) do updateRecord(record) end
 end, 1000, 0)
 
 local COP_TEST_CANDIDATE_RETRY = 750
@@ -6545,7 +6670,7 @@ addEventHandler("pedTraffic:coupleArmState", resourceRoot, function(relationId, 
     if couple and couple.epoch == relationEpoch and couple.owner == client then
         peds = {couple.members[1].ped, couple.members[2].ped}
         couple.armSides = {sideA, sideB}
-        for _, observer in ipairs(getEligiblePlayers()) do
+        for _, observer in ipairs(getPopulationPlayers(isEligiblePlayer)) do
             if observer ~= couple.owner then observers[#observers + 1] = observer end
         end
     elseif coupleTest and coupleTest.relationId == relationId and coupleTest.relationEpoch == relationEpoch and
@@ -7062,7 +7187,7 @@ local function startCoupleTest(player)
         setElementData(ped, "neon:ambientPedRelationId", test.relationId)
         setElementData(ped, "neon:ambientPedRelationEpoch", test.relationEpoch)
         setElementData(ped, "neon:ambientPedRelationRole", index == 1 and "a" or "b")
-        setElementData(ped, "neon:ambientPedTraffic", true)
+        TrafficObserverDamage.mark(ped)
         if not setPedFightingStyle(ped, 4) or not setPedUseNativeWalkingStyle(ped, true) or
             not setElementSyncer(ped, test.ownerA, true) then
             destroyCoupleTestPeds(test)
@@ -7097,7 +7222,7 @@ setTimer(function()
     if not debugEnabled then
         return
     end
-    for _, player in ipairs(getEligiblePlayers()) do
+    for _, player in ipairs(getPopulationPlayers(isPedOwnerEligible)) do
         local totalTarget, civilianTarget, dealerTarget, copTarget, gangTarget = getNativeTargetsNearPlayer(player)
         if totalTarget then
             local stockCountedLive, physicalLive, civilianCount, dealerCount, copCount, gangCounts = getPopulationCountsNearPlayer(player)
@@ -7143,13 +7268,16 @@ setTimer(function()
         log(("telemetry active=%d activeCiv=%d activeDealers=%d activeCops=%d activeGangs=%s groups=%d groupSpawns=%d groupHandoffs=%d groupPromotions=%d groupRemovals=%d ready=%d preset=%s revision=%d requests=%d misses=%d rejected=%d spawned=%d despawned=%d handoffs=%d selections=%s selectedGangs=%s models=%s missReasons=%s rejectionReasons=%s"):format(
                 getTrafficPedCount(), activeCivilians, activeDealers, activeCops, formatNumericMap(activeGangs), activeGroups, stats.groupSpawns,
                 stats.groupHandoffs, stats.groupPromotions, stats.groupRemovals,
-                #getEligiblePlayers(), populationWorld.preset, populationWorld.revision, stats.requests, stats.candidateMisses,
+                #getPopulationPlayers(isPedOwnerEligible), populationWorld.preset, populationWorld.revision, stats.requests, stats.candidateMisses,
                 stats.rejected, stats.spawned, stats.despawned, stats.handoffs,
                 formatNumericMap(stats.populationSelections), formatNumericMap(stats.gangSelections), formatNumericMap(stats.spawnedModels),
                 formatReasons(stats.missReasons), formatReasons(stats.rejectionReasons)))
     end
 end, 10000, 0)
 
+-- ============================================================================
+-- Dealer catalog test (IIFE: dedupe locals do main chunk - limite 200 da VM Lua)
+local function _dealerTestEnv()
 local DEALER_TEST_PHASE_TIMEOUT = 60000
 local DEALER_TEST_CANDIDATE_RETRY = 750
 -- This Grove Street fixture produced the expected post_home_coming profile
@@ -7766,12 +7894,12 @@ function pedTrafficSetDemo(requested, actor, coordinated)
             log("demo-density refused reason=population-harness-active", true)
             return false, "population-harness-active"
         end
-        local eligiblePlayers = getEligiblePlayers()
+        local eligiblePlayers = getPopulationPlayers(isPedOwnerEligible)
         if coordinated and #eligiblePlayers ~= 2 then
             log(("demo-density refused reason=exactly-two-ready-clients-required players=%d"):format(#eligiblePlayers), true)
             return false, "exactly-two-ready-clients-required"
         end
-        local anchor = isEligiblePlayer(actor) and actor or getEligiblePlayers()[1]
+        local anchor = isEligiblePlayer(actor) and actor or getPopulationPlayers(isPedOwnerEligible)[1]
         if not isElement(anchor) then
             log("demo-density refused reason=no-eligible-anchor", true)
             return false, "no-eligible-anchor"
@@ -7921,6 +8049,9 @@ addEventHandler("onResourceStart", resourceRoot, function()
         tostring(enabled), config.globalCap, config.productionMinimumTarget, config.productionMaximumTarget,
         config.productionDensityMultiplier, populationWorld.preset, populationWorld.revision))
 end)
+
+end
+_dealerTestEnv()
 
 addEventHandler("onResourceStop", resourceRoot, function()
     if coupleTest then

@@ -1,9 +1,14 @@
 <meta>
     <info author="Neon" name="Synchronized native ped traffic V1" version="1.1.0" type="script" />
     <script src="telemetry.lua" type="server" />
-    <script src="population_catalog.lua" type="server" />
+    <script src="population_catalog.lua" type="shared" />
     <script src="population_world.lua" type="server" />
+    <script src="observer_damage.lua" type="server" />
     <script src="server.lua" type="server" />
+    <!-- Load population bounds and Android locomotion before assignment handlers. -->
+    <script src="population_zone_bounds.lua" type="client" />
+    <script src="obstacle_client.lua" type="client" cache="false" />
+    <script src="mobile_puppet_client.lua" type="client" cache="false" />
     <script src="client.lua" type="client" cache="false" />
     <export function="pedTrafficSetDemo" type="server" />
     <!-- Lets native-wanted-police take over a street cop that joins a chase. -->
