@@ -1,3 +1,275 @@
+-- Use the Android population fallback when native placement is unavailable.
+local function worldRPGMobilePopulation()
+    if type(getVersion) == "function" then return getVersion().os == "Android" end
+    return type(isWorldRPGMobilePopulation) == "function" and isWorldRPGMobilePopulation() == true
+end
+
+local mobileZones
+local nativeGetAmbientPedPopulationProfile = getAmbientPedPopulationProfile
+function getAmbientPedPopulationProfile()
+    if type(nativeGetAmbientPedPopulationProfile) == "function" and not worldRPGMobilePopulation() then
+        return nativeGetAmbientPedPopulationProfile()
+    end
+    if worldRPGMobilePopulation() and type(nativeGetAmbientPedPopulationProfile) == "function" then
+        local profile, reason = nativeGetAmbientPedPopulationProfile()
+        if type(profile) == "table" then return profile, reason end
+    end
+    local x, y, z = getElementPosition(localPlayer)
+    if type(getTrafficPopulationZone) ~= "function" then return false, "zone-unavailable" end
+    local label = getTrafficPopulationZone(x, y, z)
+    local zone = mobileZones and mobileZones[label]
+    if not zone then return false, "zone-unavailable" end
+    local city = getZoneName(x, y, z, true)
+    local level = ({["Los Santos"] = 1, ["San Fierro"] = 2, ["Las Venturas"] = 3})[city] or 0
+    local cops = zone.noCops and 0 or 1.5
+    local gangs = 0
+    for index = 1, 8 do
+        if zone.gangStrengths[index] > 0 then gangs = 4 break end
+    end
+    local dealers = zone.dealerStrength > 0 and 0.5 or 0
+    local profile = {
+        target = 24, supportedTarget = 24, civilianTarget = 24 - cops - gangs - dealers,
+        rawCopTarget = 1.5, copTarget = cops, gangTarget = gangs, dealerTarget = dealers,
+        creationDistanceMultiplier = 1, generationDistanceMultiplier = 1,
+        pedDensityMultiplier = 1, fewerPedsMultiplier = 1, maximumPedsInUse = 24,
+        zoneLabel = label, zoneType = zone.populationType, raceFlags = zone.races,
+        gangWeights = zone.gangStrengths, dealerStrength = zone.dealerStrength, noCops = zone.noCops,
+        copSuppressionFlags = zone.noCops and 1 or 0, worldLevel = level,
+        timeIndex = math.floor(getTime() / 2) % 12, weekend = false,
+    }
+    return profile, "polyfill-success"
+end
+
+local nativeGetAmbientPedSpawnCandidate = getAmbientPedSpawnCandidate
+-- The no-cache client script is evaluated before the cached model catalog.
+-- Build these pools on the first fallback request, after resource startup.
+local fallbackCivilianModels, fallbackGangModels
+local function prepareFallbackModels()
+    if fallbackCivilianModels then return true end
+    if not PedTrafficPopulationCatalog then return false end
+    fallbackCivilianModels, fallbackGangModels = {}, {}
+    for model in pairs(PedTrafficPopulationCatalog.civilianPedTypeByModel) do
+        fallbackCivilianModels[#fallbackCivilianModels + 1] = model
+    end
+    table.sort(fallbackCivilianModels)
+    for model, gang in pairs(PedTrafficPopulationCatalog.gangByModel) do
+        fallbackGangModels[gang] = fallbackGangModels[gang] or {}
+        table.insert(fallbackGangModels[gang], model)
+    end
+    return true
+end
+
+-- getGroundPosition returns zero both at sea level and on a failed
+-- vertical query. Accept zero only if a second query confirms a surface.
+local function fallbackGroundZ(x, y, probeZ)
+    local ground = getGroundPosition(x, y, probeZ)
+    if ground == 0 and type(processLineOfSight) == "function" then
+        local hit, _, _, hitZ = processLineOfSight(x, y, probeZ, x, y, -1000,
+            true, false, false, true, true)
+        if hit then return hitZ end
+    elseif type(ground) == "number" and ground ~= 0 and ground == ground and math.abs(ground) < math.huge then
+        return ground
+    end
+    return false
+end
+
+function getAmbientPedSpawnCandidate(originX, originY, originZ, populationClass, gangId)
+    if type(nativeGetAmbientPedSpawnCandidate) == "function" and not worldRPGMobilePopulation() then
+        return nativeGetAmbientPedSpawnCandidate(originX, originY, originZ, populationClass, gangId)
+    end
+    if worldRPGMobilePopulation() and type(nativeGetAmbientPedSpawnCandidate) == "function" then
+        local candidate, reason = nativeGetAmbientPedSpawnCandidate(originX, originY, originZ, populationClass, gangId)
+        if type(candidate) == "table" then return candidate, reason end
+    end
+    if not prepareFallbackModels() then return false, "catalog-unavailable" end
+    local angle = math.random() * 2 * math.pi
+    local dist = math.random(35, 52)
+    local cx = originX + math.cos(angle) * dist
+    local cy = originY + math.sin(angle) * dist
+    local cz = fallbackGroundZ(cx, cy, originZ + 4.0)
+    if not cz then return false, "ground-missing" end
+
+    local chosenModel = fallbackCivilianModels[math.random(1, #fallbackCivilianModels)]
+    local pedType = PedTrafficPopulationCatalog.civilianPedTypeByModel[chosenModel]
+    local level
+    if populationClass == "gang" then
+        local gModels = fallbackGangModels[gangId]
+        if not gModels then return false, "invalid-gang" end
+        pedType = 7 + gangId
+        chosenModel = gModels[math.random(1, #gModels)]
+    elseif populationClass == "cop" then
+        local profile = getAmbientPedPopulationProfile()
+        if not profile then return false, "zone-unavailable" end
+        level = profile.worldLevel
+        chosenModel = PedTrafficPopulationCatalog.copModelsByLevel[level]
+        pedType = 6
+    elseif populationClass == "dealer" then
+        local models = PedTrafficPopulationCatalog.dealerModels
+        chosenModel = models[math.random(#models)]
+        pedType = 17
+    end
+
+    local candidate = {
+        x = cx,
+        y = cy,
+        z = cz + (populationClass == "gang" and 1.0 or 0.7),
+        heading = math.random(0, 360),
+        model = chosenModel,
+        populationClass = populationClass or "civilian",
+        gang = populationClass == "gang" and gangId or false,
+        pedType = pedType,
+        worldLevel = level,
+        direction = math.random(0, 7),
+        subclass = "ped",
+        nodeIndex = 1
+    }
+    return candidate, "polyfill-success"
+end
+
+local nativeGetAmbientPedGangGroupCandidate = getAmbientPedGangGroupCandidate
+function getAmbientPedGangGroupCandidate(originX, originY, originZ, gangId, maxMembers)
+    if type(nativeGetAmbientPedGangGroupCandidate) == "function" and not worldRPGMobilePopulation() then
+        return nativeGetAmbientPedGangGroupCandidate(originX, originY, originZ, gangId, maxMembers)
+    end
+    if worldRPGMobilePopulation() and type(nativeGetAmbientPedGangGroupCandidate) == "function" then
+        local candidate, reason = nativeGetAmbientPedGangGroupCandidate(originX, originY, originZ, gangId, maxMembers)
+        if type(candidate) == "table" then return candidate, reason end
+    end
+    local base, reason = getAmbientPedSpawnCandidate(originX, originY, originZ, "gang", gangId)
+    if not base then return false, reason end
+    local members = { base }
+    local num = math.min(maxMembers or 2, math.random(2, 3))
+    for i = 2, num do
+        local offsetAngle = math.random() * 2 * math.pi
+        local offsetDist = (1.2 + math.random() * 1.3)
+        local x = base.x + math.cos(offsetAngle) * offsetDist
+        local y = base.y + math.sin(offsetAngle) * offsetDist
+        local ground = fallbackGroundZ(x, y, base.z + 1.0)
+        if not ground then return false, "ground-missing" end
+        local mem = {
+            x = x, y = y, z = ground + 1.0,
+            heading = base.heading,
+            model = base.model,
+            populationClass = "gang",
+            gang = base.gang,
+            pedType = base.pedType,
+            direction = base.direction,
+            subclass = "gang-member",
+            nodeIndex = 1
+        }
+        members[#members + 1] = mem
+    end
+    return { members = members }, "polyfill-success"
+end
+
+local nativeGetAmbientPedCivilianCoupleCandidate = getAmbientPedCivilianCoupleCandidate
+function getAmbientPedCivilianCoupleCandidate(originX, originY, originZ)
+    if type(nativeGetAmbientPedCivilianCoupleCandidate) == "function" and not worldRPGMobilePopulation() then
+        return nativeGetAmbientPedCivilianCoupleCandidate(originX, originY, originZ)
+    end
+    if worldRPGMobilePopulation() and type(nativeGetAmbientPedCivilianCoupleCandidate) == "function" then
+        local candidate, reason = nativeGetAmbientPedCivilianCoupleCandidate(originX, originY, originZ)
+        if type(candidate) == "table" then return candidate, reason end
+    end
+    local p1, reason = getAmbientPedSpawnCandidate(originX, originY, originZ, "civilian", 0xFF)
+    if not p1 then return false, reason end
+    if not prepareFallbackModels() or #fallbackCivilianModels < 2 then return false, "no-model" end
+    local x = p1.x + 1.0
+    local ground = fallbackGroundZ(x, p1.y, p1.z + 1.0)
+    if not ground then return false, "ground-missing" end
+    local model = fallbackCivilianModels[math.random(#fallbackCivilianModels - 1)]
+    if model == p1.model then model = fallbackCivilianModels[#fallbackCivilianModels] end
+    local p2 = {
+        x = x, y = p1.y, z = ground + 0.7, heading = p1.heading, direction = math.random(0, 7),
+        model = model, pedType = PedTrafficPopulationCatalog.civilianPedTypeByModel[model],
+        populationClass = "civilian", gang = false,
+    }
+    return {members = {p1, p2}}, "polyfill-success"
+end
+
+if type(addPedNativeGunAimedAtEvent) ~= "function" then
+    function addPedNativeGunAimedAtEvent(ped, shooter)
+        if isElement(ped) then
+            setPedAnimation(ped, "ped", "cower", 3000, true, false, false)
+        end
+        return true
+    end
+end
+
+if type(addPedNativeDamageEvent) ~= "function" then
+    function addPedNativeDamageEvent(ped, attacker, weapon, bodypart)
+        return true
+    end
+end
+
+if type(addPedNativeBikeJackTask) ~= "function" then
+    function addPedNativeBikeJackTask(ped, bike, isDriver)
+        if isElement(ped) then
+            removePedFromVehicle(ped)
+        end
+        return true
+    end
+end
+
+if type(getAvoidanceState) ~= "function" then
+    function getAvoidanceState(ped)
+        return false
+    end
+end
+
+if type(getJumpLifecycleState) ~= "function" then
+    function getJumpLifecycleState(ped)
+        return false
+    end
+end
+
+if type(acquireElementStreamingLease) ~= "function" then
+    local nextDummyLease = 1
+    function acquireElementStreamingLease(element)
+        if not isElement(element) then return false end
+        nextDummyLease = nextDummyLease + 1
+        return nextDummyLease
+    end
+    function releaseElementStreamingLease(lease)
+        return true
+    end
+end
+
+if type(acquirePedNativeEventProfile) ~= "function" then
+    local nextToken = 1
+    function acquirePedNativeEventProfile(ped, profileName)
+        if not isElement(ped) then return false end
+        nextToken = nextToken + 1
+        return nextToken
+    end
+    function releasePedNativeEventProfile(token)
+        return true
+    end
+    function isPedNativeEventProfileActive(ped, token)
+        return isElement(ped)
+    end
+end
+
+if type(setPedUseNativeWalkingStyle) ~= "function" then
+    function setPedUseNativeWalkingStyle(ped, enabled)
+        return true
+    end
+    function isPedUsingNativeWalkingStyle(ped)
+        return true
+    end
+end
+
+if type(killPedTask) ~= "function" then
+    function killPedTask(ped, slotType, slotNumber, bCleanUp)
+        if isElement(ped) then
+            setPedControlState(ped, "forwards", false)
+            setPedControlState(ped, "walk", false)
+            setPedAnimation(ped, false)
+        end
+        return true
+    end
+end
+
 local enabled = false
 local debugEnabled = false
 local populationWorldReady = false
@@ -197,15 +469,36 @@ local function validatePopulationWorldState(snapshot)
     return true
 end
 
+-- A desktop without the zone API can still observe traffic.
+local isMobileClient = worldRPGMobilePopulation()
+local portablePopulation = isMobileClient or
+    type(resetAmbientPedPopulationZonesToBootstrap) ~= "function" or
+    type(setAmbientPedPopulationZoneState) ~= "function"
+
 local function applyPopulationWorldState(snapshot)
     populationWorldReady = false
     local valid, reason = validatePopulationWorldState(snapshot)
     if not valid then
         return false, reason
     end
-    if type(resetAmbientPedPopulationZonesToBootstrap) ~= "function" or type(setAmbientPedPopulationZoneState) ~= "function" then
-        return false, "native-api-unavailable"
+
+    -- Modo Mobile Fallback: APIs de zona ausentes no ARM64.
+    -- Aceita o snapshot diretamente sem configurar zonas nativas; os polyfills
+    -- de spawn candidate acima garantem a geracao de candidatos sem essas APIs.
+    -- O fallback de população funciona também para clientes observadores.
+    -- A tarefa nativa é anunciada separadamente no handshake.
+    if portablePopulation then
+        mobileZones = snapshot.zones
+        populationWorldRevision = snapshot.revision
+        populationWorldPreset = isMobileClient and "mobile-fallback" or "observer-fallback"
+        populationCatalogRevision = snapshot.catalogRevision
+        populationWorldReady = true
+        log(("population-world-fallback revision=%d preset=%s catalog=%s"):format(
+            snapshot.revision, snapshot.preset, snapshot.catalogRevision), 2)
+        return true, populationWorldPreset
     end
+
+    -- Caminho padrao Desktop / MTA Neon completo:
     if not resetAmbientPedPopulationZonesToBootstrap() then
         return false, "bootstrap-reset-failed"
     end
@@ -954,7 +1247,7 @@ local function releaseTask(task, killNativeTask, preservePhysicalTask)
     clearTimer(task, "monitorTimer")
     clearTimer(task, "resumeTimer")
     clearTimer(task, "physicalRestoreTimer")
-    if killNativeTask and task.accepted and not preservePhysicalTask and isElement(task.ped) then
+    if killNativeTask and (task.accepted or task.nativeWanderQueued) and not preservePhysicalTask and isElement(task.ped) then
         killPedTask(task.ped, "primary", 3, false)
     end
     if task.lease then
@@ -978,6 +1271,41 @@ local function beginAssignment(task)
     if assignments[task.ped] ~= task or not isElement(task.ped) then
         return
     end
+
+    if isMobileClient then
+        if type(getNeonTrafficCapability) ~= "function" or not getNeonTrafficCapability("ped-wander") then
+            return fail(task, "native-wander-unavailable")
+        end
+        if task.accepted then return end
+
+        local function retry(reason)
+            if getTickCount() - task.requestedAt >= 10000 then return fail(task, reason) end
+            clearTimer(task, "retryTimer")
+            task.retryTimer = setTimer(function() beginAssignment(task) end, 100, 1)
+        end
+
+        task.lease = task.lease or acquireElementStreamingLease(task.ped)
+        if not task.lease or not isElementStreamedIn(task.ped) or not isElementSyncer(task.ped) then
+            return retry("mobile-owner-readiness-timeout")
+        end
+        if isPedDead(task.ped) then return fail(task, "ped-dead") end
+        if not task.nativeWanderQueued then
+            task.nativeWanderQueued = setPedWander(task.ped, "walk", task.direction, true) == true
+            if not task.nativeWanderQueued then return retry("mobile-wander-refused") end
+        end
+        if not isPedDoingTask(task.ped, "TASK_COMPLEX_WANDER") then return retry("mobile-wander-not-installed") end
+
+        task.accepted = true
+        stats.assignments = stats.assignments + 1
+        report(task, "accepted")
+        task.monitorTimer = setTimer(function()
+            if assignments[task.ped] ~= task then return end
+            if not isElement(task.ped) or isPedDead(task.ped) then return releaseTask(task, false) end
+            if not isElementSyncer(task.ped) then return releaseTask(task, true) end
+        end, 250, 0)
+        return
+    end
+
     if type(acquireElementStreamingLease) ~= "function" or type(releaseElementStreamingLease) ~= "function" or
         type(setPedWander) ~= "function" or type(setPedUseNativeWalkingStyle) ~= "function" or
         type(isPedNativeEventProfileActive) ~= "function" then
@@ -1203,11 +1531,19 @@ addEvent("pedTraffic:populationWorldState", true)
 addEventHandler("pedTraffic:populationWorldState", resourceRoot, function(snapshot)
     local revision = type(snapshot) == "table" and snapshot.revision or false
     local success, reason = applyPopulationWorldState(snapshot)
+    -- As capacidades de população e caminhada são independentes.
+    local zonesCapable = success == true and not portablePopulation
     triggerServerEvent("pedTraffic:populationWorldApplied", resourceRoot, revision,
-                       {zones = success == true, catalogRevision = success and populationCatalogRevision or false}, success, reason)
+                       {zones = zonesCapable,
+                        mobilePolyfill = isMobileClient == true,
+                        populationFallback = portablePopulation,
+                        pedWander = type(getNeonTrafficCapability) == "function" and getNeonTrafficCapability("ped-wander") == true,
+                        catalogRevision = success and populationCatalogRevision or false},
+                       success, reason)
     if success then
-        log(("population-world-applied revision=%d preset=%s catalog=%s"):format(
-                populationWorldRevision, populationWorldPreset, populationCatalogRevision), 3)
+        log(("population-world-applied revision=%d preset=%s catalog=%s mobile=%s"):format(
+                populationWorldRevision, populationWorldPreset, populationCatalogRevision,
+                tostring(isMobileClient)), 3)
     else
         log(("population-world-rejected revision=%s reason=%s"):format(tostring(revision), tostring(reason)), 2)
     end
@@ -1336,7 +1672,8 @@ addEventHandler("pedTraffic:visibilityProbe", resourceRoot, function(checkId, ki
         detail.reason = "runtime-not-ready"
     elseif kind == "candidate" then
         local profile = latestPopulationProfile
-        if type(profile) ~= "table" or profile.worldRevision ~= populationWorldRevision or
+        if type(profile) ~= "table" or type(profile.creationDistanceMultiplier) ~= "number" or
+            not (profile.creationDistanceMultiplier >= 0.999 and profile.creationDistanceMultiplier <= 1.501) or profile.worldRevision ~= populationWorldRevision or
             getTickCount() - (profile.capturedAt or 0) > 2500 or
             type(isAmbientPedSphereVisible) ~= "function" then
             visible = true
@@ -1354,20 +1691,32 @@ addEventHandler("pedTraffic:visibilityProbe", resourceRoot, function(checkId, ki
                 end
                 local dx, dy = probe.x - playerX, probe.y - playerY
                 local tooClose = dx * dx + dy * dy < tooCloseDistance * tooCloseDistance
-                if tooClose and isAmbientPedSphereVisible(probe.x, probe.y, probe.z, probe.radius) then
-                    visible = true
-                    detail.probeIndex = index
-                    detail.tooClose = true
-                    break
+                if tooClose then
+                    local inView, reason = isAmbientPedSphereVisible(probe.x, probe.y, probe.z, probe.radius)
+                    if inView or reason == "visibility-unavailable" then
+                        visible = true
+                        detail.probeIndex = index
+                        detail.tooClose = true
+                        detail.reason = reason
+                        break
+                    end
                 end
             end
         end
     elseif kind == "ped-removal" or kind == "group-removal" then
         for index, ped in ipairs(probes) do
-            if isElement(ped) and isElementOnScreen(ped) then
-                visible = true
-                detail.probeIndex = index
-                break
+            if isElement(ped) then
+                local inView = isElementOnScreen(ped)
+                if isMobileClient and isElementStreamedIn(ped) and type(isAmbientPedSphereVisible) == "function" then
+                    local x, y, z = getElementPosition(ped)
+                    local sphereVisible, reason = isAmbientPedSphereVisible(x, y, z, 1.5)
+                    inView = sphereVisible or reason == "visibility-unavailable"
+                end
+                if inView then
+                    visible = true
+                    detail.probeIndex = index
+                    break
+                end
             end
         end
     else
@@ -2266,6 +2615,7 @@ addEventHandler("pedTraffic:damageResponse", resourceRoot, function(ped, attacki
     if damageId ~= false and not isIntegerInRange(damageId, 1, 2147483647) then
         return
     end
+
     if damageId ~= false then
         local now = getTickCount()
         for receiptId, receivedAt in pairs(nativeDamageReplayReceipts) do
@@ -2286,6 +2636,7 @@ addEventHandler("pedTraffic:damageResponse", resourceRoot, function(ped, attacki
             getElementData(ped, "neon:ambientPedTrafficEpoch") ~= epoch then
             return
         end
+        if not isElementSyncer(ped) or isPedDead(ped) then return end
         if consumeNativeDamage(ped, attackingPed, weapon, bodypart) then
             log(("damage-bridge id=%s damage=%s skipped=local-native source=%s weapon=%s bodypart=%s"):format(
                     tostring(getElementData(ped, "neon:ambientPedTrafficId")), tostring(damageId), tostring(getElementType(attackingPed) == "player" and getPlayerName(attackingPed) or getElementData(attackingPed, "neon:ambientPedTrafficId")),
@@ -2303,8 +2654,9 @@ addEventHandler("pedTraffic:damageResponse", resourceRoot, function(ped, attacki
             log(("damage-bridge id=%s damage=%s accepted=%s source=%s weapon=%s bodypart=%s"):format(
                     tostring(getElementData(ped, "neon:ambientPedTrafficId")), tostring(damageId), tostring(accepted),
                     tostring(getElementType(attackingPed) == "player" and getPlayerName(attackingPed) or getElementData(attackingPed, "neon:ambientPedTrafficId")), tostring(weapon), tostring(bodypart)))
-            return
+            if accepted then return end
         end
+        if MobilePuppet and MobilePuppet.reactToDamage and MobilePuppet.reactToDamage(ped, epoch) then return end
         if getTickCount() < deadline then
             setTimer(inject, 100, 1)
         else
@@ -2359,6 +2711,13 @@ addEventHandler("pedTraffic:nativePlayerDamage", resourceRoot, function(attackin
     log(("native-player-damage id=%s epoch=%d nonce=%d accepted=%s weapon=%d bodypart=%d factor=%d direction=%d health=%.2f"):format(
             tostring(getElementData(attackingPed, "neon:ambientPedTrafficId")), epoch, nonce, tostring(accepted), weapon,
             bodypart, damageFactor, direction, getElementHealth(victim)), accepted and 3 or 2)
+end)
+
+addEventHandler("onClientPlayerWeaponFire", localPlayer, function(weapon, _, _, _, _, _, ped)
+    if weapon >= 22 and weapon <= 34 and isElement(ped) and getElementType(ped) == "ped" and
+        not isElementSyncer(ped) and getElementData(ped, "neon:ambientPedTraffic") == true then
+        triggerServerEvent("pedTraffic:bulletCollision", resourceRoot, ped, weapon)
+    end
 end)
 
 addEventHandler("onClientPedDamage", root, function(attacker, weapon, bodypart)
@@ -2584,6 +2943,7 @@ local function getActiveGunAimTarget()
 end
 
 addEventHandler("onClientPreRender", root, function()
+    if not enabled and not next(spawnFades) and not next(coupleAssignments) then return end
     local now = getTickCount()
     for _, task in pairs(coupleAssignments) do
         if task.presentation and task.accepted and task.token and type(updatePedNativeCouplePresentation) == "function" then
@@ -2616,7 +2976,7 @@ addEventHandler("onClientPreRender", root, function()
 
     local aimActive, aimTarget = getActiveGunAimTarget()
     if not aimActive then
-        observedAimTargets = {}
+        if next(observedAimTargets) then observedAimTargets = {} end
     elseif aimTarget then
         if isElementSyncer(aimTarget) then
             -- Re-arm this target while its native event is handled locally. If
@@ -2634,7 +2994,7 @@ addEventHandler("onClientPreRender", root, function()
         end
     end
 
-    updateLocalPopulationModels()
+    if not portablePopulation then updateLocalPopulationModels() end
 end)
 
 addEventHandler("onClientElementDestroy", root, function()
@@ -2697,11 +3057,48 @@ addEventHandler("onClientResourceStop", resourceRoot, function()
 end)
 
 addEventHandler("onClientResourceStart", resourceRoot, function()
+    triggerServerEvent("pedTraffic:ready", resourceRoot)
     for _, ped in ipairs(getElementsByType("ped")) do
         acquireTrafficEventProfile(ped)
     end
-    triggerServerEvent("pedTraffic:ready", resourceRoot)
 end)
+
+-- Sample client stream state, including a valid empty street. A streamed
+-- entity with nonzero alpha can still be behind the camera or occluded.
+do
+    setTimer(function()
+        if not enabled or not debugEnabled or getElementInterior(localPlayer) ~= 0 or
+            getElementDimension(localPlayer) ~= 0 then return end
+        local x, y, z = getElementPosition(localPlayer)
+        if type(z) ~= "number" then return end
+        -- Android caps getElementsByType before testing native stream state.
+        -- Use one spatial query for all traffic on this street.
+        local nearby = getElementsWithinRange(x, y, z, 150, nil, 0, 0)
+        if type(nearby) ~= "table" then return end
+        local peds, vehicles, walkers, statics, routeVehicles = {}, {}, {}, {}, {}
+        local lists = {
+            ped = {
+                ["neon:ambientPedTrafficId"] = peds, ["worldrpg:pedRouteIndex"] = walkers,
+                ["worldrpg:staticPedIndex"] = statics,
+            },
+            vehicle = {
+                ["neon:ambientVehicleTrafficId"] = vehicles, ["worldrpg:routeIndex"] = routeVehicles,
+            },
+        }
+        for _, entity in ipairs(nearby) do
+            local keys = lists[getElementType(entity)]
+            if keys and isElementStreamedIn(entity) and getElementAlpha(entity) > 0 then
+                for key, ids in pairs(keys) do
+                    local id = getElementData(entity, key)
+                    if type(id) == "number" then ids[#ids + 1] = id end
+                end
+            end
+        end
+        for _, ids in ipairs({peds, vehicles, walkers, statics, routeVehicles}) do table.sort(ids) end
+        triggerServerEvent("pedTraffic:streamSample", resourceRoot, isMobileClient == true,
+            peds, vehicles, walkers, statics, routeVehicles)
+    end, 5000, 0)
+end
 
 local function monitorPhysicalTestSessions(sessions, kind, targetPhase, maximumAge)
     for ped, session in pairs(sessions) do
@@ -2806,36 +3203,48 @@ setTimer(function()
     end
 end, 10000, 0)
 
-setTimer(function()
-    if not debugEnabled then
-        return
+do
+    local function logTrafficPed(ped)
+        if not isElement(ped) or not isElementStreamedIn(ped) or getElementData(ped, "neon:ambientPedTraffic") ~= true then return end
+        local id = tonumber(getElementData(ped, "neon:ambientPedTrafficId")) or -1
+        local x, y, z = getElementPosition(ped)
+        local groundZ = getGroundPosition(x, y, z)
+        local _, _, heading = getElementRotation(ped)
+        local vx, vy, vz = getElementVelocity(ped)
+        local horizontalSpeed = math.sqrt(vx * vx + vy * vy)
+        local moveState = type(getPedMoveState) == "function" and getPedMoveState(ped) or "unavailable"
+        local nativeStyle = type(isPedUsingNativeWalkingStyle) == "function" and isPedUsingNativeWalkingStyle(ped) or false
+        local profileToken = nativeEventProfiles[ped]
+        local profileRole = profileToken and isPedNativeEventProfileActive(ped, profileToken) and "owner" or
+                                (profileToken and "observer" or "missing")
+        local groupId = getElementData(ped, "neon:ambientPedGroupId") or "none"
+        local groupRole = getElementData(ped, "neon:ambientPedGroupRole") or "none"
+        local threatRoot, threatLeaf = getThreatState(ped)
+        local vehicleRoot, vehicleLeaf = getVehicleReactionState(ped)
+        log(("ped id=%d model=%d group=%s/%s syncer=%s streamed=%s profile=%s avoid=%s threat=%s/%s vehicle=%s/%s nativeStyle=%s move=%s speed=%.5f velocity=(%.5f,%.5f,%.5f) pos=(%.2f,%.2f,%.2f) groundZ=%s heading=%.1f"):format(
+                id, getElementModel(ped), tostring(groupId), tostring(groupRole), tostring(isElementSyncer(ped)),
+                tostring(isElementStreamedIn(ped)), profileRole, tostring(getAvoidanceState(ped)), tostring(threatRoot),
+                tostring(threatLeaf), tostring(vehicleRoot), tostring(vehicleLeaf), tostring(nativeStyle), tostring(moveState),
+                horizontalSpeed, vx, vy, vz, x, y, z, tostring(groundZ), heading))
     end
 
-    for _, ped in ipairs(getElementsByType("ped")) do
-        if getElementData(ped, "neon:ambientPedTraffic") == true then
-            local id = tonumber(getElementData(ped, "neon:ambientPedTrafficId")) or -1
-            local x, y, z = getElementPosition(ped)
-            local groundZ = getGroundPosition(x, y, z)
-            local _, _, heading = getElementRotation(ped)
-            local vx, vy, vz = getElementVelocity(ped)
-            local horizontalSpeed = math.sqrt(vx * vx + vy * vy)
-            local moveState = type(getPedMoveState) == "function" and getPedMoveState(ped) or "unavailable"
-            local nativeStyle = type(isPedUsingNativeWalkingStyle) == "function" and isPedUsingNativeWalkingStyle(ped) or false
-            local profileToken = nativeEventProfiles[ped]
-            local profileRole = profileToken and isPedNativeEventProfileActive(ped, profileToken) and "owner" or
-                                    (profileToken and "observer" or "missing")
-            local groupId = getElementData(ped, "neon:ambientPedGroupId") or "none"
-            local groupRole = getElementData(ped, "neon:ambientPedGroupRole") or "none"
-            local threatRoot, threatLeaf = getThreatState(ped)
-            local vehicleRoot, vehicleLeaf = getVehicleReactionState(ped)
-            log(("ped id=%d model=%d group=%s/%s syncer=%s streamed=%s profile=%s avoid=%s threat=%s/%s vehicle=%s/%s nativeStyle=%s move=%s speed=%.5f velocity=(%.5f,%.5f,%.5f) pos=(%.2f,%.2f,%.2f) groundZ=%.2f heading=%.1f"):format(
-                    id, getElementModel(ped), tostring(groupId), tostring(groupRole), tostring(isElementSyncer(ped)),
-                    tostring(isElementStreamedIn(ped)), profileRole, tostring(getAvoidanceState(ped)), tostring(threatRoot),
-                    tostring(threatLeaf), tostring(vehicleRoot), tostring(vehicleLeaf), tostring(nativeStyle), tostring(moveState),
-                    horizontalSpeed, vx, vy, vz, x, y, z, groundZ, heading))
+    -- Keep the two-second diagnostic cycle. Spread the expensive native
+    -- queries across eight timer ticks when both clients are logging IDs.
+    local slices = isMobileClient and 8 or 1
+    local batch, slice = {}, 0
+    setTimer(function()
+        if not enabled or not debugEnabled then
+            if slice ~= 0 then batch, slice = {}, 0 end
+            return
         end
-    end
-end, 2000, 0)
+        if slice == 0 then batch = getElementsByType("ped", root, true) end
+        local first = math.floor(#batch * slice / slices) + 1
+        slice = slice + 1
+        local last = math.floor(#batch * slice / slices)
+        for index = first, last do logTrafficPed(batch[index]) end
+        if slice == slices then batch, slice = {}, 0 end
+    end, 2000 / slices, 0)
+end
 
 addEventHandler("onClientElementStreamIn", root, function()
     if not debugEnabled or getElementType(source) ~= "ped" or
@@ -2852,9 +3261,7 @@ addEventHandler("onClientElementStreamIn", root, function()
 end)
 
 setTimer(function()
-    if not debugEnabled then
-        return
-    end
+    if not enabled or not debugEnabled then return end
 
     for ped, token in pairs(nativeEventProfiles) do
         if isElement(ped) and isElementStreamedIn(ped) then

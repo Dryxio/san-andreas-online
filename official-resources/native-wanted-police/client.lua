@@ -303,7 +303,9 @@ end, 400, 0)
 -- and native-vehicle-traffic test, so the nose of a long car cannot be on
 -- screen while its centre is not.
 local function hiddenFromCamera(x, y, z, radius)
-    if type(isAmbientPedSphereVisible) == 'function' then
+    local mobile = (type(getVersion) == 'function' and getVersion().os == 'Android') or
+        (type(isWorldRPGMobilePopulation) == 'function' and isWorldRPGMobilePopulation() == true)
+    if not mobile and type(isAmbientPedSphereVisible) == 'function' then
         return not isAmbientPedSphereVisible(x, y, z, radius or 1.0)
     end
     if not getScreenFromWorldPosition(x, y, z + 1, 0.1) then return true end

@@ -44,6 +44,7 @@ local function loadSettings()
     cfg.bustedText = setting('bustedText', true)
     cfg.streetCops = setting('streetCops', true)
     cfg.policeCars = setting('policeCars', true)
+    cfg.lockPoliceCars = setting('lockPoliceCars', false)
     cfg.maxCars = setting('maxCars', 12)
     cfg.maxCarsPerSuspect = setting('maxCarsPerSuspect', 3)
     -- Cops on foot created out of view. Solo has no such spawner during a
@@ -68,6 +69,7 @@ local pendingSpawns = {}
 local nextRequestId, nextUnitId = 0, 0
 local lastVehicleAttacker = {}
 local reportBudget = {}
+local lastPedAttacker = {} -- last validated attacker of a ped
 local lastFireAt = {}   -- player -> when the server last saw him fire (bullet sync)
 local vetoLedger = {}   -- player -> {count, since}: "visible" answers, bounded
 
@@ -320,6 +322,9 @@ local function reportDamage(attacker, victim, weapon, origin, stealth)
         class = 'civilian'
     end
     if origin ~= 'weapon-fire' and not plausibleHit(offender, victim, weapon) then return end
+    if isPed(victim) and origin ~= 'ped-wasted' then
+        lastPedAttacker[victim] = {player = offender, weapon = weapon, at = now()}
+    end
     local cop = class == 'cop'
     reportCrime(offender, R.crime.DAMAGE_PED, victim, origin)
     if weapon == 49 or weapon == 50 then
@@ -347,6 +352,7 @@ end
 
 local function updateBulletAuthority(ped)
     if not isPed(ped) then return end
+    if getElementData(ped, 'neon:ambientDamageAuthority') == true then return end
     if policeBulletTarget(ped) then
         if getElementData(ped, 'neon:serverBulletDamage') ~= true then setData(ped, 'neon:serverBulletDamage', true) end
     elseif getElementData(ped, 'neon:serverBulletDamage') == true then
@@ -437,6 +443,9 @@ addEventHandler('onPlayerWeaponFire', root, function(weapon, x, y, z, hitElement
         local kind = getElementType(hitElement)
         if kind == 'ped' or kind == 'player' then
             if kind == 'player' and not cfg.pvpCrimes then return end
+            if kind == 'ped' and plausibleHit(source, hitElement, weapon) then
+                lastPedAttacker[hitElement] = {player = source, weapon = weapon, at = now()}
+            end
             reportCrime(source, R.crime.SHOOT_PED, hitElement, 'weapon-fire')
         elseif kind == 'vehicle' then
             lastVehicleAttacker[hitElement] = {player = source, at = now()}
@@ -453,6 +462,15 @@ addEventHandler('onPlayerDamage', root, function(attacker, weapon)
 end)
 
 addEventHandler('onPedWasted', root, function(_, killer, weapon, _, stealth)
+    local syncer, last = getElementSyncer(source), lastPedAttacker[source]
+    lastPedAttacker[source] = nil
+    if not killer or killer == syncer then
+        if last and now() - last.at <= 15000 and isPlayer(last.player) then
+            killer, weapon = last.player, last.weapon
+        elseif killer == syncer then
+            return
+        end
+    end
     if killer then reportDamage(killer, source, weapon, 'ped-wasted', stealth == true) end
 end)
 
@@ -494,6 +512,7 @@ addEventHandler('onVehicleExplode', root, function()
 end)
 
 addEventHandler('onElementDestroy', root, function()
+    lastPedAttacker[source] = nil
     lastVehicleAttacker[source] = nil
     enteredVehicles[source] = nil
 end)
@@ -959,7 +978,26 @@ local function destroyUnit(ped)
         -- A crew member removed in his seat takes the car with him: both are
         -- out of everyone's view, and an empty police car must not be left
         -- on the road.
-        if unit.car and isElement(ped) and getPedOccupiedVehicle(ped) == unit.car.vehicle then destroyCar(unit.car) end
+        local car = unit.car
+        if car and isElement(ped) and getPedOccupiedVehicle(ped) == car.vehicle then
+            local occupied = isPlayer(getVehicleController(car.vehicle))
+            if isPedDead(ped) then
+                for _, other in ipairs(car.crew) do
+                    if other ~= ped and isElement(other) and not isPedDead(other) and getPedOccupiedVehicle(other) == car.vehicle then
+                        occupied = true
+                        break
+                    end
+                end
+            end
+            if occupied then
+                for i, other in ipairs(car.crew) do
+                    if other == ped then table.remove(car.crew, i); break end
+                end
+                if car.driver == ped then car.driver = nil end
+            else
+                destroyCar(car)
+            end
+        end
     end
     if isElement(ped) then destroyElement(ped) end
 end
@@ -1064,6 +1102,7 @@ local function releaseCar(car)
         end
     end
     if isElement(car.vehicle) then
+        if car.lockedByPolice then setVehicleLocked(car.vehicle, false) end
         removeElementData(car.vehicle, 'neon:policeCar')
         removeElementData(car.vehicle, 'neon:policeCarPhase')
         setElementSyncer(car.vehicle, true)
@@ -1082,6 +1121,29 @@ destroyCar = function(car)
     end
     if isElement(vehicle) then destroyElement(vehicle) end
 end
+
+-- Keep cleanup tied to the original unit. A recycled entity or a cruiser
+-- already released to a player does not belong to this pending timer.
+addEventHandler('onPedWasted', root, function()
+    local ped, unit = source, units[source]
+    if not unit then return end
+    retireUnit(unit, 'dead')
+    setTimer(function()
+        if units[ped] == unit and isElement(ped) and isPedDead(ped) then destroyUnit(ped) end
+    end, 12000, 1)
+end)
+
+addEventHandler('onVehicleExplode', root, function()
+    local vehicle, car = source, cars[source]
+    if not car then return end
+    setTimer(function()
+        if cars[vehicle] == car and isElement(vehicle) and isVehicleBlown(vehicle) then destroyCar(car) end
+    end, 5000, 1)
+end)
+
+addEventHandler('onVehicleStartEnter', root, function(player)
+    if cars[source] and cars[source].lockedByPolice and isPlayer(player) then cancelEvent() end
+end)
 
 local function wantCar(s, t)
     if not cfg.policeCars or countCars() >= cfg.maxCars then return false end
@@ -1219,7 +1281,7 @@ createPoliceCar = function(s, x, y, z, spec)
     local car = {
         vehicle = vehicle, ped = vehicle, model = spec.model, suspect = s.player, crew = {}, phase = 'staging',
         createdAt = t, progressAt = t, bestDistance = math.huge, stalls = 0, avoid = {}, reentered = false,
-        hidden = true,
+        hidden = true, lockedByPolice = cfg.lockPoliceCars,
         -- handling+0x88, the speed 0x41CAA0 multiplies (rules.lua).
         topSpeed = R.handlingTopSpeed(tonumber(handling.maxVelocity), tonumber(handling.engineAcceleration),
                                       tonumber(handling.dragCoeff), tonumber(handling.handlingFlags)),
@@ -1234,6 +1296,7 @@ createPoliceCar = function(s, x, y, z, spec)
     s.lastCarAt = t
     s.carFailures = 0
     setVehicleEngineState(vehicle, true)
+    if cfg.lockPoliceCars then setVehicleLocked(vehicle, true) end
     setData(vehicle, 'neon:policeCar', true)
     setData(vehicle, 'neon:policeSuspect', s.player)
     setData(vehicle, 'neon:policeCarPhase', 'staging')
@@ -1548,6 +1611,8 @@ local function probeRetired()
     for _, ped in ipairs(retiring) do
         local unit = units[ped]
         if not isElement(ped) then
+            destroyUnit(ped)
+        elseif isPedDead(ped) and t - (unit.retiredAt or t) >= 12000 then
             destroyUnit(ped)
         elseif t - (unit.retiredAt or t) > 90000 then
             destroyUnit(ped) -- hard limit so a stuck probe can never leak peds
@@ -1980,7 +2045,9 @@ end)
 
 addEventHandler('onResourceStop', resourceRoot, function()
     for _, ped in ipairs(getElementsByType('ped')) do
-        if getElementData(ped, 'neon:serverBulletDamage') == true then removeElementData(ped, 'neon:serverBulletDamage') end
+        if getElementData(ped, 'neon:ambientDamageAuthority') ~= true and getElementData(ped, 'neon:serverBulletDamage') == true then
+            removeElementData(ped, 'neon:serverBulletDamage')
+        end
     end
     for player in pairs(busting) do
         if isElement(player) then fadeCamera(player, true, 0.5) end

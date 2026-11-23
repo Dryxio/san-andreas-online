@@ -32,6 +32,8 @@ function isElement(x) return type(x) == 'table' and x.kind ~= nil and x.alive ~=
 function isPedDead(x) return x.dead == true end
 function setElementData(x, key, value) x.data[key] = value; return true end
 function removeElementData(x, key) x.data[key] = nil; return true end
+function getElementData(x, key) return x.data[key] end
+dofile("official-resources/native-ped-traffic/observer_damage.lua")
 function setElementFrozen(x, frozen) x.frozen = frozen; return true end
 function triggerClientEvent(target, name, _, ...) sends[#sends + 1] = {target = target, name = name, args = {...}} end
 function getTrafficPedCount() local n = 0 for _ in pairs(trafficPeds) do n = n + 1 end return n end

@@ -773,6 +773,15 @@ step(2250)
 check('a bystander syncer is not believed for gunfire', getNativeWantedState(gina).chaos == hankChaos)
 gina.x = 2600
 -- A player jacks the moving police car with the passenger still inside.
+-- An explosion cleanup queued before a takeover must not destroy a player vehicle.
+carG.blown = true
+function isVehicleBlown(vehicle) return vehicle.blown == true end
+fire('onVehicleExplode',carG)
+local wreckCleanup = timers[#timers]
+check('a managed wreck schedules five-second cleanup', wreckCleanup.interval == 5000)
+carG.blown = false
+wreckCleanup.fn()
+check('a repaired cruiser survives its stale cleanup', isElement(carG))
 local passengerG = getVehicleOccupant(carG, 1)
 removePedFromVehicle(getVehicleOccupant(carG, 0))
 removePedFromVehicle(gina)
@@ -780,6 +789,8 @@ warpPedIntoVehicle(gina, carG, 0)
 step(250)
 check('jacked: the seated cop is told to get out', passengerG.data['neon:policeOrder'] == 'exit')
 check('and is no police car any more', getNativePoliceCars(gina)[1] == nil)
+carG.blown=true; wreckCleanup.fn(); carG.blown=false
+check('a released cruiser survives the pending police cleanup', isElement(carG))
 gina.vx = 0
 carG.vx = 0
 step(3000)
@@ -884,6 +895,17 @@ check('ordinary civilians retain native bullet impacts', not patrol.data['neon:s
 patrol.model = 280
 fire('onElementModelChange', patrol)
 fire('neonPolice:ready', resourceRoot, phone, true)
+-- A syncer in a wasted packet is not in itself evidence of an attack.
+local peaceful = element('player', {weapon=22, x=9})
+fire('neonPolice:ready',resourceRoot,peaceful)
+local bystanderVictim = element('ped',{model=280,x=10,syncer=peaceful})
+local previousChaos = getNativeWantedState(peaceful).chaos
+fire('onPedWasted',bystanderVictim,nil,0,peaceful,22)
+check('a reported killer who only synced the victim receives no stars', getNativeWantedState(peaceful).chaos == previousChaos)
+fire('onPlayerWeaponFire',shooter,nil,22,10,0,0.6,bystanderVictim,0,0,0.6)
+T=T+2100
+fire('onPedWasted',bystanderVictim,nil,0,peaceful,22)
+check('recorded hits keep death attribution off the innocent syncer', getNativeWantedState(peaceful).chaos == previousChaos)
 local function hit() fire('neonPolice:copHit', resourceRoot, shooter, patrol, 22) end
 local function shot(y) fire('onPlayerWeaponFire', shooter, nil, 22, 30, y or 0, 0.6, nil, 0, 0, 0.6) end
 hit()
@@ -901,4 +923,38 @@ check('a packet with an explicit ped ID and a collision hint is applied only onc
 patrol.health = 50
 shot(); shot(); hit(); hit()
 check('two real shots can kill and attribute the kill to the shooter', patrol.dead and patrol.killer == shooter)
+-- A separate deployment exercises the opt-in fleet policy without changing
+-- the stock 2.1 takeover scenario above.
+do
+    local stoppedEntry = false
+    function cancelEvent() stoppedEntry = true end
+    function setVehicleLocked(v, locked) v.locked = locked end
+    settings.policeCars, settings.lockPoliceCars = 'true', 'true'
+    fire('onSettingChange', root, nil, '*native-wanted-police.lockPoliceCars')
+    math.random = function(a,b) if not a then return 0.9 end return b or a end
+    local suspect = element('player', {x=2400,y=2400,z=10})
+    fire('neonPolice:ready', resourceRoot, suspect)
+    setNativeWantedLevel(suspect,2)
+    local mark = #clientEvents
+    step(250)
+    local probe = probesTo(suspect,'neonPolice:carProbe',mark)[1]
+    assert(probe)
+    fire('neonPolice:carCandidate',resourceRoot,suspect,probe.args[1],2400,2480,10,0)
+    local car = getNativePoliceCars(suspect)[1]
+    check('fleet policy locks this cruiser on dispatch', car and car.locked)
+    fire('onVehicleStartEnter',car,nil,suspect,0)
+    check('fleet policy refuses player entry', stoppedEntry)
+    local passenger, driver = getVehicleOccupant(car,1), getVehicleOccupant(car,0)
+    assert(passenger and driver)
+    passenger.dead=true
+    fire('onPedWasted',passenger,nil,0,nil,0)
+    local cleanup = timers[#timers]
+    check('dead officer gets a 12-second cleanup timer', cleanup.interval == 12000)
+    cleanup.fn()
+    check('only the dead passenger is removed', not isElement(passenger) and isElement(driver) and isElement(car))
+    car.blown=true
+    fire('onVehicleExplode',car)
+    timers[#timers].fn()
+    check('a still-managed wreck and its seated crew are removed', not isElement(car) and not isElement(driver))
+end
 print(('server_spec: %d checks passed'):format(passed))
