@@ -38,6 +38,16 @@ profile, but only the current syncer may turn a potential encounter into
 observers keep collision, ground and animation processing while presenting the
 owner's synchronized detour.
 
+An individual pedestrian whose owner detects a stall against a wall, tree, pole
+or low prop can resume walking or fleeing through a clear, ground-supported
+corridor. The owner checks the surface height, prefers level pavement and
+resumes flight away from the known attacker. Calm pedestrians waiting to
+cross, passive reactions, group tasks and police pursuits retain their tasks.
+The resource schedules one Android owner per 100 ms and batches its collision
+queries on the game thread with `getPedTrafficObstacleScan`. Android builds
+without that binding continue using their existing native wander behavior.
+Adapted from [itsbo5's pedestrian obstacle recovery](https://github.com/Dryxio/san-andreas-online/pull/133).
+
 The second behavior checkpoint admits GTA's stock gun-aimed-at, gunshot and
 damage events on the owner. Ordinary bullet sync already recreates shot, whizz,
 health and death processing. A client-observed `aim_weapon` transition, checked

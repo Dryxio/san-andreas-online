@@ -186,10 +186,11 @@ addEventHandler("onClientElementDestroy", root, function()
 end)
 
 -- Resposta a dano de observador: aplicar reducao de saude no syncer mobile
-local function reactToDamage(ped, epoch)
+local function reactToDamage(ped, epoch, attacker)
     if not isElement(ped) or not isElementSyncer(ped) or isPedDead(ped) or
         getElementData(ped, "neon:ambientPedTrafficEpoch") ~= epoch or
         getElementData(ped, "neon:ambientPedPopulationClass") == "cop" then return end
+    PedTrafficObstacles.noteFlee(ped, attacker, epoch)
     -- Health (including lethal hits) has already been applied by the server.
     setPedControlState(ped, "walk", false)
     setPedControlState(ped, "sprint", true)

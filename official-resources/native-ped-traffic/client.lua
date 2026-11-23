@@ -572,6 +572,18 @@ local function acquireTrafficEventProfile(ped)
     return true
 end
 
+PedTrafficObstacles.install(assignments, isMobileClient, function(ped, task)
+    if not enabled or airTestSessions[ped] or climbTestSessions[ped] or groupByPed[ped] or coupleByPed[ped] or
+        getElementData(ped, "neon:ambientPedTraffic") ~= true or
+        getElementData(ped, "neon:ambientPedTrafficEpoch") ~= task.epoch then return false end
+    if isMobileClient then return true end
+    local token = nativeEventProfiles[ped]
+    return token and isPedNativeEventProfileActive(ped, token)
+end, function(ped, task)
+    local context = nativeCombatContexts[ped]
+    return context and context.epoch == task.epoch and context.attacker
+end)
+
 local function releaseTrafficEventProfile(ped)
     local token = nativeEventProfiles[ped]
     if not token then
@@ -2656,7 +2668,7 @@ addEventHandler("pedTraffic:damageResponse", resourceRoot, function(ped, attacki
                     tostring(getElementType(attackingPed) == "player" and getPlayerName(attackingPed) or getElementData(attackingPed, "neon:ambientPedTrafficId")), tostring(weapon), tostring(bodypart)))
             if accepted then return end
         end
-        if MobilePuppet and MobilePuppet.reactToDamage and MobilePuppet.reactToDamage(ped, epoch) then return end
+        if MobilePuppet and MobilePuppet.reactToDamage and MobilePuppet.reactToDamage(ped, epoch, attackingPed) then return end
         if getTickCount() < deadline then
             setTimer(inject, 100, 1)
         else
@@ -2788,7 +2800,7 @@ setTimer(function()
             not task or not task.accepted or task.epoch ~= context.epoch then
             nativeCombatContexts[ped] = nil
         elseif getTickCount() - context.at >= 1000 then
-            local reacting = getThreatState(ped) or hasDealerFightingControl(ped)
+            local reacting = getThreatState(ped) or hasDealerFightingControl(ped) or PedTrafficObstacles.isEvading(ped, task.epoch)
             if reacting and getElementHealth(ped) > 0 and getElementHealth(context.attacker) > 0 then
                 triggerServerEvent("pedTraffic:combatContext", resourceRoot, ped, context.attacker, context.epoch, context.weapon, context.bodypart)
             else
