@@ -58,7 +58,9 @@ function setElementData(e, key, value, sync, trust)
 end
 function removeElementData(e, key) e.data[key] = nil end
 function getElementModel(e) return e.model or 0 end
-function getElementsWithinRange(x, y, z, range, kind)
+function Vector3(x, y, z) return {x=x, y=y, z=z} end
+function getElementsWithinRange(position, range, kind)
+    local x, y, z = position.x, position.y, position.z
     -- MTA refuses a position that is not three numbers.
     if type(x) ~= 'number' or type(y) ~= 'number' or type(z) ~= 'number' then error('getElementsWithinRange: bad position') end
     local list = {}
@@ -289,6 +291,29 @@ check('cop is marked', cop.data['neon:police'] == true and cop.data['neon:police
 check('regional LS model', cop.model == 280)
 check('Bob, not the suspect, runs the cop', cop.syncer == bob)
 check('2 stars: pistol in hand', cop.weapon == 22)
+do
+    local epoch = cop.data['neon:policeEpoch']
+    local first = #clientEvents
+    fire('neonPolice:ready', resourceRoot, alice, true)
+    carol.dimension = 7
+    fire('neonPolice:ready', resourceRoot, carol, true)
+    local function cue(from, generation, weapon)
+        fire('neonPolice:ownerShot', resourceRoot, from, cop, generation, weapon, alice.x, alice.y, alice.z)
+    end
+    cue(alice, epoch, 22)
+    cue(bob, epoch + 1, 22)
+    cue(bob, epoch, 31)
+    check('shot reports require the live owner, epoch and equipped weapon', #clientEvents == first)
+    cue(bob, epoch, 22)
+    local e = clientEvents[#clientEvents]
+    check('one nearby Android observer gets the real police shot', #clientEvents == first + 1 and
+        e.name == 'neonPolice:showShot' and #e.target == 1 and e.target[1] == alice and e.args[1] == cop)
+    cue(bob, epoch, 22)
+    check('duplicate visual reports within the same tick are dropped', #clientEvents == first + 1)
+    carol.dimension = 0
+    fire('neonPolice:ready', resourceRoot, alice, false)
+    fire('neonPolice:ready', resourceRoot, carol, false)
+end
 check('every published value denies client changes', untrustedWrites == 0)
 
 -- 3. Damage evidence: only the victim's syncer or the attacker may report,
@@ -842,4 +867,31 @@ step(1000)
 check('and the next car waits', #probesTo(ivan, 'neonPolice:carProbe', mark) == soon)
 setNativeWantedLevel(ivan, 0)
 
+-- A stock desktop sends a nil damage ID for NPCs. Test both network orders,
+-- multiple shots in one frame, misses, duplicate hints and health authority.
+function getWeaponProperty(weapon, skill, property) return property == 'damage' and 25 or false end
+function setElementHealth(ped, health) ped.health = health end
+function killPed(ped, attacker, weapon) ped.health, ped.dead, ped.killer = 0, true, attacker end
+local shooter = element('player', {name='desktop', weapon=22, x=0, y=0, z=0})
+local phone = element('player', {name='phone', x=1})
+local patrol = element('ped', {model=280, x=10, health=100, syncer=phone})
+patrol.data['neon:ambientPedTraffic'] = true
+fire('neonPolice:ready', resourceRoot, phone, true)
+local function hit() fire('neonPolice:copHit', resourceRoot, shooter, patrol, 22) end
+local function shot(y) fire('onPlayerWeaponFire', shooter, nil, 22, 30, y or 0, 0.6, nil, 0, 0, 0.6) end
+hit()
+check('client hint alone cannot debit health', patrol.health == 100)
+shot()
+check('desktop collision matches mobile-owned patrol', patrol.health == 75)
+shot(); hit()
+check('packet before Lua hint also counts once', patrol.health == 50)
+hit(); shot(30)
+check('off-ray hit is ignored', patrol.health == 50)
+T = T + 800
+fire('onPlayerWeaponFire', shooter, nil, 22, 30, 0, 0.6, patrol, 0, 0, 0.6)
+hit()
+check('a packet with an explicit ped ID and a collision hint is applied only once', patrol.health == 25)
+patrol.health = 50
+shot(); shot(); hit(); hit()
+check('two real shots can kill and attribute the kill to the shooter', patrol.dead and patrol.killer == shooter)
 print(('server_spec: %d checks passed'):format(passed))

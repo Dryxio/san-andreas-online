@@ -640,8 +640,45 @@ addEventHandler('onClientRender', root, function()
     end
 end)
 
+addEventHandler('onClientPlayerWeaponFire', localPlayer, function(weapon, _, _, _, _, _, hit)
+    if isElement(hit) and getElementType(hit) == 'ped' and not isElementSyncer(hit) and
+        (getElementData(hit, 'neon:police') == true or (getElementData(hit, 'neon:ambientPedTraffic') == true and NativeWantedRules.pedClassForModel(getElementModel(hit)) == 'cop')) then
+        triggerServerEvent('neonPolice:copHit', resourceRoot, hit, weapon)
+    end
+end)
+
+addEventHandler('onClientPedWeaponFire', root, function(weapon, _, _, x, y, z)
+    if isElementSyncer(source) and getElementData(source, 'neon:police') == true and weapon >= 22 and weapon <= 34 then
+        triggerServerEvent('neonPolice:ownerShot', resourceRoot, source, getElementData(source, 'neon:policeEpoch'), weapon, x, y, z)
+    end
+end)
+
+local pendingVisual = {}
+local function canShowShot(ped, epoch)
+    return isElement(ped) and isElementStreamedIn(ped) and not isElementSyncer(ped) and not isPedDead(ped) and
+        getElementData(ped, 'neon:police') == true and getElementData(ped, 'neon:policeEpoch') == epoch
+end
+
+addEvent('neonPolice:showShot', true)
+addEventHandler('neonPolice:showShot', resourceRoot, function(ped, epoch, weapon, x, y, z)
+    if source ~= resourceRoot or type(presentPedWeaponShot) ~= 'function' or not canShowShot(ped, epoch) then return end
+    local waiting = pendingVisual[ped]
+    if waiting then
+        waiting.epoch, waiting.weapon, waiting.x, waiting.y, waiting.z = epoch, weapon, x, y, z
+        return
+    end
+    if presentPedWeaponShot(ped, weapon, x, y, z) then return end
+    -- Allow streaming to finish without blocking a frame or replaying a backlog of shots.
+    local cue = {epoch=epoch, weapon=weapon, x=x, y=y, z=z}
+    pendingVisual[ped] = cue
+    setTimer(function()
+        pendingVisual[ped] = nil
+        if canShowShot(ped, cue.epoch) then presentPedWeaponShot(ped, cue.weapon, cue.x, cue.y, cue.z) end
+    end, 100, 1)
+end)
+
 addEventHandler('onClientResourceStart', resourceRoot, function()
-    triggerServerEvent('neonPolice:ready', resourceRoot)
+    triggerServerEvent('neonPolice:ready', resourceRoot, type(getVersion) == 'function' and getVersion().os == 'Android')
 end)
 
 addEventHandler('onClientResourceStop', resourceRoot, function()

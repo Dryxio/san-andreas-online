@@ -322,7 +322,7 @@ local function nearestBubbleIndex(bubbles, unit)
 end
 
 local function ownerHasPendingCandidate(owner, limit)
-    return pendingCandidateCount(owner) >= (limit or 1)
+    return readyClients[owner] ~= "driver" or pendingCandidateCount(owner) >= (limit or 1)
 end
 
 local function updatePlayerMotion(ps)
@@ -489,14 +489,18 @@ end
 
 local function chooseProductionOwner(ps)
     local bubbles, loads = productionBubbleLoads(ps, true)
-    local selected = false
+    local selected, owner
     for index, bubble in ipairs(bubbles) do
-        if not ownerHasPendingCandidate(bubble.anchor, PRODUCTION_MAX_CANDIDATES_PER_BUBBLE) and
-            (not selected or loads[index] < loads[selected]) then
-            selected = index
+        if not selected or loads[index] < loads[selected] then
+            for _, player in ipairs(bubble.members) do
+                if not ownerHasPendingCandidate(player, PRODUCTION_MAX_CANDIDATES_PER_BUBBLE) then
+                    selected, owner = index, player
+                    break
+                end
+            end
         end
     end
-    return selected and bubbles[selected].anchor or false
+    return owner or false
 end
 
 local function productionRebalanceUnit(ps, desired)
@@ -527,7 +531,7 @@ end
 local function chooseOwner(unit, excluded)
     local best, bestScore
     for _, player in ipairs(players()) do
-        if player ~= excluded then
+        if player ~= excluded and readyClients[player] == "driver" then
             local distance = unit and distanceToUnit(player, unit) or 0
             if not unit or distance <= OWNER_DISTANCE then
                 local score = ownerLoad(player) * 1000 + distance
@@ -2320,10 +2324,10 @@ end)
 -- registered every traffic event. This explicit handshake avoids guessing how
 -- long the initial resource download and client startup will take.
 addEvent("carTraffic:clientReady", true)
-addEventHandler("carTraffic:clientReady", resourceRoot, function()
+addEventHandler("carTraffic:clientReady", resourceRoot, function(driveReady)
     local player = client
     if not isElement(player) or getElementType(player) ~= "player" then return end
-    readyClients[player] = true
+    readyClients[player] = driveReady == false and "observer" or "driver"
     triggerClientEvent(player, "carTraffic:diagnostics", resourceRoot, debugEnabled or activeTest ~= false)
     trace("client-ready", {client = getPlayerName(player)})
     if getElementDimension(player) ~= 0 or getElementInterior(player) ~= 0 then return end

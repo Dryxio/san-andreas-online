@@ -62,6 +62,7 @@ end)
 local suspects = {}   -- player -> suspect state
 local units = {}      -- ped -> unit
 local cars = {}       -- vehicle -> police car (version 2)
+local legacyViewers = {} -- peers using spatial-only ped sync
 local ready = {}      -- player -> true once client.lua is running
 local pendingSpawns = {}
 local nextRequestId, nextUnitId = 0, 0
@@ -117,7 +118,7 @@ end
 -- WorkOutPolicePresence: living cops and law vehicles in a 3D radius, no line
 -- of sight. The offender's own vehicle does not count.
 local function policeNear(x, y, z, radius, offender)
-    for _, ped in ipairs(getElementsWithinRange(x, y, z, radius, 'ped', 0, 0)) do
+    for _, ped in ipairs(getElementsWithinRange(Vector3(x, y, z), radius, 'ped', 0, 0)) do
         if isCopPed(ped) then return true end
     end
     -- Vehicles count while in service: GTA's bIsLawEnforcer flag is set on
@@ -125,7 +126,7 @@ local function policeNear(x, y, z, radius, offender)
     -- abandoned or wrecked vehicle never counts. Neon approximates "in
     -- service" as a law model driven by a cop (the Maverick: any driver).
     local own = offender and getPedOccupiedVehicle(offender)
-    for _, vehicle in ipairs(getElementsWithinRange(x, y, z, radius, 'vehicle', 0, 0)) do
+    for _, vehicle in ipairs(getElementsWithinRange(Vector3(x, y, z), radius, 'vehicle', 0, 0)) do
         local model = getElementModel(vehicle)
         local driver = getVehicleController(vehicle)
         if vehicle ~= own and R.lawVehicles[model] and not isVehicleBlown(vehicle) and isElement(driver) and
@@ -337,8 +338,82 @@ end
 
 -- CWeapon::DoBulletImpact (0x73B550): firing reports crime 1 against what was
 -- hit, and a hit ped (cop or not) also reports crime 4.
-addEventHandler('onPlayerWeaponFire', root, function(weapon, _, _, _, hitElement)
+-- The shooter cannot change an observed ped's GTA health. Use the validated
+-- bullet packet once for police whose owner runs the legacy mobile engine.
+function handlesTrafficBulletDamage(ped, weapon)
+    if type(weapon) ~= 'number' or weapon < 22 or weapon > 34 or not isPed(ped) then return false end
+    local owner = getElementSyncer(ped)
+    if not owner or not legacyViewers[owner] then return false end
+    return units[ped] ~= nil or (getElementData(ped, 'neon:ambientPedTraffic') == true and
+        R.pedClassForModel(getElementModel(ped)) == 'cop')
+end
+
+-- Stock desktop bullet sync carries a CClientPlayer damage ID. The Lua shot
+-- event also supplies the collision ped. Pair that hint with one server-seen
+-- shot, irrespective of which channel arrives first.
+local pendingCopShots = {}
+local function canHitCop(shooter, ped, weapon)
+    return handlesTrafficBulletDamage(ped, weapon) and getElementSyncer(ped) ~= shooter and not isPedDead(ped) and
+        getElementDimension(shooter) == getElementDimension(ped) and getElementInterior(shooter) == getElementInterior(ped) and
+        plausibleHit(shooter, ped, weapon)
+end
+
+local function copOnShotSegment(ped, shot)
+    local x, y, z = getElementPosition(ped)
+    local dx, dy, dz = shot.x - shot.sx, shot.y - shot.sy, shot.z - shot.sz
+    local length2 = dx*dx + dy*dy + dz*dz
+    if not (length2 > 0 and length2 <= 500*500) then return false end
+    local t = math.max(0, math.min(1, ((x-shot.sx)*dx + (y-shot.sy)*dy + (z+0.6-shot.sz)*dz) / length2))
+    return getDistanceBetweenPoints3D(x, y, z+0.6, shot.sx+t*dx, shot.sy+t*dy, shot.sz+t*dz) <= 2.5
+end
+
+local function applyLegacyCopHit(shooter, ped, weapon)
+    local damage = getWeaponProperty(weapon, 'std', 'damage')
+    if type(damage) ~= 'number' or damage <= 0 then return end
+    reportCrime(shooter, R.crime.SHOOT_PED, ped, 'weapon-fire')
+    reportDamage(shooter, ped, weapon, 'weapon-fire')
+    local health = getElementHealth(ped) - damage
+    if health <= 0 then killPed(ped, shooter, weapon, 3) else setElementHealth(ped, health) end
+end
+
+local function pairCopShot(shooter, weapon, shot, ped)
+    local t = now()
+    local queue = pendingCopShots[shooter] or {}
+    pendingCopShots[shooter] = queue
+    local i = 1
+    while i <= #queue do
+        local other = queue[i]
+        if t - other.at > 700 then
+            table.remove(queue, i)
+        else
+            if other.weapon == weapon and (other.shot ~= nil) ~= (shot ~= nil) then
+                local victim, ray = ped or other.ped, shot or other.shot
+                if (not ray.target or ray.target == victim) and canHitCop(shooter, victim, weapon) and copOnShotSegment(victim, ray) then
+                    table.remove(queue, i)
+                    applyLegacyCopHit(shooter, victim, weapon)
+                    return
+                end
+            end
+            i = i + 1
+        end
+    end
+    if #queue >= 16 then table.remove(queue, 1) end
+    queue[#queue + 1] = {at = t, weapon = weapon, shot = shot, ped = ped}
+end
+
+addEvent('neonPolice:copHit', true)
+addEventHandler('neonPolice:copHit', resourceRoot, function(ped, weapon)
+    if source == resourceRoot and isPlayer(client) and canHitCop(client, ped, weapon) then
+        pairCopShot(client, weapon, nil, ped)
+    end
+end)
+
+addEventHandler('onPlayerWeaponFire', root, function(weapon, x, y, z, hitElement, sx, sy, sz)
     lastFireAt[source] = now()
+    if next(legacyViewers) and (not hitElement or isPed(hitElement)) and weapon >= 22 and weapon <= 34 and type(sx) == 'number' and
+        type(sy) == 'number' and type(sz) == 'number' and type(x) == 'number' and type(y) == 'number' and type(z) == 'number' then
+        pairCopShot(source, weapon, {x=x, y=y, z=z, sx=sx, sy=sy, sz=sz, target=hitElement}, nil)
+    end
     reportCrime(source, R.crime.FIRE_WEAPON, isElement(hitElement) and hitElement or nil, 'weapon-fire')
     if isElement(hitElement) then
         local kind = getElementType(hitElement)
@@ -498,15 +573,25 @@ local function chooseOwner(unit)
     local t = now()
     unit.avoid = unit.avoid or {}
     local function allowed(player) return ready[player] and (unit.avoid[player] or 0) <= t end
-    local best, bestDistance
+    local best, bestDistance, legacy, legacyDistance
     for _, player in ipairs(getElementsByType('player')) do
         if player ~= unit.suspect and allowed(player) and not isPedDead(player) and inMainWorld(player) then
             local d = distance3(player, unit.ped)
-            if d <= cfg.ownerRange and (not bestDistance or d < bestDistance) then best, bestDistance = player, d end
+            if d <= cfg.ownerRange then
+                if legacyViewers[player] then
+                    if not legacyDistance or d < legacyDistance then legacy, legacyDistance = player, d end
+                elseif not bestDistance or d < bestDistance then
+                    best, bestDistance = player, d
+                end
+            end
         end
     end
     if best then return best end
-    if isPlayer(unit.suspect) and allowed(unit.suspect) then return unit.suspect end
+    local suspect = unit.suspect
+    if isPlayer(suspect) and allowed(suspect) and not legacyViewers[suspect] and
+        distance3(suspect, unit.ped) <= cfg.ownerRange then return suspect end
+    if legacy then return legacy end
+    if isPlayer(suspect) and allowed(suspect) then return suspect end
     return unit.owner
 end
 
@@ -700,7 +785,7 @@ local function recruitStreetCops()
     local seen, candidates = {}, {}
     for _, s in ipairs(wanted) do
         local x, y, z = getElementPosition(s.player)
-        for _, ped in ipairs(getElementsWithinRange(x, y, z, cfg.copLostDistance, 'ped', 0, 0)) do
+        for _, ped in ipairs(getElementsWithinRange(Vector3(x, y, z), cfg.copLostDistance, 'ped', 0, 0)) do
             if not seen[ped] and isStreetCop(ped) then
                 seen[ped] = true
                 local best, bestDistance
@@ -1185,7 +1270,7 @@ local function stageCar(s, car, t)
     if car.reveal then reveals[car.reveal.id] = nil end
     local x, y, z = getElementPosition(car.vehicle)
     local watchers, set = {}, {}
-    for _, player in ipairs(getElementsWithinRange(x, y, z, REVEAL_RANGE, 'player')) do
+    for _, player in ipairs(getElementsWithinRange(Vector3(x, y, z), REVEAL_RANGE, 'player')) do
         if ready[player] and inMainWorld(player) then
             watchers[#watchers + 1] = player
             set[player] = true
@@ -1426,7 +1511,7 @@ local function probeRetired()
             if x then
                 -- A car is seen from farther than a cop: 220 m, the distance
                 -- native-vehicle-traffic keeps its cars around players.
-                for _, player in ipairs(getElementsWithinRange(x, y, z, 220, 'player')) do
+                for _, player in ipairs(getElementsWithinRange(Vector3(x, y, z), 220, 'player')) do
                     if ready[player] then watchers[#watchers + 1] = player end
                 end
             end
@@ -1452,7 +1537,7 @@ local function probeRetired()
             unit.retiredAt = unit.retiredAt or t
             local x, y, z = getElementPosition(ped)
             local watchers = {}
-            for _, player in ipairs(getElementsWithinRange(x, y, z, 150, 'player')) do
+            for _, player in ipairs(getElementsWithinRange(Vector3(x, y, z), 150, 'player')) do
                 if ready[player] then watchers[#watchers + 1] = player end
             end
             if #watchers == 0 then
@@ -1798,6 +1883,8 @@ local function forgetPlayer(player)
         end
     end
     suspects[player] = nil
+    pendingCopShots[player] = nil
+    legacyViewers[player] = nil
     ready[player] = nil
     reportBudget[player] = nil
     lastFireAt[player] = nil
@@ -1807,8 +1894,34 @@ local function forgetPlayer(player)
     end
 end
 
+-- Only an actual owner shot can produce a visual cue. This event never
+-- credits a hit or changes health, ammunition, crime or wanted level.
+addEvent('neonPolice:ownerShot', true)
+addEventHandler('neonPolice:ownerShot', resourceRoot, function(ped, epoch, weapon, x, y, z)
+    if source ~= resourceRoot or not isPlayer(client) then return end
+    local unit = units[ped]
+    if not unit or unit.owner ~= client or unit.epoch ~= epoch or getElementSyncer(ped) ~= client or
+        isPedDead(ped) or type(weapon) ~= 'number' or weapon < 22 or weapon > 34 or getPedWeapon(ped) ~= weapon or
+        type(x) ~= 'number' or type(y) ~= 'number' or type(z) ~= 'number' then return end
+    local px, py, pz = getElementPosition(ped)
+    if not (getDistanceBetweenPoints3D(px, py, pz, x, y, z) <= 500) then return end
+    local t = now()
+    if unit.lastVisualShot and t - unit.lastVisualShot < 40 then return end
+    unit.lastVisualShot = t
+    local viewers = {}
+    for viewer in pairs(legacyViewers) do
+        if viewer ~= client and isPlayer(viewer) and getElementDimension(viewer) == getElementDimension(ped) and
+            getElementInterior(viewer) == getElementInterior(ped) and distance3(viewer, ped) <= 180 then
+            viewers[#viewers + 1] = viewer
+        end
+    end
+    if #viewers > 0 then triggerClientEvent(viewers, 'neonPolice:showShot', resourceRoot, ped, epoch, weapon, x, y, z) end
+end)
+
 addEvent('neonPolice:ready', true)
-addEventHandler('neonPolice:ready', resourceRoot, function()
+addEventHandler('neonPolice:ready', resourceRoot, function(legacy)
+    if source ~= resourceRoot or not isPlayer(client) then return end
+    legacyViewers[client] = legacy == true or nil
     ready[client] = true
     suspectOf(client)
 end)

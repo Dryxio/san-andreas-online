@@ -1490,7 +1490,11 @@ addEventHandler("pedTraffic:stop", resourceRoot, function(ped, epoch, reason)
     local task = assignments[ped]
     if task and task.epoch == epoch then
         log(("stop epoch=%d reason=%s"):format(epoch, tostring(reason)))
-        releaseTask(task, true)
+        -- A delayed patrol release can arrive after the wanted task took slot 3.
+        local clearPrimary = isElement(ped) and isElementSyncer(ped) and
+            (reason ~= "released" or isPedDoingTask(ped, "TASK_COMPLEX_WANDER") or
+                isPedDoingTask(ped, "TASK_COMPLEX_WANDER_STANDARD"))
+        releaseTask(task, clearPrimary)
     end
 end)
 

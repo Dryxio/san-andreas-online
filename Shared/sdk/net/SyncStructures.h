@@ -1035,6 +1035,19 @@ struct SNativeTaskLocomotionSync : public ISyncStructure
         SPRINT,
     };
 
+    // The wire stores signed controller axes in one byte. Plain char is unsigned on ARM64.
+    static unsigned char EncodeAxis(short value)
+    {
+        const int clamped = value < -128 ? -128 : value > 128 ? 128 : value;
+        return static_cast<unsigned char>(clamped * 127 / 128);
+    }
+
+    static short DecodeAxis(unsigned char wire)
+    {
+        const int value = wire < 128 ? wire : static_cast<int>(wire) - 256;
+        return static_cast<short>(value * 128 / 127);
+    }
+
     bool Read(NetBitStreamInterface& bitStream)
     {
         data = {};
@@ -1044,13 +1057,13 @@ struct SNativeTaskLocomotionSync : public ISyncStructure
         if (data.uiMode == NONE)
             return true;
 
-        char leftStickX;
-        char leftStickY;
+        unsigned char leftStickX;
+        unsigned char leftStickY;
         if (!bitStream.Read(leftStickX) || !bitStream.Read(leftStickY))
             return false;
 
-        data.sLeftStickX = static_cast<short>(static_cast<float>(leftStickX) * 128.0f / 127.0f);
-        data.sLeftStickY = static_cast<short>(static_cast<float>(leftStickY) * 128.0f / 127.0f);
+        data.sLeftStickX = DecodeAxis(leftStickX);
+        data.sLeftStickY = DecodeAxis(leftStickY);
         return true;
     }
 
@@ -1060,8 +1073,8 @@ struct SNativeTaskLocomotionSync : public ISyncStructure
         if (data.uiMode == NONE)
             return;
 
-        const char leftStickX = static_cast<char>(static_cast<float>(data.sLeftStickX) * 127.0f / 128.0f);
-        const char leftStickY = static_cast<char>(static_cast<float>(data.sLeftStickY) * 127.0f / 128.0f);
+        const unsigned char leftStickX = EncodeAxis(data.sLeftStickX);
+        const unsigned char leftStickY = EncodeAxis(data.sLeftStickY);
         bitStream.Write(leftStickX);
         bitStream.Write(leftStickY);
     }

@@ -20,6 +20,59 @@
 #include "CColManager.h"
 #include "CSpatialDatabase.h"
 #include "CPlayerCamera.h"
+#include "lua/CLuaArgument.h"
+
+#include <cmath>
+
+namespace
+{
+    bool NeedsLegacyLocomotion(CPed* ped)
+    {
+        for (const auto* key : {"neon:ambientPedTraffic", "worldrpg:isTrafficWalkingPed", "neon:police"})
+        {
+            const CLuaArgument* value = ped->GetCustomData(key, false);
+            if (value && value->GetType() == LUA_TBOOLEAN && value->GetBoolean())
+                return true;
+        }
+        return false;
+    }
+
+    SNativeTaskLocomotionSync MakeTrafficLocomotion(CPed* ped)
+    {
+        SNativeTaskLocomotionSync locomotion;
+        CVector velocity;
+        ped->GetVelocity(velocity);
+        const float speed = std::hypot(velocity.fX, velocity.fY);
+        if (!std::isfinite(speed) || speed <= 0.009f || ped->IsFrozen() || ped->GetOccupiedVehicle() || ped->GetHealth() <= 0.f)
+            return locomotion;
+
+        float magnitude;
+        if (speed > 0.27f)
+        {
+            locomotion.data.uiMode = SNativeTaskLocomotionSync::SPRINT;
+            magnitude = 128.f;
+        }
+        else if (speed > 0.14f)
+        {
+            locomotion.data.uiMode = SNativeTaskLocomotionSync::RUN;
+            magnitude = 108.f;
+        }
+        else
+        {
+            locomotion.data.uiMode = SNativeTaskLocomotionSync::WALK;
+            magnitude = 59.f;
+        }
+
+        // Match CClientPed::CaptureNativeTaskLocomotion: project the world
+        // velocity into the camera-relative stick frame.
+        const float direction = std::atan2(-velocity.fX, velocity.fY) + ped->GetCameraRotation();
+        if (!std::isfinite(direction))
+            return {};
+        locomotion.data.sLeftStickX = static_cast<short>(std::lround(-std::sin(direction) * magnitude));
+        locomotion.data.sLeftStickY = static_cast<short>(std::lround(-std::cos(direction) * magnitude));
+        return locomotion;
+    }
+}
 
 CPedSync::CPedSync(CPlayerManager* pPlayerManager, CPedManager* pPedManager)
 {
@@ -293,6 +346,18 @@ void CPedSync::Packet_PedSync(CPedSyncPacket& Packet)
 
         if (Data.ucFlags & 0x80)
             pPed->SetAnimationData({});
+
+        // The legacy Android peer carries the authoritative transform but
+        // cannot transmit the 0x3C locomotion block. Supply presentation to
+        // capable observers only after validating the current syncer. The
+        // packet writer already strips this block for older recipients.
+        if ((Data.ucFlags & 0x07) &&
+            pPlayer->GetBitStreamVersion() < static_cast<unsigned short>(eBitStreamVersion::NativeTaskLocomotionPresentation) &&
+            NeedsLegacyLocomotion(pPed))
+        {
+            Data.flags2 |= 0x02;
+            Data.nativeTaskLocomotion = MakeTrafficLocomotion(pPed);
+        }
 
         // Presentation snapshots are intentionally near-viewer only. Letting
         // their 100 ms cadence advance the far-sync timer would starve remote

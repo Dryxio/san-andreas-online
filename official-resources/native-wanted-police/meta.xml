@@ -40,4 +40,5 @@
     <export function="getNativePoliceUnits" type="server" />
     <export function="getNativePoliceCars" type="server" />
     <export function="requestNativePoliceBackoff" type="server" />
+    <export function="handlesTrafficBulletDamage" type="server" />
 </meta>
