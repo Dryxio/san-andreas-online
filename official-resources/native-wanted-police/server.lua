@@ -340,12 +340,30 @@ end
 -- hit, and a hit ped (cop or not) also reports crime 4.
 -- The shooter cannot change an observed ped's GTA health. Use the validated
 -- bullet packet once for police whose owner runs the legacy mobile engine.
+local function policeBulletTarget(ped)
+    return getElementData(ped, 'neon:police') == true or (getElementData(ped, 'neon:ambientPedTraffic') == true and
+        R.pedClassForModel(getElementModel(ped)) == 'cop')
+end
+
+local function updateBulletAuthority(ped)
+    if not isPed(ped) then return end
+    if policeBulletTarget(ped) then
+        if getElementData(ped, 'neon:serverBulletDamage') ~= true then setData(ped, 'neon:serverBulletDamage', true) end
+    elseif getElementData(ped, 'neon:serverBulletDamage') == true then
+        removeElementData(ped, 'neon:serverBulletDamage')
+    end
+end
+
+addEventHandler('onElementDataChange', root, function(key)
+    if key == 'neon:police' or key == 'neon:ambientPedTraffic' then updateBulletAuthority(source) end
+end)
+addEventHandler('onElementModelChange', root, function() updateBulletAuthority(source) end)
+
 function handlesTrafficBulletDamage(ped, weapon)
     if type(weapon) ~= 'number' or weapon < 22 or weapon > 34 or not isPed(ped) then return false end
     local owner = getElementSyncer(ped)
     if not owner or not legacyViewers[owner] then return false end
-    return units[ped] ~= nil or (getElementData(ped, 'neon:ambientPedTraffic') == true and
-        R.pedClassForModel(getElementModel(ped)) == 'cop')
+    return policeBulletTarget(ped)
 end
 
 -- Stock desktop bullet sync carries a CClientPlayer damage ID. The Lua shot
@@ -1941,6 +1959,7 @@ addEventHandler('onPlayerWasted', root, function(_, killer, weapon)
 end)
 
 addEventHandler('onResourceStart', resourceRoot, function()
+    for _, ped in ipairs(getElementsByType('ped')) do updateBulletAuthority(ped) end
     setData(resourceRoot, 'neon:policeConfig', {overheadStars = cfg.overheadStars, bustedText = cfg.bustedText})
     for _, player in ipairs(getElementsByType('player')) do suspectOf(player) end
     setTimer(function()
@@ -1960,6 +1979,9 @@ addEventHandler('onResourceStart', resourceRoot, function()
 end)
 
 addEventHandler('onResourceStop', resourceRoot, function()
+    for _, ped in ipairs(getElementsByType('ped')) do
+        if getElementData(ped, 'neon:serverBulletDamage') == true then removeElementData(ped, 'neon:serverBulletDamage') end
+    end
     for player in pairs(busting) do
         if isElement(player) then fadeCamera(player, true, 0.5) end
     end

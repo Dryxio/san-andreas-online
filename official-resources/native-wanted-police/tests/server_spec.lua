@@ -876,6 +876,13 @@ local shooter = element('player', {name='desktop', weapon=22, x=0, y=0, z=0})
 local phone = element('player', {name='phone', x=1})
 local patrol = element('ped', {model=280, x=10, health=100, syncer=phone})
 patrol.data['neon:ambientPedTraffic'] = true
+fire('onElementDataChange', patrol, nil, 'neon:ambientPedTraffic')
+check('the replicated bullet cannot damage a hosted patrol a second time', patrol.data['neon:serverBulletDamage'] == true)
+patrol.model = 7
+fire('onElementModelChange', patrol)
+check('ordinary civilians retain native bullet impacts', not patrol.data['neon:serverBulletDamage'])
+patrol.model = 280
+fire('onElementModelChange', patrol)
 fire('neonPolice:ready', resourceRoot, phone, true)
 local function hit() fire('neonPolice:copHit', resourceRoot, shooter, patrol, 22) end
 local function shot(y) fire('onPlayerWeaponFire', shooter, nil, 22, 30, y or 0, 0.6, nil, 0, 0, 0.6) end
