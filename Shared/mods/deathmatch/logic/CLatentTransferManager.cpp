@@ -402,7 +402,7 @@ void DoDeallocateNetBitStream(NetBitStreamInterface* pBitStream)
 bool DoSendPacket(unsigned char ucPacketID, NetPlayerID remoteId, NetBitStreamInterface* bitStream, NetServerPacketPriority packetPriority,
                   NetServerPacketReliability packetReliability, ePacketOrdering packetOrdering)
 {
-    return g_pNetServer->SendPacket(ucPacketID, remoteId, bitStream, false, packetPriority, packetReliability, packetOrdering);
+    return g_pGame->SendDirect(ucPacketID, remoteId, bitStream, false, packetPriority, packetReliability, packetOrdering);
 }
 
 bool DoStaticProcessPacket(unsigned char ucPacketID, NetPlayerID remoteId, NetBitStreamInterface* pBitStream, ushort usResourceNetId)
@@ -414,7 +414,8 @@ bool DoStaticProcessPacket(unsigned char ucPacketID, NetPlayerID remoteId, NetBi
         if (!pResource)
             return true;
     }
-    return CGame::StaticProcessPacket(ucPacketID, remoteId, pBitStream, NULL);
+    if (remoteId.IsQuic() && ucPacketID != PACKET_ID_LUA_EVENT) return false;
+    return g_pGame->ProcessGamePacket(ucPacketID, remoteId, pBitStream, NULL);
 }
 
 void DoDisconnectRemote(NetPlayerID remoteId, const SString& strReason)

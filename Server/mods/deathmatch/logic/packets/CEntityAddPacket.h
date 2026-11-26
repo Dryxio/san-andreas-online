@@ -20,7 +20,8 @@ public:
     ePacketID     GetPacketID() const { return PACKET_ID_ENTITY_ADD; };
     unsigned long GetFlags() const { return PACKET_HIGH_PRIORITY | PACKET_RELIABLE | PACKET_SEQUENCED; };
 
-    bool Write(NetBitStreamInterface& BitStream) const;
+    bool Write(NetBitStreamInterface& BitStream) const override { return WriteForProtocol(BitStream, false); }
+    bool WriteForProtocol(NetBitStreamInterface& BitStream, bool release189) const override;
 
     void Add(class CElement* pElement);
     void Clear() { m_Entities.clear(); };

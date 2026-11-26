@@ -352,6 +352,7 @@ void CGame::ResetMapInfo()
 
 CGame::~CGame()
 {
+    m_quic.Stop();
     m_bBeingDeleted = true;
 
     // Stop the web server first to avoid threading issues
@@ -492,6 +493,8 @@ void CGame::DoPulse()
     Lock();
 
     UpdateModuleTickCount64();
+
+    m_quic.Pulse();
 
     // Calculate FPS
     long long llCurrentTime = SharedUtil::GetModuleTickCount64();
@@ -811,7 +814,7 @@ bool CGame::Start(int iArgumentCount, char* szArguments[])
     m_pMainConfig->SetFileName(strBuffer);
 
     // Load the main config base
-    if (!m_pMainConfig->Load())
+    if (!m_pMainConfig->Load() || !m_quic.Start(*m_pMainConfig))
         return false;
 
     if (m_pMainConfig->GetNeonAuthAutomatic())
@@ -1276,6 +1279,11 @@ void CGame::StartOpenPortsTest()
 }
 
 bool CGame::StaticProcessPacket(unsigned char ucPacketID, const NetServerPlayerID& Socket, NetBitStreamInterface* pBitStream, SNetExtraInfo* pNetExtraInfo)
+{
+    return g_pGame->ProcessGamePacket(ucPacketID, Socket, pBitStream, pNetExtraInfo);
+}
+
+bool CGame::ProcessGamePacket(unsigned char ucPacketID, const GamePeer& Socket, NetBitStreamInterface* pBitStream, SNetExtraInfo* pNetExtraInfo)
 {
     // Is it a join packet? Pass it to the handler immediately
     if (ucPacketID == PACKET_ID_PLAYER_JOIN)
@@ -1770,7 +1778,8 @@ void CGame::QuitPlayer(CPlayer& Player, CClient::eQuitReasons Reason, bool bSayI
     }
 
     // Tell net module connection version info will no longer be required
-    g_pNetServer->ClearClientBitStreamVersion(Player.GetSocket());
+    if (Player.GetSocket().IsQuic()) m_quic.Close(Player.GetSocket());
+    else g_pNetServer->ClearClientBitStreamVersion(Player.GetSocket().Stock());
 
     // Remove from any latent transfers
     GetLatentTransferManager()->RemoveRemote(Player.GetSocket());
@@ -1953,7 +1962,7 @@ void CGame::ProcessTrafficLights(long long llCurrentTime)
     }
 }
 
-void CGame::Packet_PlayerJoin(const NetServerPlayerID& Source)
+void CGame::Packet_PlayerJoin(const GamePeer& Source)
 {
     const bool automaticIdentityPending = m_pMainConfig->GetNeonAuthAutomatic() && (!m_pNeonServerAnnouncer || !m_pNeonServerAnnouncer->IsIdentityActive());
     if (automaticIdentityPending && m_pMainConfig->GetNeonAuthMode() == ENeonAuthMode::Required)
@@ -1980,7 +1989,7 @@ void CGame::Packet_PlayerJoin(const NetServerPlayerID& Source)
             pBitStream->WriteString(m_pMainConfig->GetNeonAuthServerId());
 
         // Send and destroy the bitstream
-        g_pNetServer->SendPacket(PACKET_ID_MOD_NAME, Source, pBitStream, false, PACKET_PRIORITY_HIGH, PACKET_RELIABILITY_RELIABLE_ORDERED);
+        SendDirect(PACKET_ID_MOD_NAME, Source, pBitStream, false, PACKET_PRIORITY_HIGH, PACKET_RELIABILITY_RELIABLE_ORDERED);
         g_pNetServer->DeallocateNetServerBitStream(pBitStream);
     }
 }
@@ -2011,7 +2020,7 @@ void CGame::Packet_PlayerJoinData(CPlayerJoinDataPacket& Packet)
         if (neonAuthMode != ENeonAuthMode::Disabled && hasNeonTicket)
         {
             std::string identityError;
-            if (!m_neonIdentityTicketVerifier.VerifyAndConsume(Packet.GetNeonIdentityTicket(), neonIdentity, identityError))
+            if (!m_neonIdentityTicketVerifier.VerifyAndConsume(Packet.GetNeonIdentityTicket(), neonIdentity, identityError, m_pMainConfig->RequiresAndroidAdmission()))
             {
                 CLogger::LogPrintf("CONNECT: %s refused before player creation (Neon Identity: %s)\n", szNick, identityError.c_str());
                 RefusePendingConnection(Packet.GetSourceSocket(), "Your SA:O sign-in ticket is invalid or expired. Please reconnect.");
@@ -2040,6 +2049,12 @@ void CGame::Packet_PlayerJoinData(CPlayerJoinDataPacket& Packet)
             }
         }
 
+        if (m_pPlayerManager->Count() >= m_pMainConfig->GetMaxPlayers())
+        {
+            RefusePendingConnection(Packet.GetSourceSocket(), "The server is full.");
+            return;
+        }
+
         // Add the player
         CPlayer* pPlayer = m_pPlayerManager->Create(Packet.GetSourceSocket());
 
@@ -2048,6 +2063,16 @@ void CGame::Packet_PlayerJoinData(CPlayerJoinDataPacket& Packet)
 
         if (!neonIdentity.accountId.empty())
             pPlayer->SetNeonIdentity(std::move(neonIdentity.accountId), std::move(neonIdentity.discordId));
+
+        const bool isAndroidClient = Packet.GetSourceSocket().IsQuic() || neonIdentity.isAndroid ||
+                                     Packet.GetBitStreamVersion() == 0x0030 ||
+                                     Packet.GetPlayerVersion().find("29999") != std::string::npos;
+        pPlayer->SetIsAndroid(isAndroidClient);
+        if (isAndroidClient)
+        {
+            CLogger::LogPrintf("CONNECT: %s using Android protocol compatibility (%s)\n", szNick,
+                               Packet.GetSourceSocket().IsQuic() ? "authenticated QUIC" : "classic");
+        }
 
         if (pPlayer->GetID() == INVALID_ELEMENT_ID)
         {
@@ -2061,16 +2086,20 @@ void CGame::Packet_PlayerJoinData(CPlayerJoinDataPacket& Packet)
         // The distributed net modules cap their effective bitstream at 0x3D,
         // so the exact DM netcode epoch is the compatibility boundary for the
         // generic-set and 48-bit low-precision-position wire changes. Reject a
-        // previous-epoch peer before its bitstream version reaches net.dll.
-        if (Packet.GetNetVersion() != MTA_DM_NETCODE_VERSION)
+        // peer with an unsupported epoch before applying its bitstream version.
+        // Release 189 shares the current bitstream version but uses one water flag bit.
+        const bool release189 = (Packet.GetNetVersion() == 0x41E6);
+        const bool supportedProtocol = Packet.GetNetVersion() == MTA_DM_NETCODE_VERSION || release189 || Packet.GetNetVersion() == 0x41E7;
+        if (!supportedProtocol)
         {
             CLogger::LogPrintf("CONNECT: %s failed to connect (Bad version; client: %X, server: %X)\n", szNick, Packet.GetNetVersion(), MTA_DM_NETCODE_VERSION);
             return DisconnectPlayer(this, *pPlayer, "This server requires the current San Andreas Online network protocol.");
         }
 
         // Set the bitstream version number for this connection
+        pPlayer->SetRelease189Protocol(release189);
         pPlayer->SetBitStreamVersion(Packet.GetBitStreamVersion());
-        g_pNetServer->SetClientBitStreamVersion(Packet.GetSourceSocket(), Packet.GetBitStreamVersion());
+        if (!Packet.GetSourceSocket().IsQuic()) g_pNetServer->SetClientBitStreamVersion(Packet.GetSourceSocket().Stock(), Packet.GetBitStreamVersion());
         if (m_pResourceManager->RequiresNativeWorldV3SetStartupCapability() && !pPlayer->CanBitStream(eBitStreamVersion::NativeWorldStaticWorldV3GenericSet))
         {
             CLogger::LogPrintf("CONNECT: %s refused (client lacks generic static-world-v3-set capability)\n", szNick);
@@ -2078,15 +2107,21 @@ void CGame::Packet_PlayerJoinData(CPlayerJoinDataPacket& Packet)
         }
 
         // Get the serial number from the packet source
-        NetServerPlayerID p = Packet.GetSourceSocket();
+        const GamePeer& peer = Packet.GetSourceSocket();
         SString           strSerial;
         SString           strExtra;
         CMtaVersion       strPlayerVersion;
+        if (peer.IsQuic())
+        {
+            strSerial = m_quic.InstallSerial(peer);
+            strPlayerVersion = Packet.GetPlayerVersion();
+        }
+        else
         {
             SFixedString<32> strSerialTemp;
             SFixedString<64> strExtraTemp;
             SFixedString<32> strPlayerVersionTemp;
-            g_pNetServer->GetClientSerialAndVersion(p, strSerialTemp, strExtraTemp, strPlayerVersionTemp);
+            g_pNetServer->GetClientSerialAndVersion(peer.Stock(), strSerialTemp, strExtraTemp, strPlayerVersionTemp);
             strSerial = SStringX(strSerialTemp);
             strExtra = SStringX(strExtraTemp);
             strPlayerVersion = SStringX(strPlayerVersionTemp);
@@ -2163,7 +2198,7 @@ void CGame::Packet_PlayerJoinData(CPlayerJoinDataPacket& Packet)
             if (pTempPlayer == NULL)
             {
                 // Correct version?
-                if (Packet.GetNetVersion() == MTA_DM_NETCODE_VERSION)
+                if (supportedProtocol)
                 {
                     // If the password is valid
                     if (bPasswordIsValid)
@@ -2361,7 +2396,7 @@ void CGame::Packet_PlayerJoinData(CPlayerJoinDataPacket& Packet)
     }
 }
 
-void CGame::RefusePendingConnection(const NetServerPlayerID& source, const char* reason)
+void CGame::RefusePendingConnection(const GamePeer& source, const char* reason)
 {
     // Authentication is evaluated before CPlayer allocation, so a rejected
     // peer cannot become visible to Lua resources or enter any gameplay state.
@@ -2370,10 +2405,11 @@ void CGame::RefusePendingConnection(const NetServerPlayerID& source, const char*
     if (bitStream)
     {
         if (packet.Write(*bitStream))
-            g_pNetServer->SendPacket(packet.GetPacketID(), source, bitStream, false, PACKET_PRIORITY_HIGH, PACKET_RELIABILITY_RELIABLE_ORDERED);
+            SendDirect(packet.GetPacketID(), source, bitStream, false, PACKET_PRIORITY_HIGH, PACKET_RELIABILITY_RELIABLE_ORDERED);
         g_pNetServer->DeallocateNetServerBitStream(bitStream);
     }
-    g_pNetServer->Kick(source);
+    if (source.IsQuic()) m_quic.Close(source);
+    else g_pNetServer->Kick(source.Stock());
 }
 
 void CGame::Packet_PedWasted(CPedWastedPacket& Packet)
@@ -2605,7 +2641,7 @@ void CGame::RelayPlayerPuresync(CPacket& Packet)
 
             {
                 bool bTimeForSync = pSendPlayer->IsTimeToReceivePuresyncNearFrom(pPlayer, nearInfo);
-                if (!bUseSimSendList)
+                if (!bUseSimSendList || pPlayer->GetSocket().IsQuic() || pSendPlayer->GetSocket().IsQuic())
                 {
                     // Standard sending
                     if (bTimeForSync)
@@ -2961,7 +2997,7 @@ void CGame::RelayNearbyPacket(CPacket& Packet)
         for (SViewerMapType ::iterator it = nearList.begin(); it != nearList.end(); ++it)
         {
             CPlayer* pSendPlayer = it->first;
-            if (!bUseSimSendList)
+            if (!bUseSimSendList || pPlayer->GetSocket().IsQuic() || pSendPlayer->GetSocket().IsQuic())
             {
                 // Standard sending
                 sendList.push_back(pSendPlayer);
@@ -5117,7 +5153,14 @@ void CGame::SendPacketBatchBegin(unsigned char ucPacketId, NetBitStreamInterface
 //
 // Maybe route though LatentTransferManager
 //
-bool CGame::SendPacket(unsigned char ucPacketID, const NetServerPlayerID& playerID, NetBitStreamInterface* pBitStream, bool bBroadcast,
+bool CGame::SendDirect(unsigned char kind, const GamePeer& peer, NetBitStreamInterface* stream, bool broadcast,
+                       NetServerPacketPriority priority, NetServerPacketReliability reliability, ePacketOrdering ordering)
+{
+    if (peer.IsQuic()) return !broadcast && m_quic.Send(peer, kind, *stream, reliability, ordering);
+    return g_pNetServer->SendPacket(kind, peer.Stock(), stream, broadcast, priority, reliability, ordering);
+}
+
+bool CGame::SendPacket(unsigned char ucPacketID, const GamePeer& playerID, NetBitStreamInterface* pBitStream, bool bBroadcast,
                        NetServerPacketPriority packetPriority, NetServerPacketReliability packetReliability, ePacketOrdering packetOrdering)
 {
     if (!m_bLatentSendsEnabled)
@@ -5131,7 +5174,7 @@ bool CGame::SendPacket(unsigned char ucPacketID, const NetServerPlayerID& player
             pBitStream->ResetReadPointer();
             CPerfStatRPCPacketUsage::GetSingleton()->UpdatePacketUsageOut(ucRpcId, pBitStream->GetNumberOfBytesUsed());
         }
-        return g_pNetServer->SendPacket(ucPacketID, playerID, pBitStream, bBroadcast, packetPriority, packetReliability, packetOrdering);
+        return SendDirect(ucPacketID, playerID, pBitStream, bBroadcast, packetPriority, packetReliability, packetOrdering);
     }
     else
         GetLatentTransferManager()->AddSend(playerID, pBitStream->Version(), m_iLatentSendsBandwidth, m_pLatentSendsLuaMain, m_usLatentSendsResourceNetId);

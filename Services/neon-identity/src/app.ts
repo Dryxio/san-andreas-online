@@ -1,6 +1,11 @@
 import { resolvePublicHost, resolvePublicEndpoint, type PublicHostResolver } from "./server-public-host.js";
 
+import { androidProofSchema, verifyAndroidProof } from "./android-admission.js";
+import { playIntegrityDecoder, registerInstallEnrollment, type DecodeInstallToken } from "./android-install.js";
+import { InstallCertificateAuthority } from "./install-certificate.js";
+
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 
 import cookie from "@fastify/cookie";
 import helmet from "@fastify/helmet";
@@ -37,6 +42,7 @@ const pollSchema = z.object({
     poll_token: z.string().min(32).max(256),
 });
 const ticketRequestSchema = z.object({
+    android_proof: androidProofSchema.optional(),
     server_id: serverIdSchema,
     server_endpoint: z.string().refine(isCanonicalIpv4Endpoint),
 });
@@ -54,6 +60,9 @@ export interface AppDependencies {
     discord: DiscordClient;
     policy: DiscordIdentityPolicy;
     ticketSigner: TicketSigner;
+    androidTicketSigner?: TicketSigner;
+    androidVerifier?: typeof verifyAndroidProof;
+    decodeInstallToken?: DecodeInstallToken;
     aseProbe?: AseProbe;
     publicHostResolver?: PublicHostResolver;
     serverAssetFetcher?: ServerAssetFetcher;
@@ -127,7 +136,8 @@ function registrationAddress(headers: Record<string, string | string[] | undefin
 }
 
 export async function buildApp(dependencies: AppDependencies) {
-    const { config, discord, policy, store, ticketSigner } = dependencies;
+    const { config, discord, policy, store, ticketSigner, androidTicketSigner } = dependencies;
+    if (config.androidAdmission && !androidTicketSigner) throw new Error("Missing Android ticket signer");
     const aseProbe = dependencies.aseProbe ?? probeMtaAse;
     const serverAssetFetcher = dependencies.serverAssetFetcher ?? fetchServerAsset;
     const now = dependencies.now ?? (() => new Date());
@@ -179,6 +189,15 @@ export async function buildApp(dependencies: AppDependencies) {
 
     app.get("/healthz", async () => ({ status: "ok" }));
 
+    if (config.androidInstall) {
+        const policy = config.androidInstall;
+        const [certificate, key] = await Promise.all([readFile(policy.ca_cert_file, "utf8"), readFile(policy.ca_key_file, "utf8")]);
+        const ca = await InstallCertificateAuthority.create(certificate, key);
+        registerInstallEnrollment(app, store, config.issuer, policy, ca, dependencies.decodeInstallToken ?? playIntegrityDecoder(), now);
+        app.get("/.well-known/neon-android-install-ca.pem", (_request, reply) =>
+            reply.type("application/x-pem-file").header("cache-control", "public, max-age=300").send(ca.publicCertificate));
+    }
+
     app.get("/v1/server-registry/assets/:hash", async (request, reply) => {
         const parsed = serverAssetHashSchema.safeParse((request.params as { hash?: unknown }).hash);
         if (!parsed.success) return reply.code(404).send({ error: "server_asset_not_found" });
@@ -201,6 +220,11 @@ export async function buildApp(dependencies: AppDependencies) {
             discord_start_endpoint: new URL("/v1/auth/discord/start", config.publicBaseUrl).href,
             discord_poll_endpoint: new URL("/v1/auth/discord/poll", config.publicBaseUrl).href,
             ticket_endpoint: new URL("/v1/tickets", config.publicBaseUrl).href,
+            ...(config.androidInstall ? {
+                android_install_challenge_endpoint: new URL("/v1/android/installs/challenge", config.publicBaseUrl).href,
+                android_install_enrollment_endpoint: new URL("/v1/android/installs/enroll", config.publicBaseUrl).href,
+                android_install_ca_uri: new URL("/.well-known/neon-android-install-ca.pem", config.publicBaseUrl).href,
+            } : {}),
             server_registry_uri: new URL("/.well-known/neon-server-registry", config.publicBaseUrl).href,
             ticket_signing_alg_values_supported: ["EdDSA"],
         };
@@ -355,7 +379,7 @@ export async function buildApp(dependencies: AppDependencies) {
 
     app.get("/.well-known/jwks.json", async (_request, reply) => {
         reply.header("cache-control", "public, max-age=300, stale-if-error=86400");
-        return { keys: [ticketSigner.publicJwk] };
+        return { keys: androidTicketSigner ? [ticketSigner.publicJwk, androidTicketSigner.publicJwk] : [ticketSigner.publicJwk] };
     });
 
     app.post(
@@ -550,11 +574,38 @@ export async function buildApp(dependencies: AppDependencies) {
             if (!legacyAuthorized && !automaticallyAuthorized) {
                 return reply.code(403).send({ error: "server_endpoint_not_allowed" });
             }
-            const signed = await ticketSigner.sign(
+            let verifiedAndroidSigner: TicketSigner | undefined;
+            const android = config.androidAdmission;
+            if (android?.server_ids.includes(parsed.data.server_id)) {
+                if (!androidTicketSigner) return reply.code(503).send({ error: "android_verifier_unavailable" });
+                reply.header("cache-control", "no-store");
+                const binding = hashToken(JSON.stringify([sessionToken, parsed.data.server_id, parsed.data.server_endpoint]));
+                const proof = parsed.data.android_proof;
+                if (!proof) {
+                    const challenge = randomToken();
+                    const expiresAt = new Date(currentTime.getTime() + 60_000);
+                    await store.setAndroidChallenge(binding, challenge, expiresAt, currentTime);
+                    return reply.code(428).send({ error: "android_proof_required", challenge });
+                }
+                if (!await store.takeAndroidChallenge(binding, proof.challenge, currentTime)) {
+                    return reply.code(403).send({ error: "invalid_android_challenge" });
+                }
+                try {
+                    if (!await (dependencies.androidVerifier ?? verifyAndroidProof)(android, proof)) {
+                        return reply.code(403).send({ error: "android_proof_rejected" });
+                    }
+                } catch {
+                    return reply.code(503).send({ error: "android_verifier_unavailable" });
+                }
+                verifiedAndroidSigner = androidTicketSigner;
+            }
+            const signer = verifiedAndroidSigner ?? ticketSigner;
+            const signed = await signer.sign(
                 account,
                 parsed.data.server_id,
                 parsed.data.server_endpoint,
                 currentTime,
+                verifiedAndroidSigner ? "hardware-key-v1" : undefined,
             );
             return { ticket: signed.ticket, expires_at: signed.expiresAt.toISOString() };
         },

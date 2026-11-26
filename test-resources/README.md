@@ -5,6 +5,8 @@ showcases, experiments, and mission scenarios. They may create fixtures,
 teleport players, alter world state, or require a specific test setup. Read
 the individual README and install only the resources needed for your test.
 
+The [Android two-session test](android-session-test/README.md) exercises client resource loading, spawn and reconnect on a private server.
+
 For ready-to-use server systems, see [official-resources/](../official-resources/README.md):
 
 - [Native pedestrian traffic](../official-resources/native-ped-traffic/README.md)

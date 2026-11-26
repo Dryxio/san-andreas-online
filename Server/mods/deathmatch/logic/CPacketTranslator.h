@@ -26,7 +26,7 @@ public:
     CPacketTranslator(CPlayerManager* pPlayerManager);
     ~CPacketTranslator();
 
-    CPacket* Translate(const NetServerPlayerID& Socket, ePacketID PacketID, NetBitStreamInterface& BitStream, SNetExtraInfo* pNetExtraInfo);
+    CPacket* Translate(const GamePeer& Socket, ePacketID PacketID, NetBitStreamInterface& BitStream, SNetExtraInfo* pNetExtraInfo);
 
 private:
     CPlayerManager* m_pPlayerManager;

@@ -51,7 +51,7 @@ void CSimPlayerManager::AddSimPlayer(CPlayer* pPlayer)
     pPlayer->m_pSimPlayer = pSim;
 
     // Copy some important data
-    pSim->m_PlayerSocket = pPlayer->GetSocket();
+    pSim->m_PlayerSocket = pPlayer->GetSocket().Stock();
 
     // Add to lists
     MapInsert(m_AllSimPlayerMap, pSim);

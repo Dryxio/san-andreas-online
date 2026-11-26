@@ -512,6 +512,9 @@ bool CAccountManager::LogIn(CClient* pClient, CClient* pEchoClient, const std::s
     SString  strPlayerName = pPlayer->GetNick();
     SString  strPlayerIP = pPlayer->GetSourceIP();
     SString  strPlayerSerial = pPlayer->GetSerial();
+    // Account serial approvals belong to the authentication provider that
+    // identified the peer. Keep the 32-hex gameplay serial used by resources.
+    if (pPlayer->GetSocket().IsQuic()) strPlayerSerial = "Q" + strPlayerSerial.substr(0, 31);
 
     std::string strSlicedAccountName = strAccountName.substr(0, MAX_USERNAME_LENGTH);
     const char* szAccountName = strSlicedAccountName.c_str();

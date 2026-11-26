@@ -164,6 +164,7 @@ enum ePacketOrdering
 };
 
 // Typedefs to make shared code easier
-typedef NetServerPlayerID          NetPlayerID;
+#include "ns_gamepeer.h"
+typedef GamePeer                   NetPlayerID;
 typedef NetServerPacketPriority    NetPacketPriority;
 typedef NetServerPacketReliability NetPacketReliability;

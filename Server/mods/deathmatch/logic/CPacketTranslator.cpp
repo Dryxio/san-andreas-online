@@ -59,7 +59,7 @@ CPacketTranslator::~CPacketTranslator()
 {
 }
 
-CPacket* CPacketTranslator::Translate(const NetServerPlayerID& Socket, ePacketID PacketID, NetBitStreamInterface& BitStream, SNetExtraInfo* pNetExtraInfo)
+CPacket* CPacketTranslator::Translate(const GamePeer& Socket, ePacketID PacketID, NetBitStreamInterface& BitStream, SNetExtraInfo* pNetExtraInfo)
 {
     // Create the packet class
     CPacket* pTemp = NULL;

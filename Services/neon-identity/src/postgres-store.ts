@@ -502,6 +502,23 @@ export class PostgresIdentityStore implements IdentityStore {
         return result.rows[0] ? toServerAsset(result.rows[0]) : null;
     }
 
+    async setAndroidChallenge(binding: Buffer, challenge: string, expiresAt: Date, now: Date): Promise<void> {
+        await this.#pool.query("DELETE FROM neon_android_challenges WHERE expires_at <= $1", [now]);
+        await this.#pool.query(
+            `INSERT INTO neon_android_challenges (binding, challenge, expires_at) VALUES ($1, $2, $3)
+             ON CONFLICT (binding) DO UPDATE SET challenge = EXCLUDED.challenge, expires_at = EXCLUDED.expires_at`,
+            [binding, challenge, expiresAt],
+        );
+    }
+
+    async takeAndroidChallenge(binding: Buffer, challenge: string, now: Date): Promise<boolean> {
+        const result = await this.#pool.query(
+            "DELETE FROM neon_android_challenges WHERE binding = $1 AND challenge = $2 AND expires_at > $3",
+            [binding, challenge, now],
+        );
+        return result.rowCount === 1;
+    }
+
     async close(): Promise<void> {
         await this.#pool.end();
     }

@@ -592,7 +592,8 @@ int CLuaFunctionDefs::GetNetworkStats(lua_State* luaVM)
 
     if (!argStream.HasErrors())
     {
-        NetServerPlayerID PlayerID = pPlayer ? pPlayer->GetSocket() : NetServerPlayerID();
+        if (pPlayer && pPlayer->GetSocket().IsQuic()) { lua_pushboolean(luaVM, false); return 1; }
+        NetServerPlayerID PlayerID = pPlayer ? pPlayer->GetSocket().Stock() : NetServerPlayerID();
         NetStatistics     stats;
         if (g_pNetServer->GetNetworkStatistics(&stats, PlayerID))
         {
