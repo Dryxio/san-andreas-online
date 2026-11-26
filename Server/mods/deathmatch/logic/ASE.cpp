@@ -437,10 +437,15 @@ std::string ASE::QueryLight()
     SString strUpTime("%d", (uint)(time(NULL) - m_tStartTime));
     SString strHttpPort("%d", m_pMainConfig->GetHTTPPort());
 
+    // Append a named extension after the legacy HTTP port. Old browsers stop at that port.
+    const char*    androidRule = GetRuleValue("android");
+    const bool     advertiseAndroid = androidRule && strcmp(androidRule, "1") == 0;
+    constexpr char androidField[] = "android=1";
+
     uint uiExtraDataLength = (strPlayerCount.length() + 1 + strBuildType.length() + 1 + strBuildNumber.length() + 1 + strPingStatus.length() + 1 +
-                              strNetRoute.length() + 1 + strUpTime.length() + 1 + strHttpPort.length() + 1);
+                              strNetRoute.length() + 1 + strUpTime.length() + 1 + strHttpPort.length() + 1 + (advertiseAndroid ? sizeof(androidField) : 0));
     uint uiMaxMapNameLength = 250 - uiExtraDataLength;
-    m_strMapName = m_strMapName.Left(uiMaxMapNameLength);
+    const SString strMapName = m_strMapName.Left(uiMaxMapNameLength);
 
     reply << "EYE2";
     // game
@@ -456,8 +461,8 @@ std::string ASE::QueryLight()
     reply << (unsigned char)(m_strGameType.length() + 1);
     reply << m_strGameType;
     // map name with backwardly compatible large player count, build type and build number
-    reply << (unsigned char)(m_strMapName.length() + 1 + uiExtraDataLength);
-    reply << m_strMapName;
+    reply << (unsigned char)(strMapName.length() + 1 + uiExtraDataLength);
+    reply << strMapName;
     reply << (unsigned char)0;
     reply << strPlayerCount;
     reply << (unsigned char)0;
@@ -472,6 +477,8 @@ std::string ASE::QueryLight()
     reply << strUpTime;
     reply << (unsigned char)0;
     reply << strHttpPort;
+    if (advertiseAndroid)
+        reply << (unsigned char)0 << androidField;
     // version
     std::string temp = MTA_DM_ASE_VERSION;
     reply << (unsigned char)(temp.length() + 1);

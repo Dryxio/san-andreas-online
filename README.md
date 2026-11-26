@@ -30,6 +30,8 @@ Its flagship system brings **GTA:SA's single-player NPCs and traffic into a shar
 
 Start the server built from this branch with the shipped `mtaserver.conf`. Compatible PC and Android clients use the classic game port with stock anticheat. Server owners can keep the defaults and skip Google Cloud setup. The launcher publisher configures Google Play Integrity once on Neon Identity to issue Android install credentials for QUIC. To offer Android gameplay over QUIC, configure a second UDP port and have phone players add its hostname with the `quic://` prefix. [QUIC gameplay setup](Shared/transport/README.md#enable-android-gameplay-on-a-second-udp-port) [Mixed-server settings](Services/neon-identity/README.md#configure-the-game-server) · [Play Integrity setup for publishers and forks](Services/neon-identity/README.md#android-install-credentials-for-quic)
 
+The supplied server configuration advertises Android support in the mobile server browser with `<rule name="android" value="1" />`. Add this rule to an existing Android-compatible server to show the Android badge. Set the value to `0` or remove the rule to hide it. The rule controls discovery only.
+
 ## See it
 
 San Andreas Online renders all of this itself. Nothing to install and no ASI files: every option is a toggle in the settings menu, and servers can drive them too.
